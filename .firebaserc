@@ -1,1 +1,6 @@
-{ "projects": { "default": "demo-bhaktara" } }
+{
+  "projects": {
+    "default": "demo-bhaktara",
+    "dev": "bhaktara-dev"
+  }
+}
