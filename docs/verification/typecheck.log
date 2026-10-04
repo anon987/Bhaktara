@@ -1,0 +1,21 @@
+
+> bhaktara@0.1.0 typecheck
+> tsc --noEmit
+
+/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:123693
+      throw e;
+      ^
+
+RangeError: Maximum call stack size exceeded
+    at checkExpressionWorker (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:81011:33)
+    at checkExpression (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:80966:32)
+    at checkNonNullExpression (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:74991:29)
+    at getEffectsSignature (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:70215:22)
+    at getTypeAtFlowCall (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:70567:25)
+    at getTypeAtFlowNode (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:70449:18)
+    at getFlowTypeOfReference (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:70406:45)
+    at checkIdentifier (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:72199:134)
+    at checkExpressionWorker (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:81023:16)
+    at checkExpression (/home/techappdev/Documents/Bhaktara/node_modules/typescript/lib/_tsc.js:80966:32)
+
+Node.js v24.11.0

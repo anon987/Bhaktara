@@ -1,0 +1,56 @@
+
+> bhaktara@0.1.0 export:web
+> expo export --platform web
+
+Using src/app as the root directory for Expo Router.
+Starting Metro Bundler
+
+| (node:232602) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:232602) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+Web Bundled 12201ms index.ts (2602 modules)
+
+› Assets (38):
+node_modules/@expo-google-fonts/dm-sans/100Thin_Italic/DMSans_100Thin_Italic.bcb8399c1cd3b407c9403b6738c0279f.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/100Thin/DMSans_100Thin.aa895105c99cdda4f82dc9b5b1e26d87.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/200ExtraLight_Italic/DMSans_200ExtraLight_Italic.783b88f315f5e0d18b356e4c7f24ab49.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/200ExtraLight/DMSans_200ExtraLight.3e25a281bdb7b15be3223f3ea14a78a9.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/300Light_Italic/DMSans_300Light_Italic.80cec38fe494b2d8d9c1f7f1096e73f5.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/300Light/DMSans_300Light.df43eeda0517a2dee06925d637bd6840.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/400Regular_Italic/DMSans_400Regular_Italic.d456fd1a58332b02c79e9bda60c4853e.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.74f9bb7405caec741a24db735b2c5733.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/500Medium_Italic/DMSans_500Medium_Italic.fc3b9297fa9ed051f7649c8e756276b7.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.7da0c1626a365ce0164d2ae4ebb0573b.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.0f640fdba88da072848e514bf43c2b85.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.b68921520b1d885dd7f854427cde3e82.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/700Bold_Italic/DMSans_700Bold_Italic.5af5d01e07e369ab645cbd92c05f89d5.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.7a6c1a2c6196d4d0e617b57adb997b3b.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/800ExtraBold_Italic/DMSans_800ExtraBold_Italic.67790bc17c5b1ea7abef154cc8e21bc7.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/800ExtraBold/DMSans_800ExtraBold.74a7c51e71e5be3e9878deb3b1dd8276.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/900Black_Italic/DMSans_900Black_Italic.7c78541f1ece5c832d207df0be7b447f.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/900Black/DMSans_900Black.e0062779393299c3012a239746c1830c.ttf (56KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/100Thin/NotoSansDevanagari_100Thin.28feb29b0849b968cf5809f44b1ce2a4.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/200ExtraLight/NotoSansDevanagari_200ExtraLight.f99d4cb4e56e014ee7927fa30dd7a852.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/300Light/NotoSansDevanagari_300Light.df48e5c8621fcaad4a9d76685d121709.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/400Regular/NotoSansDevanagari_400Regular.6280ee10957050f070e385b5ffe6b250.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/500Medium/NotoSansDevanagari_500Medium.f2e874f3515e187eb9129685037e4aa0.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/600SemiBold/NotoSansDevanagari_600SemiBold.f246bd55ac91703c348601f11fc2e6df.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/700Bold/NotoSansDevanagari_700Bold.ce0cc91bffe84b65b9243c3d02bc9f1a.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/800ExtraBold/NotoSansDevanagari_800ExtraBold.dbba6fc0977d974f8392d1094814ddca.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/900Black/NotoSansDevanagari_900Black.ca776cc91f70dbaffe7f478eb5797a17.ttf (221KB)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653B)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207B)
+node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425B)
+node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235B)
+node_modules/@react-navigation/elements/lib/module/assets/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928B)
+
+› web bundles (1):
+_expo/static/js/web/index-932e2163c0e6ced4034c2f1c8ae72ea1.js (3.7MB)
+
+› Files (3):
+favicon.ico (15KB)
+index.html (1.2KB)
+metadata.json (49B)
+
+Exported: dist

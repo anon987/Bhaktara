@@ -1,0 +1,41 @@
+
+> bhaktara@0.1.0 format
+> prettier --write "src/**/*.{ts,tsx}" App.tsx tests
+
+src/app/navigation/AppNavigator.tsx 989ms (unchanged)
+src/app/navigation/routes.ts 84ms (unchanged)
+src/app/providers/AppProvider.tsx 168ms (unchanged)
+src/components/ContentCard.tsx 51ms (unchanged)
+src/components/DevotionalArt.tsx 87ms (unchanged)
+src/components/Dialog.tsx 35ms
+src/components/dialogContext.ts 5ms
+src/components/ui.tsx 123ms
+src/domain/models.ts 12ms (unchanged)
+src/domain/practice.ts 22ms (unchanged)
+src/features/content/ContentScreen.tsx 41ms (unchanged)
+src/features/explore/ExploreScreen.tsx 96ms (unchanged)
+src/features/home/HomeScreen.tsx 101ms
+src/features/mandir/MandirScreen.tsx 70ms
+src/features/onboarding/OnboardingScreen.tsx 12ms (unchanged)
+src/features/player/MiniPlayer.tsx 23ms (unchanged)
+src/features/player/PlayerScreen.tsx 29ms (unchanged)
+src/features/profile/ProfileScreen.tsx 41ms (unchanged)
+src/features/sadhana/PracticeScreens.tsx 74ms
+src/features/sadhana/SadhanaScreen.tsx 47ms (unchanged)
+src/i18n/strings.ts 24ms (unchanged)
+src/repositories/contracts.ts 8ms (unchanged)
+src/repositories/fixtures.ts 13ms
+src/repositories/mockRepository.ts 14ms (unchanged)
+src/services/analytics/index.ts 8ms (unchanged)
+src/services/integrations.ts 6ms (unchanged)
+src/services/platform/contracts.ts 9ms (unchanged)
+src/services/platform/index.android.ts 3ms (unchanged)
+src/services/platform/index.ios.ts 2ms (unchanged)
+src/services/platform/index.ts 1ms (unchanged)
+src/services/platform/stub.ts 4ms (unchanged)
+src/services/storage/localStore.ts 14ms (unchanged)
+src/theme/tokens.ts 11ms (unchanged)
+App.tsx 14ms
+tests/domain.test.ts 49ms (unchanged)
+tests/interactions.test.tsx 22ms
+tests/setup.ts 7ms

@@ -1,0 +1,11 @@
+
+> bhaktara@0.1.0 lint
+> eslint .
+
+
+/home/techappdev/Documents/Bhaktara/tests/setup.ts
+  8:17  warning  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  9:20  warning  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+✖ 2 problems (0 errors, 2 warnings)
+

@@ -1,0 +1,50 @@
+Using src/app as the root directory for Expo Router.
+Starting Metro Bundler
+
+| (node:233028) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:233028) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+Android Bundled 108894ms index.ts (3004 modules)
+
+› Assets (44):
+node_modules/@expo-google-fonts/dm-sans/100Thin_Italic/DMSans_100Thin_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/100Thin/DMSans_100Thin.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/200ExtraLight_Italic/DMSans_200ExtraLight_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/200ExtraLight/DMSans_200ExtraLight.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/300Light_Italic/DMSans_300Light_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/300Light/DMSans_300Light.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/400Regular_Italic/DMSans_400Regular_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/500Medium_Italic/DMSans_500Medium_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/700Bold_Italic/DMSans_700Bold_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/800ExtraBold_Italic/DMSans_800ExtraBold_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/800ExtraBold/DMSans_800ExtraBold.ttf (56KB)
+node_modules/@expo-google-fonts/dm-sans/900Black_Italic/DMSans_900Black_Italic.ttf (61KB)
+node_modules/@expo-google-fonts/dm-sans/900Black/DMSans_900Black.ttf (56KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/100Thin/NotoSansDevanagari_100Thin.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/200ExtraLight/NotoSansDevanagari_200ExtraLight.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/300Light/NotoSansDevanagari_300Light.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/400Regular/NotoSansDevanagari_400Regular.ttf (221KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/500Medium/NotoSansDevanagari_500Medium.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/600SemiBold/NotoSansDevanagari_600SemiBold.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/700Bold/NotoSansDevanagari_700Bold.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/800ExtraBold/NotoSansDevanagari_800ExtraBold.ttf (222KB)
+node_modules/@expo-google-fonts/noto-sans-devanagari/900Black/NotoSansDevanagari_900Black.ttf (221KB)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.png (653B)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon.png (4 variations | 152B)
+node_modules/@react-navigation/elements/lib/module/assets/clear-icon.png (4 variations | 425B)
+node_modules/@react-navigation/elements/lib/module/assets/close-icon.png (4 variations | 235B)
+node_modules/@react-navigation/elements/lib/module/assets/search-icon.png (4 variations | 599B)
+
+› android bundles (1):
+_expo/static/js/android/index-bc137e840eae3e3879fb36e2f148dc72.hbc (5MB)
+
+› Files (1):
+metadata.json (2.9KB)
+
+Exported: dist-android

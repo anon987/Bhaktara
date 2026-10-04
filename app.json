@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Bhaktara",
+    "slug": "bhaktara",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bhaktara.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FBF7EF"
+      },
+      "predictiveBackGestureEnabled": true,
+      "package": "com.bhaktara.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "scheme": "bhaktara",
+    "splash": {
+      "backgroundColor": "#FBF7EF"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "expo/tsconfig.base",
+  "include": [
+    "App.tsx",
+    "index.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ],
+  "compilerOptions": {
+    "strict": true,
+    "types": ["jest", "react", "react-native"]
+  }
+}

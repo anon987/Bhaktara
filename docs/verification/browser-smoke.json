@@ -1,0 +1,11 @@
+{
+  "passed": [
+    "Language-only onboarding and exact five-tab order",
+    "Transliteration search, content detail, favorite, player and persistent mini-player",
+    "First-visit deity selection, diya/flowers and explicit unavailable rewarded-offering dialog",
+    "Local jaap taps and meditation start/pause/resume state",
+    "Favorites in Profile, Hindi switching, and persisted onboarding/language after reload",
+    "Invalid saved data remains untouched; startup retry restores saved progress"
+  ],
+  "errors": []
+}
