@@ -4,7 +4,7 @@ Last updated: **2026-10-04**.
 
 ## Current checkpoint
 
-The UI foundation runs in the browser and on an Android phone. It uses fixture content and local-only practice state. Production M0 and V1 are not complete. Git was initialized on `main` and connected to the private repository [anon987/Bhaktara](https://github.com/anon987/Bhaktara) on 2026-10-04. This initial checkpoint includes app source, native projects, specifications, tests, and verification documentation. Generated builds/APKs, dependencies, and local environment files remain local.
+The UI foundation runs in the browser and on an Android phone. It uses fixture content and local-only practice state by default, with an opt-in Firebase emulator backend for development. Production M0 and V1 are not complete. Git is connected to the private repository [anon987/Bhaktara](https://github.com/anon987/Bhaktara); the current Firebase checkpoint is committed as `d0e082c` on `feature/firebase-foundation`, pushed to `origin`, with a clean working tree.
 
 ## Completed in this work session
 
@@ -36,6 +36,7 @@ Implemented locally on `feature/firebase-foundation` after the initial `main` pu
 - Validated published catalog reads, search-token normalization, composite indexes, bounded cursor pagination, direct details, and paginated favorite resolution.
 - Local-only seed tooling, deny-by-default Firestore rules, six passing emulator/security scenarios, and a dedicated CI job.
 - 31 passing app tests; emulator browser checks verify guest persistence, search, and a favorite beyond the initial catalog page. Firebase-enabled Android bundle export succeeds.
+- The milestone is saved and pushed as `d0e082c` (`feat: add local Firebase auth and catalog foundation`).
 
 No cloud project was configured, no infrastructure was deployed, and local practice/favorites were not migrated to the backend. The phone was not connected during this checkpoint; the previous device launch proves only the earlier foundation build. See [Firebase setup](FIREBASE_DEVELOPMENT.md) and [verification](verification/RESULTS.md).
 

@@ -2,7 +2,7 @@
 
 ## Latest: Firebase foundation checkpoint
 
-Implemented on `feature/firebase-foundation` with no cloud provisioning/deployment. The default remains fixtures; opt-in local emulators provide actual anonymous Firebase sessions and Firestore catalog/search.
+Implemented on `feature/firebase-foundation` with no cloud provisioning/deployment. The default remains fixtures; opt-in local emulators provide actual anonymous Firebase sessions and Firestore catalog/search. This checkpoint is committed and pushed as `d0e082c` (`feat: add local Firebase auth and catalog foundation`); the working tree is clean.
 
 | Check | Result |
 | --- | --- |

@@ -35,6 +35,8 @@ TypeScript now includes only the app entry points, source, and tests. Previously
 
 The initial review took place before Git was initialized, so earlier change history is unavailable. On 2026-10-04, Git was initialized on `main` and connected to the private [anon987/Bhaktara](https://github.com/anon987/Bhaktara) repository for the initial project checkpoint.
 
+The current Firebase foundation checkpoint is committed as `d0e082c` on `feature/firebase-foundation` and pushed to `origin`. Local and remote branches are synchronized; no uncommitted files remain.
+
 ## Android device verification (2026-10-04)
 
 Built the ARM64 debug APK with JDK 17, installed it on Samsung SM_E076B, and confirmed the Explore screen and five navigation tabs render through the Expo development client. Metro uses port 8081 with ADB reverse. The first build took 16m 45s; first JavaScript bundling took about 56 seconds. This confirms build/install/launch, not full native feature coverage. See [device instructions](ANDROID_DEVICE.md) and [verification results](verification/RESULTS.md).
