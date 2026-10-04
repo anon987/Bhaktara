@@ -20,12 +20,14 @@ import {
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { colors } from "../../theme/tokens";
 import { StringKey } from "../../i18n/strings";
+import { usePlayer } from "../player/PlayerProvider";
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Mandir">,
   NativeStackScreenProps<RootParams>
 >;
 export function MandirScreen({ navigation }: Props) {
-  const { local, catalog, t, update, selectContent, searchContent } = useApp();
+  const { local, catalog, t, update, searchContent } = useApp();
+  const player = usePlayer();
   const unavailable = useUnavailable();
   const [choosing, setChoosing] = useState(!local.deityId);
   const [lit, setLit] = useState(false);
@@ -149,13 +151,12 @@ export function MandirScreen({ navigation }: Props) {
                 searchContent({ type: "AARTI", deityId: deity.id, limit: 1 })
                   .then(({ items }) => {
                     if (!items[0]) return unavailable("noResultsHint");
-                    selectContent(items[0].id);
+                    player.load(items[0], "mandir");
                     navigation.navigate("Player");
                   })
                   .catch(() => unavailable("error"));
               }}
             />
-            <Notice text={t("noAudio")} />
             <View style={{ height: 20 }} />
             <Card>
               <Flower2 size={25} color={colors.gold} />

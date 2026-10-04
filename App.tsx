@@ -11,6 +11,7 @@ import {
 } from "@expo-google-fonts/noto-sans-devanagari";
 import { AppProvider, useApp } from "./src/app/providers/AppProvider";
 import { AppNavigator } from "./src/app/navigation/AppNavigator";
+import { PlayerProvider } from "./src/features/player/PlayerProvider";
 import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { colors } from "./src/theme/tokens";
 import { Button, Txt } from "./src/components/ui";
@@ -37,7 +38,9 @@ export function AppContent() {
       )}
     </View>
   ) : local.onboarded ? (
-    <AppNavigator />
+    <PlayerProvider>
+      <AppNavigator />
+    </PlayerProvider>
   ) : (
     <OnboardingScreen />
   );

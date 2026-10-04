@@ -12,11 +12,3 @@ export function canPlaceAd(
 ) {
   return zone === "content-rail";
 }
-export interface AudioService {
-  readonly connected: boolean;
-  play(contentId: string): Promise<"unavailable">;
-}
-export const audioService: AudioService = {
-  connected: false,
-  play: async () => "unavailable",
-};

@@ -277,7 +277,10 @@ export function HomeScreen({ navigation }: Props) {
               key={item.id}
               item={item}
               onPress={() =>
-                navigation.navigate("Content", { contentId: item.id })
+                navigation.navigate("Content", {
+                  contentId: item.id,
+                  source: "home_rail",
+                })
               }
             />
           ))}

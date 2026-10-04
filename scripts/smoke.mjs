@@ -47,22 +47,22 @@ try {
   await page
     .getByRole("button", { name: "Add to favorites", exact: true })
     .click();
+  await page.getByRole("button", { name: "Listen", exact: true }).click();
+  // Fixture items have no audio stream: the player says so and cannot play.
   await page
-    .getByRole("button", { name: "Audio player preview", exact: true })
-    .click();
-  await page
-    .getByText("Playback is not connected. No sound will play.", {
-      exact: true,
-    })
+    .getByText("Audio for this item isn't available yet.", { exact: true })
     .last()
     .waitFor();
-  await page.getByRole("button", { name: "Preview play", exact: true }).click();
+  assert.equal(
+    await page.getByRole("button", { name: "Play", exact: true }).isDisabled(),
+    true,
+  );
   await shot("03-player");
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page
     .getByRole("button", {
-      name: "Audio player preview: Hanuman Chalisa",
+      name: "Now playing: Hanuman Chalisa",
       exact: true,
     })
     .waitFor();

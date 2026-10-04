@@ -220,7 +220,10 @@ export function ExploreScreen({ navigation, route }: Props) {
               compact
               item={item}
               onPress={() =>
-                navigation.navigate("Content", { contentId: item.id })
+                navigation.navigate("Content", {
+                  contentId: item.id,
+                  source: query ? "search" : "explore",
+                })
               }
             />
           )}

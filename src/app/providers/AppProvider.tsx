@@ -36,10 +36,6 @@ type AppContextValue = {
   getContent: ContentRepository["getById"];
   setCatalogMode: (mode: CatalogMode) => void;
   toggleFavorite: (id: string) => void;
-  selectedContentId: string | null;
-  selectContent: (id: string | null) => void;
-  previewPlaying: boolean;
-  setPreviewPlaying: (playing: boolean) => void;
   completeTask: (task: "jaap" | "meditation" | "prayer", at?: Date) => void;
 };
 const Context = createContext<AppContextValue | null>(null);
@@ -61,8 +57,6 @@ export function AppProvider({
   const [connection, setConnection] =
     useState<AppContextValue["connection"]>("loading");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
-  const [selectedContentId, selectContent] = useState<string | null>(null);
-  const [previewPlaying, setPreviewPlaying] = useState(false);
   const writes = useRef(Promise.resolve());
   useEffect(() => {
     void remoteConfig.start();
@@ -236,10 +230,6 @@ export function AppProvider({
             : [...state.favorites, id],
         }));
       },
-      selectedContentId,
-      selectContent,
-      previewPlaying,
-      setPreviewPlaying,
       completeTask,
     }),
     [
@@ -253,8 +243,6 @@ export function AppProvider({
       connection,
       searchContent,
       getContent,
-      selectedContentId,
-      previewPlaying,
       completeTask,
     ],
   );

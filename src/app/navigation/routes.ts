@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PlaySource } from "../../features/player/playback";
 export type TabParams = {
   Home: undefined;
   Explore: { category?: string } | undefined;
@@ -9,7 +10,8 @@ export type TabParams = {
 export type RootParams = {
   Main: undefined;
   Player: undefined;
-  Content: { contentId: string };
+  // `source` feeds the doc 13 analytics parameter of the same name.
+  Content: { contentId: string; source?: PlaySource };
   Jaap: undefined;
   Meditation: undefined;
   Prayer: undefined;

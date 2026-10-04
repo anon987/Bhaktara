@@ -16,12 +16,15 @@ import {
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { colors } from "../../theme/tokens";
 import { platformServices } from "../../services/platform";
+import { usePlayer } from "../player/PlayerProvider";
+import { audioTypes, playableVariant } from "../player/playback";
+import { resolveMediaUrl } from "../../services/media/config";
 export function ContentScreen({
   route,
   navigation,
 }: NativeStackScreenProps<RootParams, "Content">) {
-  const { catalog, local, t, selectContent, toggleFavorite, getContent } =
-    useApp();
+  const { catalog, local, t, toggleFavorite, getContent } = useApp();
+  const player = usePlayer();
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -68,9 +71,9 @@ export function ContentScreen({
       </Page>
     );
   const favorite = local.favorites.includes(item.id);
-  const audio = ["BHAJAN", "AARTI", "MANTRA", "CHALISA", "RINGTONE"].includes(
-    item.type,
-  );
+  const audio = audioTypes.includes(item.type);
+  const variant = playableVariant(item);
+  const playable = Boolean(variant && resolveMediaUrl(variant.key));
   return (
     <Page title={t("preview")} onBack={navigation.goBack}>
       {/* Detail screens load the larger variant; lists stay on thumb (doc 22 §A5). */}
@@ -100,13 +103,13 @@ export function ContentScreen({
         <>
           <Button
             icon={Play}
-            label={t("audioPreview")}
+            label={t("listen")}
             onPress={() => {
-              selectContent(item.id);
+              player.load(item, route.params.source ?? "explore");
               navigation.navigate("Player");
             }}
           />
-          <Notice text={t("noAudio")} />
+          {!playable && <Notice text={t("audioUnavailable")} />}
         </>
       )}
       {["WALLPAPER", "RINGTONE", "STATUS"].includes(item.type) && (

@@ -128,7 +128,12 @@ export function ProfileScreen({ navigation }: Props) {
         <Section title={t("favorites")} />
         <FavoriteList
           key={connection}
-          onSelect={(id) => navigation.navigate("Content", { contentId: id })}
+          onSelect={(id) =>
+            navigation.navigate("Content", {
+              contentId: id,
+              source: "favorites",
+            })
+          }
         />
       </DataBoundary>
       <Section title={t("settings")} />
