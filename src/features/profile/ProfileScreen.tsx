@@ -61,7 +61,11 @@ export function ProfileScreen({ navigation }: Props) {
             {t("guest")}
           </Txt>
           <Txt muted size={12}>
-            {t(connection === "emulator" ? "emulatorGuest" : "guestLabel")}
+            {t(
+              connection === "emulator" || connection === "cloud"
+                ? "emulatorGuest"
+                : "guestLabel",
+            )}
           </Txt>
           <Chip
             label={`${t("rank")} · ${t("level")} ${catalog?.sampleStats.level}`}
@@ -155,7 +159,11 @@ export function ProfileScreen({ navigation }: Props) {
               showDialog(
                 t("privacy"),
                 t(
-                  connection === "emulator" ? "emulatorPrivacy" : "privacyText",
+                  connection === "emulator"
+                    ? "emulatorPrivacy"
+                    : connection === "cloud"
+                      ? "cloudPrivacy"
+                      : "privacyText",
                 ),
               ),
           },

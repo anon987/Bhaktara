@@ -227,6 +227,9 @@ export function Page({
     <View style={[styles.pageContent, !scroll && { flex: 1 }]}>
       {storageError && <Notice text={t("storageError")} />}
       {connection === "emulator" && <Notice text={t("emulatorConnected")} />}
+      {__DEV__ && connection === "cloud" && (
+        <Notice text={t("cloudConnected")} />
+      )}
       {connection === "error" && <Notice text={t("backendError")} />}
       {children}
     </View>

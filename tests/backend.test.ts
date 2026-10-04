@@ -43,12 +43,39 @@ test("anonymous creation is single-flight and failed auth can be retried", async
 });
 test("emulator config cannot silently connect to cloud services", () => {
   expect(parseBackendConfig()).toEqual({ mode: "fixture" });
-  expect(parseBackendConfig("emulator")).toMatchObject({
+  expect(parseBackendConfig({ mode: "emulator" })).toMatchObject({
     projectId: "demo-bhaktara",
     host: "127.0.0.1",
   });
-  expect(() => parseBackendConfig("production")).toThrow();
-  expect(() => parseBackendConfig("emulator", "cloud.example.com")).toThrow();
+  expect(() => parseBackendConfig({ mode: "production" })).toThrow();
+  expect(() =>
+    parseBackendConfig({ mode: "emulator", emulatorHost: "cloud.example.com" }),
+  ).toThrow();
+});
+test("cloud mode needs a complete Web config for a Bhaktara project", () => {
+  const cloud = {
+    mode: "cloud",
+    apiKey: `AIza${"x".repeat(35)}`,
+    appId: "1:83349652654:web:e568c5611c9498d12f993f",
+    projectId: "bhaktara-dev",
+  };
+  expect(parseBackendConfig(cloud)).toEqual({
+    mode: "cloud",
+    firebase: {
+      apiKey: cloud.apiKey,
+      appId: cloud.appId,
+      projectId: "bhaktara-dev",
+      authDomain: "bhaktara-dev.firebaseapp.com",
+    },
+  });
+  for (const broken of [
+    { ...cloud, projectId: "someone-else" },
+    { ...cloud, apiKey: "" },
+    { ...cloud, appId: "1:83349652654:android:bd2a4c399e1d15da2f993f" },
+    { ...cloud, authDomain: "evil.example.com" },
+    { mode: "cloud" },
+  ])
+    expect(() => parseBackendConfig(broken)).toThrow();
 });
 test("publisher and query share Hindi and transliteration normalization", () => {
   const tokens = buildSearchTokens([

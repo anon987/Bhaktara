@@ -230,8 +230,16 @@ export const strings = {
     "स्थानीय डेवलपमेंट एमुलेटर में एक अनाम खाता बनता है। उसका सत्र इस डिवाइस पर रहता है। पसंद और अभ्यास केवल डिवाइस पर सहेजे जाते हैं; एनालिटिक्स नहीं भेजे जाते। ऐप डेटा मिटाने पर स्थानीय रिकॉर्ड और सत्र हट जाते हैं।",
   ],
   backendError: [
-    "The development service could not connect. Check the local emulator and try again.",
-    "डेवलपमेंट सेवा से कनेक्ट नहीं हो सका। स्थानीय एमुलेटर जाँचें और फिर प्रयास करें।",
+    "Bhaktara could not connect. Check your internet connection and try again.",
+    "भक्तारा से कनेक्ट नहीं हो सका। अपना इंटरनेट कनेक्शन जाँचें और फिर प्रयास करें।",
+  ],
+  cloudConnected: [
+    "Development guest connected · Bhaktara dev service. Practice and favorites stay on this device.",
+    "डेवलपमेंट अतिथि जुड़ा है · भक्तारा डेव सेवा। अभ्यास और पसंद इसी डिवाइस पर रहते हैं।",
+  ],
+  cloudPrivacy: [
+    "An anonymous account is created in Bhaktara's development service (Firebase, Mumbai region). Its session is kept on this device. Preferences, favorites and practice remain device-only; analytics are not sent. Clearing app data removes local records and the session.",
+    "भक्तारा की डेवलपमेंट सेवा (Firebase, मुंबई क्षेत्र) में एक अनाम खाता बनता है। उसका सत्र इस डिवाइस पर रहता है। पसंद, पसंदीदा सामग्री और अभ्यास केवल डिवाइस पर सहेजे जाते हैं; एनालिटिक्स नहीं भेजे जाते। ऐप डेटा मिटाने पर स्थानीय रिकॉर्ड और सत्र हट जाते हैं।",
   ],
 } as const;
 export type StringKey = keyof typeof strings;

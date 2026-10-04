@@ -30,7 +30,7 @@ type AppContextValue = {
   update: (fn: (state: LocalState) => LocalState) => void;
   retry: () => void;
   retryStorage: () => void;
-  connection: "loading" | "fixture" | "emulator" | "error";
+  connection: "loading" | "fixture" | "emulator" | "cloud" | "error";
   searchContent: ContentRepository["search"];
   getContent: ContentRepository["getById"];
   setCatalogMode: (mode: CatalogMode) => void;

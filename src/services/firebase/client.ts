@@ -9,28 +9,34 @@ import { BackendConfig } from "../backend/config";
 import { createSessionService } from "../auth/session";
 import { authPersistence } from "./persistence";
 
-export function createFirebaseClient(
-  config: Extract<BackendConfig, { mode: "emulator" }>,
-) {
-  const name = `bhaktara-${config.mode}-${config.host}`;
+type FirebaseConfig = Exclude<BackendConfig, { mode: "fixture" }>;
+
+export function createFirebaseClient(config: FirebaseConfig) {
+  const name =
+    config.mode === "emulator"
+      ? `bhaktara-emulator-${config.host}`
+      : `bhaktara-${config.firebase.projectId}`;
   const existing = getApps().find((value) => value.name === name);
   const app =
     existing ??
     initializeApp(
-      {
-        projectId: config.projectId,
-        apiKey: "demo-api-key",
-        appId: "demo-bhaktara-app",
-      },
+      config.mode === "emulator"
+        ? {
+            projectId: config.projectId,
+            apiKey: "demo-api-key",
+            appId: "demo-bhaktara-app",
+          }
+        : config.firebase,
       name,
     );
   const auth = existing
     ? getAuth(app)
     : initializeAuth(app, { persistence: authPersistence });
+  // Long polling avoids WebChannel streaming issues in React Native.
   const db = existing
     ? getFirestore(app)
     : initializeFirestore(app, { experimentalForceLongPolling: true });
-  if (!existing) {
+  if (!existing && config.mode === "emulator") {
     connectAuthEmulator(auth, `http://${config.host}:9099`, {
       disableWarnings: true,
     });

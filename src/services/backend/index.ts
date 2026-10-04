@@ -3,7 +3,7 @@ import { mockContentRepository } from "../../repositories/mockRepository";
 import { SessionService } from "../auth/session";
 import { readBackendConfig } from "./config";
 export type Backend = {
-  mode: "fixture" | "emulator";
+  mode: "fixture" | "emulator" | "cloud";
   content: ContentRepository;
   session: SessionService;
 };
