@@ -110,6 +110,10 @@ Format: ID · Decision · Date · Affects
 
   Usage rules and guardrails are in doc 23. · Affects: CLAUDE.md, handoff, 04, 05, 23
 
+## Round 10 — Media infrastructure (2026-10-04)
+
+- **D-047 · Dev media endpoint.** The dev bucket `bhaktara-media-dev` (APAC location hint) serves public reads through its rate-limited r2.dev address until a Bhaktara domain is bought. A Bhaktara-owned domain (`media.<domain>`) is required before the first public release, because shipped builds embed the media base URL. · Affects: 22, 23
+
 ## Pending / resolved items
 
 - ~~P-01~~ Resolved by D-022.

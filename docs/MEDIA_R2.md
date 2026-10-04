@@ -15,6 +15,15 @@ Implements doc 22 Part A (D-031) with the guardrails in doc 23. Public media liv
 
 Doc 06 reserves `appConfig/app.mediaBaseUrl` for a runtime override; that is not wired yet, so the CDN base is a build-time value. Because data holds only keys, changing the domain later needs a rebuild, not a data migration.
 
+## Provisioned resources
+
+| Env | Bucket | Location | Public read address | Status |
+| --- | --- | --- | --- | --- |
+| dev | `bhaktara-media-dev` | APAC | `https://pub-f2496a49baf34c8cbafe81d0b6cf0550.r2.dev` (r2.dev, rate-limited, dev only) | Created 2026-10-04 |
+| staging / prod | not created | | needs a Bhaktara domain (D-047) | |
+
+Dev CORS matches `infra/r2/cors.json`. Public PUT and DELETE return 401. One synthetic test object, `test/pipeline-check.a1c76cb2.webp`, confirmed public serving, `image/webp` content type, byte-identical download, and HTTP Range (206) for audio seeking. It was uploaded through the Cloudflare API, which cannot set `Cache-Control`; real media must go through `media:publish`. `.env.local` (Git-ignored) points dev builds at this address. No API token, custom domain or DNS record exists yet.
+
 ## Environments (doc 23 §2)
 
 | Env | Bucket | CDN hostname |
