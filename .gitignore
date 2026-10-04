@@ -67,3 +67,6 @@ media-out/
 # Per-environment Firebase native config (fetch with npm run firebase:android-config)
 google-services.json
 GoogleService-Info.plist
+
+# Claude Code agent worktrees (each is a full checkout of another branch)
+.claude/worktrees/
