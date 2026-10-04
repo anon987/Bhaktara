@@ -102,6 +102,13 @@ describe("fixture repository and localization", () => {
     expect(filterContent({ query: "krishna", deityId: "shiva" })).toHaveLength(
       0,
     );
+    // Matches the Firestore query normalization (punctuation, sh/s variants).
+    expect(
+      filterContent({ query: "Hanuman chalisa!" }).map((item) => item.id),
+    ).toEqual(["chalisa-1"]);
+    expect(
+      filterContent({ query: "siva", type: "AARTI" }).map((item) => item.id),
+    ).toEqual(["aarti-1"]);
   });
   test("pagination has bounded, non-overlapping pages", async () => {
     const first = await mockContentRepository.search({ limit: 3 });

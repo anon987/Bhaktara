@@ -26,7 +26,7 @@ Auth: `127.0.0.1:9099`. Firestore: `127.0.0.1:8080`. Emulator console: `http://1
 Browser:
 
 ```sh
-EXPO_PUBLIC_BACKEND_MODE=emulator npm run web
+EXPO_PUBLIC_BACKEND_MODE=emulator npm run web -- --clear
 ```
 
 Physical phone with the debug app installed:
@@ -37,10 +37,10 @@ export BHAKTARA_DEVICE='YOUR_DEVICE_SERIAL'
 adb -s "$BHAKTARA_DEVICE" reverse tcp:8080 tcp:8080
 adb -s "$BHAKTARA_DEVICE" reverse tcp:9099 tcp:9099
 adb -s "$BHAKTARA_DEVICE" reverse tcp:8081 tcp:8081
-EXPO_PUBLIC_BACKEND_MODE=emulator npm start -- --localhost --port 8081
+EXPO_PUBLIC_BACKEND_MODE=emulator npm start -- --localhost --port 8081 --clear
 ```
 
-Launch using [ANDROID_DEVICE.md](ANDROID_DEVICE.md). For an Android emulator set `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=10.0.2.2`; browser/ADB-reversed phones use `127.0.0.1` by default. Only these addresses and `localhost` are accepted. No API keys or service-account files are needed. See `.env.example`; optional `.env.local` is Git-ignored. Restart Metro when changing modes.
+Launch using [ANDROID_DEVICE.md](ANDROID_DEVICE.md). For an Android emulator set `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=10.0.2.2`; browser/ADB-reversed phones use `127.0.0.1` by default. Only these addresses and `localhost` are accepted. No API keys or service-account files are needed. See `.env.example`; optional `.env.local` is Git-ignored. Restart Metro with `--clear` when changing modes: Metro caches the inlined `EXPO_PUBLIC_*` values, so without it a build can silently keep the previous backend mode.
 
 Auth waits for persisted identity before creating a guest and shares concurrent requests. Native uses AsyncStorage; web uses browser local persistence. Connection failures show retry and never silently substitute fixtures. The app labels emulator mode and its privacy behavior. Practice/favorites remain device-local: Firebase identity does not mean progress is backed up.
 
@@ -58,7 +58,7 @@ Stop manually running emulators before `test:emulators`. It starts its own Auth/
 For browser integration verification, keep emulators running and seeded:
 
 ```sh
-EXPO_PUBLIC_BACKEND_MODE=emulator npx expo export --platform web --output-dir dist-emulator
+EXPO_PUBLIC_BACKEND_MODE=emulator npx expo export --platform web --clear --output-dir dist-emulator
 python3 -m http.server 8766 --bind 127.0.0.1 --directory dist-emulator
 ```
 

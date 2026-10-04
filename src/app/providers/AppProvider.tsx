@@ -39,7 +39,7 @@ type AppContextValue = {
   selectContent: (id: string | null) => void;
   previewPlaying: boolean;
   setPreviewPlaying: (playing: boolean) => void;
-  completeTask: (task: "jaap" | "meditation" | "prayer") => void;
+  completeTask: (task: "jaap" | "meditation" | "prayer", at?: Date) => void;
 };
 const Context = createContext<AppContextValue | null>(null);
 export function AppProvider({
@@ -170,9 +170,9 @@ export function AppProvider({
     return () => listener.remove();
   }, [ready]);
   const completeTask = useCallback(
-    (task: "jaap" | "meditation" | "prayer") =>
+    (task: "jaap" | "meditation" | "prayer", at?: Date) =>
       setLocal((state) => {
-        const day = localPracticeDay();
+        const day = localPracticeDay(at);
         if (state.days[day]?.[task]) return state;
         return {
           ...state,
@@ -192,10 +192,12 @@ export function AppProvider({
     [],
   );
   useEffect(() => {
-    if (!ready || local.timer.endsAt === null) return;
+    const { endsAt } = local.timer;
+    if (!ready || endsAt === null) return;
     const tick = () => {
       if (remainingAt(local.timer, Date.now()) === 0) {
-        completeTask("meditation");
+        // Credit the day the timer ended, which may be before a relaunch.
+        completeTask("meditation", new Date(endsAt));
         setLocal((state) => ({
           ...state,
           timer: { ...state.timer, remainingSeconds: 0, endsAt: null },

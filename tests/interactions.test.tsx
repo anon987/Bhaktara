@@ -124,3 +124,27 @@ test("elapsed meditation restored from storage completes locally", async () => {
     await Promise.resolve();
   });
 });
+test("meditation that ended before a relaunch is credited to the day it ended", async () => {
+  const endsAt = Date.now() - 3 * 86400000;
+  jest.spyOn(localStore, "read").mockResolvedValue({
+    ...initialState,
+    language: "en",
+    timer: { durationSeconds: 300, remainingSeconds: 300, endsAt },
+  });
+  const screen = render(
+    <MeditationScreen navigation={navigation as never} route={{} as never} />,
+    { wrapper: Wrapper },
+  );
+  await waitFor(() =>
+    expect(
+      JSON.parse(screen.getByTestId("state").props.children).days[
+        localPracticeDay(new Date(endsAt))
+      ]?.meditation,
+    ).toBe(true),
+  );
+  expect(
+    JSON.parse(screen.getByTestId("state").props.children).days[
+      localPracticeDay()
+    ],
+  ).toBeUndefined();
+});

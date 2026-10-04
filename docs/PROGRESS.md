@@ -40,6 +40,20 @@ Implemented locally on `feature/firebase-foundation` after the initial `main` pu
 
 No cloud project was configured, no infrastructure was deployed, and local practice/favorites were not migrated to the backend. The phone was not connected during this checkpoint; the previous device launch proves only the earlier foundation build. See [Firebase setup](FIREBASE_DEVELOPMENT.md) and [verification](verification/RESULTS.md).
 
+## Review bug-fix pass
+
+A full code review fixed these defects, each with a regression test:
+
+- **Stale backend mode in builds:** Metro cached inlined `EXPO_PUBLIC_*` values, so a default export after an emulator export shipped emulator mode. `export:android`/`export:web` now use `--clear`, as do the documented mode-switch commands. Regenerate any `dist/` produced before this fix.
+- **Explore pagination race:** during the search debounce, "Load more" could combine the previous query's cursor/offset with new filters. Results are now tied to the filters that produced them.
+- **Explore empty pages:** text plus deity filters can empty a bounded server page while later pages match. The screen skips up to four empty pages and never shows "No results" while more pages exist.
+- **Single-letter Firestore search** matched nothing because prefix tokens start at two letters; one-letter words no longer narrow the query.
+- **Fixture search** now uses the shared `searchWords` normalization (punctuation, `sh`/`s` and other variants), matching emulator mode.
+- **Meditation day attribution:** a timer that ended while the app was closed is credited to the day it ended; History is sorted by date instead of insertion order.
+- **Profile favorites** no longer remount and reset pagination on every favorite toggle.
+
+Open product decisions found in review: a permanently corrupt local record leaves the app on the retry screen (no reset path); jaap completion triggers on any 108 boundary of the cumulative count, so leftover beads from a previous day count toward today; deity chips on the Jaap screen are not yet used.
+
 ## Resume here
 
 1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.

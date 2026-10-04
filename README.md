@@ -4,7 +4,7 @@ Android-first React Native devotional app. The **UI foundation** includes local 
 
 Private source repository: [anon987/Bhaktara](https://github.com/anon987/Bhaktara). Default branch: `main`. Dependencies, generated builds/APKs, local environment files, and credentials are excluded from version control.
 
-Progress saved on **2026-10-04**: storage recovery and TypeScript fixes are complete; 31 app tests, six Firebase emulator scenarios, and emulator browser checks pass. The ARM64 debug APK was built, installed, and launched on a Samsung SM_E076B. See [current progress and handoff](docs/PROGRESS.md), [device run instructions](docs/ANDROID_DEVICE.md), and [verification results](docs/verification/RESULTS.md). Full native interaction testing and service integration remain outstanding.
+Progress saved on **2026-10-04**: storage recovery and TypeScript fixes are complete, followed by a review bug-fix pass; 34 app tests, six Firebase emulator scenarios, and fixture/emulator browser checks pass. The ARM64 debug APK was built, installed, and launched on a Samsung SM_E076B. See [current progress and handoff](docs/PROGRESS.md), [device run instructions](docs/ANDROID_DEVICE.md), and [verification results](docs/verification/RESULTS.md). Full native interaction testing and service integration remain outstanding.
 
 ## Run
 

@@ -1,6 +1,18 @@
 # Project verification — 2026-10-04
 
-## Latest: Firebase foundation checkpoint
+## Latest: review bug-fix pass
+
+| Check | Result |
+| --- | --- |
+| Typecheck and lint | Passed; lint now has no warnings |
+| App regression suite | Passed: 34 tests, 6 suites (new tests fail against the previous source) |
+| Auth/Firestore emulator suite | Passed: 6 scenarios, including single-letter search |
+| Fixture-mode browser smoke (`scripts/smoke.mjs`) | Passed: six flows, no page errors (run from a scratch directory; screenshots here were not regenerated) |
+| Android bundle export | Passed |
+
+The first smoke attempt failed because a default web export reused Metro's cached emulator-mode `EXPO_PUBLIC_BACKEND_MODE`. Export scripts now pass `--clear`; see [PROGRESS.md](../PROGRESS.md).
+
+## Firebase foundation checkpoint
 
 Implemented on `feature/firebase-foundation` with no cloud provisioning/deployment. The default remains fixtures; opt-in local emulators provide actual anonymous Firebase sessions and Firestore catalog/search. This checkpoint is committed and pushed as `d0e082c` (`feat: add local Firebase auth and catalog foundation`); the working tree is clean.
 

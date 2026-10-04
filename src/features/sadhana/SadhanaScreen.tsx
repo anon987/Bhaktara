@@ -197,7 +197,7 @@ export function SadhanaScreen({ navigation }: Props) {
           <>
             <Txt muted>{t("historyHint")}</Txt>
             {Object.entries(local.days)
-              .reverse()
+              .sort(([a], [b]) => b.localeCompare(a))
               .map(([day, record]) => (
                 <Card key={day}>
                   <Row style={{ justifyContent: "space-between" }}>

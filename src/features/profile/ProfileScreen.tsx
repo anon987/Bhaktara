@@ -123,7 +123,7 @@ export function ProfileScreen({ navigation }: Props) {
         </Row>
         <Section title={t("favorites")} />
         <FavoriteList
-          key={`${connection}:${local.favorites.join(",")}`}
+          key={connection}
           onSelect={(id) => navigation.navigate("Content", { contentId: id })}
         />
       </DataBoundary>

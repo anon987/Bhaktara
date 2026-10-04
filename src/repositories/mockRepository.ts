@@ -1,27 +1,19 @@
 import { contentSchema } from "../domain/models";
 import { ContentQuery, ContentRepository } from "./contracts";
 import { fixtures } from "./fixtures";
-export function normalizeSearch(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFC")
-    .replace(/aa/g, "a")
-    .replace(/ee/g, "i")
-    .replace(/oo/g, "u")
-    .trim();
-}
+import { searchWords } from "../domain/search";
+// Same normalization as the Firestore publisher/query path, so fixture and
+// emulator modes agree on punctuation, nukta and transliteration variants.
 export function filterContent(query: ContentQuery) {
-  const words = normalizeSearch(query.query ?? "")
-    .split(/\s+/)
-    .filter(Boolean);
-  return fixtures.content.filter(
-    (item) =>
+  const words = searchWords(query.query ?? "");
+  return fixtures.content.filter((item) => {
+    const haystack = searchWords(item.searchTokens.join(" ")).join(" ");
+    return (
       (!query.type || item.type === query.type) &&
       (!query.deityId || item.deityIds.includes(query.deityId)) &&
-      words.every((word) =>
-        normalizeSearch(item.searchTokens.join(" ")).includes(word),
-      ),
-  );
+      words.every((word) => haystack.includes(word))
+    );
+  });
 }
 // Deliberate fixture-only search. Production must use server-generated Firestore searchTokens.
 export const mockContentRepository: ContentRepository = {

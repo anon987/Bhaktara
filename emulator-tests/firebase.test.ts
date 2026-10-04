@@ -252,6 +252,12 @@ test("real anonymous auth drives validated catalog search and cursor pagination"
       ),
       ["chalisa-1"],
     );
+    // A lone first keystroke cannot match two-letter prefix tokens; it must
+    // not narrow the library to nothing.
+    assert.equal(
+      (await repository.search({ query: "h", limit: 30 })).items.length,
+      13,
+    );
     // Empty filtered pages must still expose the server cursor to continue.
     const filtered = await repository.search({
       query: "aarti",

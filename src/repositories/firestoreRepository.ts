@@ -51,9 +51,11 @@ export function createFirestoreRepository(
         .min(1)
         .max(30)
         .parse(input.limit ?? 8);
-      const words = searchWords(input.query ?? "").sort(
-        (a, b) => b.length - a.length || a.localeCompare(b),
-      );
+      // Published prefix tokens start at two letters, so a lone first
+      // keystroke would match nothing; treat it as not yet narrowing.
+      const words = searchWords(input.query ?? "")
+        .filter((word) => Array.from(word).length >= 2)
+        .sort((a, b) => b.length - a.length || a.localeCompare(b));
       const fingerprint = JSON.stringify([
         words,
         input.type ?? null,

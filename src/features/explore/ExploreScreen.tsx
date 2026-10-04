@@ -26,6 +26,19 @@ import { ContentCard } from "../../components/ContentCard";
 import { colors, fonts } from "../../theme/tokens";
 import { Content, ContentType, contentTypes } from "../../domain/models";
 import { StringKey } from "../../i18n/strings";
+import { ContentQuery, ContentRepository } from "../../repositories/contracts";
+// Text and deity filters are applied within each bounded server page, so a page
+// can come back empty while later pages still match. Skip a few such pages.
+async function searchNonEmpty(
+  search: ContentRepository["search"],
+  input: ContentQuery,
+) {
+  let result = await search(input);
+  let pages = 1;
+  while (!result.items.length && result.nextCursor && pages++ < 5)
+    result = await search({ ...input, cursor: result.nextCursor });
+  return result;
+}
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Explore">,
   NativeStackScreenProps<RootParams>
@@ -47,6 +60,11 @@ export function ExploreScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
+  // Results (and their cursor/offset) belong to the filters that produced them.
+  // During the debounce they are stale and must not be paginated or reported empty.
+  const filters = JSON.stringify([query, type ?? null, deity ?? null]);
+  const [resultFilters, setResultFilters] = useState<string>();
+  const stale = resultFilters !== filters;
   useEffect(() => {
     let active = true;
     const requestGeneration = ++generation.current;
@@ -57,9 +75,10 @@ export function ExploreScreen({ navigation, route }: Props) {
       setNextCursor(undefined);
       setLoading(true);
       setError(false);
-      searchContent({ query, type, deityId: deity })
+      searchNonEmpty(searchContent, { query, type, deityId: deity })
         .then((result) => {
           if (active) {
+            setResultFilters(filters);
             setItems(result.items);
             setNextOffset(result.nextOffset);
             setNextCursor(result.nextCursor);
@@ -78,12 +97,12 @@ export function ExploreScreen({ navigation, route }: Props) {
       generation.current = requestGeneration + 1;
       clearTimeout(timeout);
     };
-  }, [query, type, deity, reload, searchContent, connection]);
+  }, [query, type, deity, filters, reload, searchContent, connection]);
   const more = () => {
-    if (loading) return;
+    if (loading || stale) return;
     const requestGeneration = generation.current;
     setLoading(true);
-    searchContent({
+    searchNonEmpty(searchContent, {
       query,
       type,
       deityId: deity,
@@ -206,7 +225,11 @@ export function ExploreScreen({ navigation, route }: Props) {
             />
           )}
           ListEmptyComponent={
-            !loading && !error ? (
+            !loading &&
+            !stale &&
+            !error &&
+            nextOffset === undefined &&
+            nextCursor === undefined ? (
               <Card>
                 <Txt bold>{t("noResults")}</Txt>
                 <Txt muted>{t("noResultsHint")}</Txt>
@@ -224,9 +247,12 @@ export function ExploreScreen({ navigation, route }: Props) {
           }
           ListFooterComponent={
             <View style={{ paddingVertical: 24, gap: 16 }}>
-              {loading && <ActivityIndicator color={colors.primary} />}
+              {(loading || (stale && !error)) && (
+                <ActivityIndicator color={colors.primary} />
+              )}
               {(nextOffset !== undefined || nextCursor !== undefined) &&
-                !loading && (
+                !loading &&
+                !stale && (
                   <Button secondary label={t("loadMore")} onPress={more} />
                 )}
               <Txt size={11} muted>
