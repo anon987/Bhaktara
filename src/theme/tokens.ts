@@ -6,6 +6,7 @@ export const colors = {
   primary: "#AD461F",
   saffron: "#DA702F",
   gold: "#B78A39",
+  marigold: "#F2B65A",
   line: "#EBE1D3",
   pale: "#F6E8D8",
   green: "#426650",
