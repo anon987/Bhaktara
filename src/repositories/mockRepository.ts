@@ -25,6 +25,9 @@ export function filterContent(query: ContentQuery) {
 }
 // Deliberate fixture-only search. Production must use server-generated Firestore searchTokens.
 export const mockContentRepository: ContentRepository = {
+  async getById(id) {
+    return fixtures.content.find((item) => item.id === id) ?? null;
+  },
   async getCatalog() {
     fixtures.content.forEach((item) => contentSchema.parse(item));
     return fixtures;

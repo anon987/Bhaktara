@@ -25,7 +25,7 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootParams>
 >;
 export function MandirScreen({ navigation }: Props) {
-  const { local, catalog, t, update, selectContent } = useApp();
+  const { local, catalog, t, update, selectContent, searchContent } = useApp();
   const unavailable = useUnavailable();
   const [choosing, setChoosing] = useState(!local.deityId);
   const [lit, setLit] = useState(false);
@@ -146,13 +146,13 @@ export function MandirScreen({ navigation }: Props) {
               icon={Music2}
               label={t("aarti")}
               onPress={() => {
-                const aarti = catalog?.content.find(
-                  (item) =>
-                    item.type === "AARTI" && item.deityIds.includes(deity.id),
-                );
-                if (!aarti) return;
-                selectContent(aarti.id);
-                navigation.navigate("Player");
+                searchContent({ type: "AARTI", deityId: deity.id, limit: 1 })
+                  .then(({ items }) => {
+                    if (!items[0]) return unavailable("noResultsHint");
+                    selectContent(items[0].id);
+                    navigation.navigate("Player");
+                  })
+                  .catch(() => unavailable("error"));
               }}
             />
             <Notice text={t("noAudio")} />

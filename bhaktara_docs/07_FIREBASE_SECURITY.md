@@ -74,3 +74,7 @@ notifications - monetization - security
 
 Provide: - privacy policy - consent flows where required - account
 deletion - data deletion/export procedures where applicable
+
+## Implementation checkpoint — 2026-10-04
+
+Root `firestore.rules` implements the current local-emulator subset, with auth-required published/active catalog reads and query limits, owner-only profile updates and favorites, blocked client progression writes, and signed-in-only league reads. Sensitive and unimplemented collections remain denied, including CMS client writes and device registration. Server profile provisioning is not implemented. Rules are exercised by `npm run test:emulators`; no rules have been deployed to a cloud project. See [Firebase development](../docs/FIREBASE_DEVELOPMENT.md).

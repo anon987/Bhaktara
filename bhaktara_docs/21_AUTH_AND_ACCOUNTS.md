@@ -136,3 +136,7 @@ This is a Play Store requirement.
 
 - Anonymous and Google users share the same security rules, except where leagues require `request.auth.token.firebase.sign_in_provider != 'anonymous'`.
 - The merge function never trusts a client-supplied UID. It only trusts the verified guest ID token.
+
+## Implementation checkpoint — 2026-10-04
+
+Optional emulator mode now silently creates an anonymous Firebase session after restoring persisted auth, with a single in-flight initialization and retry after errors. Native persistence uses AsyncStorage; browser persistence uses local storage. Fixture mode still creates no account. Google linking/merge, server profiles, sign-out/account deletion, and cloud environments remain pending. Local practice/favorites have not been migrated to account-owned server storage.

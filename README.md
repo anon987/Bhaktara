@@ -1,12 +1,14 @@
 # Bhaktara
 
-Android-first React Native devotional app. This is the first **UI foundation milestone**, with typed fixture repositories and local practice tools. It is not a production service integration.
+Android-first React Native devotional app. The **UI foundation** includes local practice tools and an opt-in Firebase emulator integration. It is not a production service integration.
 
 Private source repository: [anon987/Bhaktara](https://github.com/anon987/Bhaktara). Default branch: `main`. Dependencies, generated builds/APKs, local environment files, and credentials are excluded from version control.
 
-Progress saved on **2026-10-04**: storage recovery and TypeScript fixes are complete; 24 tests and six browser flows pass. The ARM64 debug APK was built, installed, and launched on a Samsung SM_E076B. See [current progress and handoff](docs/PROGRESS.md), [device run instructions](docs/ANDROID_DEVICE.md), and [verification results](docs/verification/RESULTS.md). Full native interaction testing and service integration remain outstanding.
+Progress saved on **2026-10-04**: storage recovery and TypeScript fixes are complete; 31 app tests, six Firebase emulator scenarios, and emulator browser checks pass. The ARM64 debug APK was built, installed, and launched on a Samsung SM_E076B. See [current progress and handoff](docs/PROGRESS.md), [device run instructions](docs/ANDROID_DEVICE.md), and [verification results](docs/verification/RESULTS.md). Full native interaction testing and service integration remain outstanding.
 
 ## Run
+
+See [Firebase development setup](docs/FIREBASE_DEVELOPMENT.md) for anonymous auth, catalog adapters, local emulators, seed data, and security tests. Standard commands retain fixture mode unless `EXPO_PUBLIC_BACKEND_MODE=emulator` is set.
 
 Use Node 24 LTS, npm, Android Studio/SDK, and JDK 17. Install an Android SDK/platform compatible with the generated Expo project. Set `ANDROID_HOME` to your SDK and `JAVA_HOME` to JDK 17.
 
@@ -52,11 +54,12 @@ After changing native dependencies or app config, run `npx expo prebuild --no-in
 - Daily tasks, sample challenges, signed-in league preview, local history, persistent jaap counter, meditation presets with pause/resume/reset, prayer checklist.
 - Sample Profile progress/badges, language settings, privacy/about screens, full player and persistent mini-player UI.
 - Loading/error/retry/empty/offline preview states. In development, use Profile → Developer preview states. These are UI simulations.
+- Optional persistent anonymous Firebase sessions and validated Firestore catalog/search against local emulators; bounded cursor pagination and security-rule tests.
 - Safe startup storage recovery: failed reads preserve existing data and offer a localized retry before opening the app.
 
 ## Explicitly mocked or deferred
 
-Authentication (including anonymous Firebase), actual audio/video playback, bell audio, notifications, ads, device saves/settings, WhatsApp share intents, server XP/streaks/rewards, live challenges and leagues are **not connected**. Controls disclose this. WhatsApp sharing remains free; saves and special offerings describe the future rewarded ad and never pretend it played. There are no real ads or interstitials.
+Cloud authentication and Google sign-in, actual audio/video playback, bell audio, notifications, ads, device saves/settings, WhatsApp share intents, server XP/streaks/rewards, live challenges and leagues are **not connected**. Controls disclose this. WhatsApp sharing remains free; saves and special offerings describe the future rewarded ad and never pretend it played. There are no real ads or interstitials.
 
 Local storage contains only preferences, favorites and practice. Clearing app data removes these records. Sample XP/streaks/badges are labeled and never earned locally. All art is an original symbolic placeholder behind replaceable asset references. No lyrics, scriptures, Panchang, astrology, subscriptions or long videos are included. No CMS or production services were built.
 
@@ -66,4 +69,4 @@ Original documents are preserved under [bhaktara_docs](bhaktara_docs/README.md).
 
 See [implementation decisions](docs/IMPLEMENTATION.md) for layer boundaries and mock behavior, and [verification](docs/verification/RESULTS.md) for exact check results and environmental blockers.
 
-Next milestone: development Firebase anonymous auth, catalog adapters, server-authoritative practice sessions with security/idempotency tests, reviewed R2 media, and real background audio. Then Google link/merge and live leagues. Credentials did not block this UI milestone.
+Next: verify Firebase mode on an Android device, confirm the real development project, add server profile provisioning and account-aware sync, then server-authoritative practice sessions with security/idempotency tests, reviewed R2 media, and real background audio. Google link/merge precedes live leagues. No cloud resources have been provisioned.

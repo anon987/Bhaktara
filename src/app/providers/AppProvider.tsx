@@ -8,14 +8,15 @@ import React, {
   useState,
 } from "react";
 import { AppState } from "react-native";
-import { Catalog, CatalogMode } from "../../domain/models";
+import { Catalog, CatalogMode, Content } from "../../domain/models";
 import {
   initialState,
   LocalState,
   localStore,
 } from "../../services/storage/localStore";
 import { localPracticeDay, remainingAt } from "../../domain/practice";
-import { mockContentRepository } from "../../repositories/mockRepository";
+import { Backend, getBackend } from "../../services/backend";
+import { ContentQuery, ContentRepository } from "../../repositories/contracts";
 import { Language, StringKey, translate } from "../../i18n/strings";
 import { analytics } from "../../services/analytics";
 type AppContextValue = {
@@ -29,6 +30,9 @@ type AppContextValue = {
   update: (fn: (state: LocalState) => LocalState) => void;
   retry: () => void;
   retryStorage: () => void;
+  connection: "loading" | "fixture" | "emulator" | "error";
+  searchContent: ContentRepository["search"];
+  getContent: ContentRepository["getById"];
   setCatalogMode: (mode: CatalogMode) => void;
   toggleFavorite: (id: string) => void;
   selectedContentId: string | null;
@@ -38,7 +42,10 @@ type AppContextValue = {
   completeTask: (task: "jaap" | "meditation" | "prayer") => void;
 };
 const Context = createContext<AppContextValue | null>(null);
-export function AppProvider({ children }: React.PropsWithChildren) {
+export function AppProvider({
+  children,
+  loadBackend = getBackend,
+}: React.PropsWithChildren<{ loadBackend?: () => Promise<Backend> }>) {
   const [local, setLocal] = useState(initialState);
   const [ready, setReady] = useState(false);
   const [storageError, setStorageError] = useState(false);
@@ -49,18 +56,17 @@ export function AppProvider({ children }: React.PropsWithChildren) {
   }, []);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogMode, setCatalogMode] = useState<CatalogMode>("loading");
+  const [backend, setBackend] = useState<Backend | null>(null);
+  const [connection, setConnection] =
+    useState<AppContextValue["connection"]>("loading");
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [selectedContentId, selectContent] = useState<string | null>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const writes = useRef(Promise.resolve());
   const retry = useCallback(() => {
     setCatalogMode("loading");
-    mockContentRepository
-      .getCatalog()
-      .then((data) => {
-        setCatalog(data);
-        setCatalogMode("ready");
-      })
-      .catch(() => setCatalogMode("error"));
+    setConnection("loading");
+    setCatalogAttempt((attempt) => attempt + 1);
   }, []);
   useEffect(() => {
     let active = true;
@@ -82,21 +88,61 @@ export function AppProvider({ children }: React.PropsWithChildren) {
   }, [storageAttempt]);
   useEffect(() => {
     let active = true;
-    mockContentRepository
-      .getCatalog()
-      .then((data) => {
+    loadBackend()
+      .then(async (services) => {
+        await services.session.ensureSession();
+        const data = await services.content.getCatalog();
         if (active) {
+          setBackend(services);
+          setConnection(services.mode);
           setCatalog(data);
           setCatalogMode("ready");
         }
       })
       .catch(() => {
-        if (active) setCatalogMode("error");
+        if (active) {
+          setConnection("error");
+          setCatalogMode("error");
+        }
       });
     return () => {
       active = false;
     };
-  }, [retry]);
+  }, [catalogAttempt, loadBackend]);
+  const cacheContent = useCallback((items: Content[]) => {
+    setCatalog(
+      (current) =>
+        current && {
+          ...current,
+          content: [
+            ...current.content.map(
+              (item) => items.find((next) => next.id === item.id) ?? item,
+            ),
+            ...items.filter(
+              (item) => !current.content.some((old) => old.id === item.id),
+            ),
+          ],
+        },
+    );
+  }, []);
+  const searchContent = useCallback(
+    async (input: ContentQuery) => {
+      if (!backend) throw new Error("Backend is not ready");
+      const result = await backend.content.search(input);
+      cacheContent(result.items);
+      return result;
+    },
+    [backend, cacheContent],
+  );
+  const getContent = useCallback(
+    async (id: string) => {
+      if (!backend) throw new Error("Backend is not ready");
+      const item = await backend.content.getById(id);
+      if (item) cacheContent([item]);
+      return item;
+    },
+    [backend, cacheContent],
+  );
   useEffect(() => {
     if (!ready) return;
     const handle = setTimeout(() => {
@@ -171,6 +217,9 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       update: setLocal,
       retry,
       retryStorage,
+      connection,
+      searchContent,
+      getContent,
       setCatalogMode,
       toggleFavorite: (id) => {
         analytics.track("content_favorite", { content_id: id });
@@ -195,6 +244,9 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       catalogMode,
       retry,
       retryStorage,
+      connection,
+      searchContent,
+      getContent,
       selectedContentId,
       previewPlaying,
       completeTask,

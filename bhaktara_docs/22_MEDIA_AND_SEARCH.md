@@ -116,7 +116,7 @@ Each published content doc carries `searchTokens: string[]`. The array is genera
 ### B2. Query
 
 1. Normalize the query with the same rules.
-2. Pick the longest token and run `where('searchTokens', 'array-contains', token)` with `isPublished == true` and a limit (paginated).
+2. Pick the longest token and run `where('searchTokens', 'array-contains', token)` with `status == 'PUBLISHED'` (schema v2) and a limit (paginated).
 3. Filter the remaining query words on the client.
 4. Optional type filter is applied in the same query (composite index).
 
@@ -135,3 +135,7 @@ An on-device search index (a JSON file on the CDN plus fuzzy search in the app) 
 
 - Log `content_search` with the normalized query and result count.
 - Log zero-result queries so the operator can add missing tags. This review is part of the weekly cadence in doc 12 §8.
+
+## Implementation checkpoint — 2026-10-04
+
+The local Firebase adapter now implements bounded search-token queries with popularity/document-ID cursors and query-bound cursor validation. Text search filters additional words and deity within each returned page because Firestore permits only one array-contains clause. Without text, deity filtering runs server-side. Empty filtered pages retain their continuation cursor. Seed-generated tokens share normalization with queries; production publishing is still pending. The root `firestore.indexes.json` contains required indexes. Production CDN delivery/media remain unimplemented.

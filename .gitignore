@@ -53,5 +53,10 @@ coverage/
 !android/app/debug.keystore
 
 dist-android/
+dist-emulator/
 playwright-report/
 test-results/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/

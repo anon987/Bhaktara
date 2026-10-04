@@ -15,11 +15,11 @@ The specs name React Native, strict TypeScript and React Navigation but leave bo
 - Zod content/local-state schemas and local-only timer/count helpers in `src/domain/` and `src/services/storage/`.
 - Repository/service contracts with typed fixture data in `src/repositories/`.
 - Android/iOS/default platform stubs expose explicit capability flags for wallpaper, ringtone, media saves, sharing and notifications.
-- Analytics is a typed no-op. No Firebase SDK or production connections are installed.
+- Analytics remains a typed no-op. Firebase JS SDK 12.19 now supports optional emulator-only anonymous auth and Firestore repositories; no cloud connections are configured.
 
 ## Mock boundaries
 
-No real account is created. Google sign-in, audio/video playback, ads, downloads, WhatsApp intents, notification permissions, backend progression and rewards are unavailable and disclosed in the UI. Sample XP, ranks, badges, challenges and streaks never change as a consequence of local taps. League preview contains no fabricated participants.
+Fixture mode creates no account. Emulator mode creates and persists a real anonymous session in local Firebase Auth; practice and favorites remain device-local. Google sign-in, audio/video playback, ads, downloads, WhatsApp intents, notification permissions, backend progression and rewards are unavailable and disclosed in the UI. Sample XP, ranks, badges, challenges and streaks never change as a consequence of local taps. League preview contains no fabricated participants.
 
 AsyncStorage persists language, onboarding, deity, favorites, jaap count, meditation deadline and daily task completion. No XP exists in local writable state. Jaap marks completion only on each new 108th tap, not when reopening an old counter. Meditation uses a wall-clock deadline and handles background elapsed time and pause/resume. Device clock changes can affect this local timer; it is not trusted anti-cheat evidence. Local day grouping uses 04:00 without computing server streaks.
 
@@ -39,6 +39,10 @@ The initial review took place before Git was initialized, so earlier change hist
 
 Built the ARM64 debug APK with JDK 17, installed it on Samsung SM_E076B, and confirmed the Explore screen and five navigation tabs render through the Expo development client. Metro uses port 8081 with ADB reverse. The first build took 16m 45s; first JavaScript bundling took about 56 seconds. This confirms build/install/launch, not full native feature coverage. See [device instructions](ANDROID_DEVICE.md) and [verification results](verification/RESULTS.md).
 
+## Firebase foundation checkpoint (2026-10-04)
+
+Implemented on `feature/firebase-foundation`: opt-in emulator backend, persistent single-flight guest initialization, schema-validated catalog adapters, bounded cursor search, direct content lookup, paginated local favorites resolution, guarded seed pipeline, deny-by-default rules, indexes, and a dedicated emulator CI job. See [Firebase setup and boundaries](FIREBASE_DEVELOPMENT.md). The JS SDK shares Auth/Firestore across native and web; native telemetry and App Check remain future work. No production cloud configuration or deployment was added.
+
 ## Next milestone
 
-Implement development Firebase anonymous auth, typed catalog adapters and server practice session APIs with emulator security/idempotency tests. Replace art with reviewed R2 assets and integrate background audio. Google account link/merge precedes live leagues. No generic award-XP client endpoint should be introduced. CMS and production service setup remain outside this milestone.
+Connect a confirmed real development Firebase project, provision server-owned profiles, and add account-aware preference/favorite sync. Implement server practice session APIs with emulator security/idempotency tests. Replace art with reviewed R2 assets and integrate background audio. Google account link/merge precedes live leagues. No generic award-XP client endpoint should be introduced. CMS and production service setup remain outside this milestone.

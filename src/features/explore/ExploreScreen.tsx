@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -25,14 +25,13 @@ import {
 import { ContentCard } from "../../components/ContentCard";
 import { colors, fonts } from "../../theme/tokens";
 import { Content, ContentType, contentTypes } from "../../domain/models";
-import { mockContentRepository } from "../../repositories/mockRepository";
 import { StringKey } from "../../i18n/strings";
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Explore">,
   NativeStackScreenProps<RootParams>
 >;
 export function ExploreScreen({ navigation, route }: Props) {
-  const { local, t, catalog } = useApp();
+  const { local, t, catalog, searchContent, connection } = useApp();
   const [query, setQuery] = useState("");
   const category = route.params?.category;
   const type = contentTypes.includes(category as ContentType)
@@ -43,20 +42,27 @@ export function ExploreScreen({ navigation, route }: Props) {
   const [deity, setDeity] = useState<string>();
   const [items, setItems] = useState<Content[]>([]);
   const [nextOffset, setNextOffset] = useState<number>();
+  const [nextCursor, setNextCursor] = useState<string>();
+  const generation = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
   useEffect(() => {
     let active = true;
+    const requestGeneration = ++generation.current;
+    if (connection === "loading" || connection === "error") return;
     const timeout = setTimeout(() => {
+      setItems([]);
+      setNextOffset(undefined);
+      setNextCursor(undefined);
       setLoading(true);
       setError(false);
-      mockContentRepository
-        .search({ query, type, deityId: deity })
+      searchContent({ query, type, deityId: deity })
         .then((result) => {
           if (active) {
             setItems(result.items);
             setNextOffset(result.nextOffset);
+            setNextCursor(result.nextCursor);
             setLoading(false);
           }
         })
@@ -69,19 +75,38 @@ export function ExploreScreen({ navigation, route }: Props) {
     }, 180);
     return () => {
       active = false;
+      generation.current = requestGeneration + 1;
       clearTimeout(timeout);
     };
-  }, [query, type, deity, reload]);
+  }, [query, type, deity, reload, searchContent, connection]);
   const more = () => {
+    if (loading) return;
+    const requestGeneration = generation.current;
     setLoading(true);
-    mockContentRepository
-      .search({ query, type, deityId: deity, offset: nextOffset })
+    searchContent({
+      query,
+      type,
+      deityId: deity,
+      offset: nextOffset,
+      cursor: nextCursor,
+    })
       .then((result) => {
-        setItems((previous) => [...previous, ...result.items]);
+        if (requestGeneration !== generation.current) return;
+        setItems((previous) => [
+          ...previous,
+          ...result.items.filter(
+            (item) => !previous.some((old) => old.id === item.id),
+          ),
+        ]);
         setNextOffset(result.nextOffset);
+        setNextCursor(result.nextCursor);
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (requestGeneration === generation.current) setError(true);
+      })
+      .finally(() => {
+        if (requestGeneration === generation.current) setLoading(false);
+      });
   };
   const header = (
     <View style={{ gap: 18 }}>
@@ -200,9 +225,10 @@ export function ExploreScreen({ navigation, route }: Props) {
           ListFooterComponent={
             <View style={{ paddingVertical: 24, gap: 16 }}>
               {loading && <ActivityIndicator color={colors.primary} />}
-              {nextOffset !== undefined && !loading && (
-                <Button secondary label={t("loadMore")} onPress={more} />
-              )}
+              {(nextOffset !== undefined || nextCursor !== undefined) &&
+                !loading && (
+                  <Button secondary label={t("loadMore")} onPress={more} />
+                )}
               <Txt size={11} muted>
                 {t("demo")}
               </Txt>

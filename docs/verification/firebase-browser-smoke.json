@@ -1,0 +1,9 @@
+{
+  "passed": [
+    "Real emulator guest and published catalog load",
+    "Firestore transliteration search",
+    "Anonymous identity persists across page reload",
+    "Persisted favorite outside initial catalog page loads and opens"
+  ],
+  "errors": []
+}

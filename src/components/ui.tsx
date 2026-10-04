@@ -222,10 +222,12 @@ export function Page({
   onSearch?: () => void;
   scroll?: boolean;
 }>) {
-  const { storageError, t } = useApp();
+  const { storageError, t, connection } = useApp();
   const body = (
     <View style={[styles.pageContent, !scroll && { flex: 1 }]}>
       {storageError && <Notice text={t("storageError")} />}
+      {connection === "emulator" && <Notice text={t("emulatorConnected")} />}
+      {connection === "error" && <Notice text={t("backendError")} />}
       {children}
     </View>
   );

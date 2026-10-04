@@ -356,3 +356,7 @@ adminUid, action, entity, entityId, beforeSummary, afterSummary, createdAt
 
 - Never trust client-supplied XP, streaks, counters, ranks, league results or reward eligibility.
 - Every new field requires updates to: this doc, security rules, TypeScript types, repositories and the affected functions.
+
+## Implementation checkpoint — 2026-10-04
+
+The emulator catalog adapter validates and reads the documented `content`, `deities`, and `banners` fields; it adds no collections or stored fields. Content IDs come from document IDs. Search uses `status == PUBLISHED`, superseding the stale isPublished example in doc 22. Test seeding upserts synthetic catalog records only; no production data is written. Remaining schema collections are not yet fully integrated into the app.

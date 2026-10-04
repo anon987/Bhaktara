@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Flame,
   Flower2,
-  Heart,
   Info,
   Languages,
   ShieldCheck,
@@ -30,7 +29,7 @@ import {
   Txt,
   useUnavailable,
 } from "../../components/ui";
-import { ContentCard } from "../../components/ContentCard";
+import { FavoriteList } from "./FavoriteList";
 import { colors } from "../../theme/tokens";
 import { CatalogMode } from "../../domain/models";
 import { platformServices } from "../../services/platform";
@@ -39,11 +38,10 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootParams>
 >;
 export function ProfileScreen({ navigation }: Props) {
-  const { t, local, catalog, setLanguage, setCatalogMode } = useApp();
+  const { t, local, catalog, setLanguage, setCatalogMode, connection } =
+    useApp();
   const unavailable = useUnavailable();
   const showDialog = useDialog();
-  const favorites =
-    catalog?.content.filter((item) => local.favorites.includes(item.id)) ?? [];
   return (
     <Page title={t("profile")}>
       <DataBoundary>
@@ -63,7 +61,7 @@ export function ProfileScreen({ navigation }: Props) {
             {t("guest")}
           </Txt>
           <Txt muted size={12}>
-            {t("guestLabel")}
+            {t(connection === "emulator" ? "emulatorGuest" : "guestLabel")}
           </Txt>
           <Chip
             label={`${t("rank")} · ${t("level")} ${catalog?.sampleStats.level}`}
@@ -124,26 +122,10 @@ export function ProfileScreen({ navigation }: Props) {
           ))}
         </Row>
         <Section title={t("favorites")} />
-        {favorites.length ? (
-          favorites.map((item) => (
-            <ContentCard
-              key={item.id}
-              compact
-              item={item}
-              onPress={() =>
-                navigation.navigate("Content", { contentId: item.id })
-              }
-            />
-          ))
-        ) : (
-          <Card>
-            <Heart color={colors.primary} size={26} />
-            <Txt bold>{t("noFavorites")}</Txt>
-            <Txt muted size={13}>
-              {t("noFavoritesHint")}
-            </Txt>
-          </Card>
-        )}
+        <FavoriteList
+          key={`${connection}:${local.favorites.join(",")}`}
+          onSelect={(id) => navigation.navigate("Content", { contentId: id })}
+        />
       </DataBoundary>
       <Section title={t("settings")} />
       <Card>
@@ -169,7 +151,13 @@ export function ProfileScreen({ navigation }: Props) {
           {
             key: "privacy",
             icon: ShieldCheck,
-            action: () => showDialog(t("privacy"), t("privacyText")),
+            action: () =>
+              showDialog(
+                t("privacy"),
+                t(
+                  connection === "emulator" ? "emulatorPrivacy" : "privacyText",
+                ),
+              ),
           },
           {
             key: "about",

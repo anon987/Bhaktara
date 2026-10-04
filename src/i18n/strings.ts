@@ -220,6 +220,19 @@ export const strings = {
     "Your saved progress could not be loaded. Please try again. Your saved data has not been changed.",
     "आपकी सहेजी गई प्रगति लोड नहीं हो सकी। फिर प्रयास करें। आपका सहेजा गया डेटा बदला नहीं गया है।",
   ],
+  emulatorConnected: [
+    "Development guest connected · local test catalog. Practice and favorites stay on this device.",
+    "डेवलपमेंट अतिथि जुड़ा है · स्थानीय टेस्ट सामग्री। अभ्यास और पसंद इसी डिवाइस पर रहते हैं।",
+  ],
+  emulatorGuest: ["Guest · development account", "अतिथि · डेवलपमेंट खाता"],
+  emulatorPrivacy: [
+    "An anonymous account is stored in the local development emulator. Its session is kept on this device. Preferences, favorites and practice remain device-only; analytics are not sent. Clearing app data removes local records and the session.",
+    "स्थानीय डेवलपमेंट एमुलेटर में एक अनाम खाता बनता है। उसका सत्र इस डिवाइस पर रहता है। पसंद और अभ्यास केवल डिवाइस पर सहेजे जाते हैं; एनालिटिक्स नहीं भेजे जाते। ऐप डेटा मिटाने पर स्थानीय रिकॉर्ड और सत्र हट जाते हैं।",
+  ],
+  backendError: [
+    "The development service could not connect. Check the local emulator and try again.",
+    "डेवलपमेंट सेवा से कनेक्ट नहीं हो सका। स्थानीय एमुलेटर जाँचें और फिर प्रयास करें।",
+  ],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {

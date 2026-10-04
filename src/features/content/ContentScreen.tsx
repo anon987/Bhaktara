@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Heart, Play, Share2 } from "lucide-react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams } from "../../app/navigation/routes";
@@ -20,15 +20,51 @@ export function ContentScreen({
   route,
   navigation,
 }: NativeStackScreenProps<RootParams, "Content">) {
-  const { catalog, local, t, selectContent, toggleFavorite } = useApp();
+  const { catalog, local, t, selectContent, toggleFavorite, getContent } =
+    useApp();
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [attempt, setAttempt] = useState(0);
   const unavailable = useUnavailable();
   const item = catalog?.content.find(
     (value) => value.id === route.params.contentId,
   );
+  useEffect(() => {
+    if (item) return;
+    let active = true;
+    getContent(route.params.contentId)
+      .then(() => {
+        if (active) setStatus("ready");
+      })
+      .catch(() => {
+        if (active) setStatus("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [item, getContent, route.params.contentId, attempt]);
   if (!item)
     return (
       <Page title={t("noResults")} onBack={navigation.goBack}>
-        <Txt>{t("noResultsHint")}</Txt>
+        <Txt>
+          {t(
+            status === "loading"
+              ? "loading"
+              : status === "error"
+                ? "error"
+                : "noResultsHint",
+          )}
+        </Txt>
+        {status === "error" && (
+          <Button
+            label={t("retry")}
+            onPress={() => {
+              setStatus("loading");
+              setAttempt((value) => value + 1);
+            }}
+          />
+        )}
       </Page>
     );
   const favorite = local.favorites.includes(item.id);

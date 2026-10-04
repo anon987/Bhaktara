@@ -6,7 +6,7 @@
 
 ## Implementation checkpoint — 2026-10-04
 
-The UI foundation and local practice previews are implemented across the app, with startup storage recovery, 24 passing tests, six passing browser smoke flows, and a verified ARM64 debug build/install/launch on Samsung SM_E076B. These previews do not mark the production milestones below complete: Firebase/auth, real media, CMS, server progression, leagues, notifications, and monetization remain unconnected. Full native interaction testing is next. See [current progress](../docs/PROGRESS.md) and [verification evidence](../docs/verification/RESULTS.md) before continuing implementation.
+The UI foundation and local practice previews are implemented across the app, with startup storage recovery, 24 passing tests, six passing browser smoke flows, and a verified ARM64 debug build/install/launch on Samsung SM_E076B. These previews do not mark the production milestones below complete: Firebase/auth, real media, CMS, server progression, leagues, notifications, and monetization remain unconnected. The next checkpoint adds emulator-only anonymous auth and Firestore catalog/search, security rules/indexes, seed tooling, and emulator CI. No real Firebase project is configured; production milestones remain incomplete. Native interaction testing of the new backend mode is next. See [current progress](../docs/PROGRESS.md) and [verification evidence](../docs/verification/RESULTS.md) before continuing implementation.
 
 ## M0 — Foundation
 - Repository setup

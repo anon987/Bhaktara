@@ -27,15 +27,27 @@ The UI foundation runs in the browser and on an Android phone. It uses fixture c
 | Regression checks | `tests/storage-recovery.test.tsx`, `scripts/smoke.mjs` |
 | Documentation | `README.md`, `docs/IMPLEMENTATION.md`, `docs/verification/RESULTS.md`, `docs/ANDROID_DEVICE.md`, this file, `bhaktara_docs/16_RELEASE_ROADMAP.md` |
 
+## Firebase foundation checkpoint
+
+Implemented locally on `feature/firebase-foundation` after the initial `main` push:
+
+- Optional `demo-bhaktara` Auth/Firestore emulator mode, with fixture mode still the default.
+- Persistent anonymous sessions, shared initialization, explicit errors/retry, and mode-aware privacy copy.
+- Validated published catalog reads, search-token normalization, composite indexes, bounded cursor pagination, direct details, and paginated favorite resolution.
+- Local-only seed tooling, deny-by-default Firestore rules, six passing emulator/security scenarios, and a dedicated CI job.
+- 31 passing app tests; emulator browser checks verify guest persistence, search, and a favorite beyond the initial catalog page. Firebase-enabled Android bundle export succeeds.
+
+No cloud project was configured, no infrastructure was deployed, and local practice/favorites were not migrated to the backend. The phone was not connected during this checkpoint; the previous device launch proves only the earlier foundation build. See [Firebase setup](FIREBASE_DEVELOPMENT.md) and [verification](verification/RESULTS.md).
+
 ## Resume here
 
-1. Follow [Android device instructions](ANDROID_DEVICE.md) to reconnect the phone and Metro. Do not assume the old wireless ADB address or server process is still available.
-2. Run native interaction checks: both languages, five tabs, search/filter/detail/favorite flows, 108 jaap taps, meditation pause/resume/background/relaunch, and persistent preferences. Browser coverage does not prove these native behaviors.
-3. Continue the foundation integration milestone: development Firebase anonymous auth and validated catalog adapters, followed by emulator security tests, server practice-session APIs with idempotency tests, reviewed R2 media, and real background audio. Follow the product decision log and existing repository/service boundaries.
+1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.
+2. Confirm the real development Firebase project and configuration. Add server profile provisioning and a development App Check strategy before cloud integration.
+3. Implement account-aware preference/favorite sync and server-authoritative practice sessions with security/idempotency tests, followed by reviewed R2 media and real background audio. Google link/merge precedes live leagues.
 
 ## Remaining limitations and decisions
 
-Authentication, real playback, bell audio, native saves/sharing, notifications, ads, server XP/streaks/rewards, live challenges/leagues, CMS, and production services are not connected. Sample progression is explicitly non-authoritative. No external services were provisioned or deployed.
+Cloud authentication and Google linking, real playback, bell audio, native saves/sharing, notifications, ads, server XP/streaks/rewards, live challenges/leagues, CMS, and production services are not connected. Sample progression is explicitly non-authoritative. No external services were provisioned or deployed.
 
 The final deity taxonomy (P-11) and primary KPI (P-12) remain undecided. Google account link/merge must precede live leagues. Keep client-local practice separate from server-authoritative rewards.
 

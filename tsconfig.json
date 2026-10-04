@@ -6,10 +6,12 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "tests/**/*.ts",
-    "tests/**/*.tsx"
+    "tests/**/*.tsx",
+    "scripts/**/*.ts",
+    "emulator-tests/**/*.ts"
   ],
   "compilerOptions": {
     "strict": true,
-    "types": ["jest", "react", "react-native"]
+    "types": ["node", "jest", "react", "react-native"]
   }
 }

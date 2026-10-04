@@ -4,13 +4,15 @@ export interface ContentQuery {
   type?: ContentType;
   deityId?: string;
   offset?: number;
+  cursor?: string;
   limit?: number;
 }
 export interface ContentRepository {
   getCatalog(): Promise<Catalog>;
+  getById(id: string): Promise<Content | null>;
   search(
     query: ContentQuery,
-  ): Promise<{ items: Content[]; nextOffset?: number }>;
+  ): Promise<{ items: Content[]; nextOffset?: number; nextCursor?: string }>;
 }
 export interface ProgressionService {
   startSession(input: {

@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function authenticated() { return request.auth != null; }
+    function owner(uid) { return authenticated() && request.auth.uid == uid; }
+    function bounded(maximum) { return request.query.limit != null && request.query.limit <= maximum; }
+    function signedIn() {
+      return authenticated() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    match /content/{id} {
+      allow get: if authenticated() && resource.data.status == 'PUBLISHED';
+      allow list: if authenticated() && resource.data.status == 'PUBLISHED' && bounded(30);
+    }
+    match /deities/{id} {
+      allow get: if authenticated() && resource.data.isActive == true;
+      allow list: if authenticated() && resource.data.isActive == true && bounded(30);
+    }
+    match /banners/{id} {
+      allow get: if authenticated() && resource.data.isActive == true;
+      allow list: if authenticated() && resource.data.isActive == true && bounded(10);
+    }
+    match /users/{uid} {
+      allow get: if owner(uid);
+      // Server creates the profile. Clients may only update these preferences.
+      allow update: if owner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'language', 'mandirDeityId', 'notificationPreferences', 'photoUrl'
+        ])
+        && request.resource.data.language in ['hi', 'en']
+        && (request.resource.data.mandirDeityId == null ||
+          (request.resource.data.mandirDeityId is string && request.resource.data.mandirDeityId.size() <= 100))
+        && (request.resource.data.photoUrl == null ||
+          (request.resource.data.photoUrl is string && request.resource.data.photoUrl.size() <= 2048))
+        && request.resource.data.notificationPreferences.keys().hasAll(['dailyReminder', 'reminderTime', 'newContent', 'festivals', 'league'])
+        && request.resource.data.notificationPreferences.keys().hasOnly(['dailyReminder', 'reminderTime', 'newContent', 'festivals', 'league'])
+        && request.resource.data.notificationPreferences.dailyReminder is bool
+        && request.resource.data.notificationPreferences.reminderTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && request.resource.data.notificationPreferences.newContent is bool
+        && request.resource.data.notificationPreferences.festivals is bool
+        && request.resource.data.notificationPreferences.league is bool;
+      match /favorites/{contentId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid)
+          && request.resource.data.keys().hasOnly(['contentId', 'type', 'createdAt'])
+          && request.resource.data.contentId == contentId
+          && request.resource.data.createdAt == request.time
+          && get(/databases/$(database)/documents/content/$(contentId)).data.status == 'PUBLISHED'
+          && request.resource.data.type == get(/databases/$(database)/documents/content/$(contentId)).data.type;
+        allow delete: if owner(uid);
+      }
+      match /days/{day} { allow read: if owner(uid); }
+      match /sessions/{session} { allow read: if owner(uid); }
+      match /badges/{badge} { allow read: if owner(uid); }
+    }
+    match /userStats/{uid} { allow get: if owner(uid); }
+    match /entitlements/{uid} { allow get: if owner(uid); }
+    match /userChallenges/{id} { allow read: if owner(resource.data.uid); }
+    match /leagueCohorts/{id} {
+      allow get: if signedIn();
+      allow list: if signedIn() && bounded(30);
+    }
+    match /leagueMembers/{id} {
+      allow get: if signedIn();
+      allow list: if signedIn() && bounded(30);
+    }
+    // CMS, private provenance, ledgers, merges and unimplemented collections
+    // are denied to client SDKs. Trusted server code uses the Admin SDK.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
