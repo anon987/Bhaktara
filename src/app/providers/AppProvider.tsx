@@ -34,6 +34,7 @@ type AppContextValue = {
   connection: "loading" | "fixture" | "emulator" | "cloud" | "error";
   searchContent: ContentRepository["search"];
   getContent: ContentRepository["getById"];
+  getHome: ContentRepository["getHome"];
   setCatalogMode: (mode: CatalogMode) => void;
   toggleFavorite: (id: string) => void;
   selectedContentId: string | null;
@@ -147,6 +148,13 @@ export function AppProvider({
     },
     [backend, cacheContent],
   );
+  const getHome = useCallback<ContentRepository["getHome"]>(
+    async (language) => {
+      if (!backend) throw new Error("Backend is not ready");
+      return backend.content.getHome(language);
+    },
+    [backend],
+  );
   useEffect(() => {
     if (!ready) return;
     const handle = setTimeout(() => {
@@ -226,6 +234,7 @@ export function AppProvider({
       connection,
       searchContent,
       getContent,
+      getHome,
       setCatalogMode,
       toggleFavorite: (id) => {
         analytics.track("content_favorite", { content_id: id });
@@ -253,6 +262,7 @@ export function AppProvider({
       connection,
       searchContent,
       getContent,
+      getHome,
       selectedContentId,
       previewPlaying,
       completeTask,

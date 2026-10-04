@@ -36,6 +36,10 @@ export const strings = {
   startPractice: ["Begin your practice", "अभ्यास शुरू करें"],
   forYou: ["A moment of devotion", "भक्ति के कुछ पल"],
   viewAll: ["View all", "सब देखें"],
+  homeEmpty: [
+    "Today’s Home is being prepared. Please check back soon.",
+    "आज का होम तैयार हो रहा है। कृपया थोड़ी देर बाद देखें।",
+  ],
   bhajan: ["Bhajan", "भजन"],
   aarti: ["Aarti", "आरती"],
   mantra: ["Mantra", "मंत्र"],

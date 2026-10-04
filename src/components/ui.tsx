@@ -21,6 +21,7 @@ import {
 import { colors, fonts, radii } from "../theme/tokens";
 import { useApp } from "../app/providers/AppProvider";
 import { StringKey } from "../i18n/strings";
+import { CatalogMode } from "../domain/models";
 export function Txt({
   bold,
   muted,
@@ -277,8 +278,22 @@ export function Notice({ text }: { text: string }) {
     </View>
   );
 }
-export function DataBoundary({ children }: React.PropsWithChildren) {
-  const { catalogMode, t, retry } = useApp();
+// Defaults to the catalog state; screens with their own load (e.g. the Home
+// feed) pass `mode` and `onRetry` to reuse the same states.
+export function DataBoundary({
+  children,
+  mode,
+  onRetry,
+  emptyText = "noResults",
+}: React.PropsWithChildren<{
+  mode?: CatalogMode;
+  onRetry?: () => void;
+  emptyText?: StringKey;
+}>) {
+  const app = useApp();
+  const { t } = app;
+  const catalogMode = mode ?? app.catalogMode;
+  const retry = onRetry ?? app.retry;
   if (catalogMode === "loading")
     return (
       <View style={styles.state}>
@@ -296,7 +311,7 @@ export function DataBoundary({ children }: React.PropsWithChildren) {
   if (catalogMode === "empty")
     return (
       <Card style={styles.state}>
-        <Txt bold>{t("noResults")}</Txt>
+        <Txt bold>{t(emptyText)}</Txt>
         <Button secondary label={t("retry")} onPress={retry} />
       </Card>
     );

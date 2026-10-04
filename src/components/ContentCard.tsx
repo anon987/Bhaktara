@@ -2,17 +2,23 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Heart, Play } from "lucide-react-native";
 import { Content } from "../domain/models";
+import { MediaVariant } from "../domain/media";
 import { useApp } from "../app/providers/AppProvider";
 import { DevotionalArt } from "./DevotionalArt";
 import { IconButton, Row, Txt } from "./ui";
 import { colors } from "../theme/tokens";
 import { formatTime } from "../domain/practice";
+// Card-level fields only, so precomputed Home cards render without a content read.
+export type ContentCardItem = Pick<
+  Content,
+  "id" | "type" | "title" | "durationSeconds"
+> & { media: { thumb: MediaVariant } };
 export function ContentCard({
   item,
   onPress,
   compact = false,
 }: {
-  item: Content;
+  item: ContentCardItem;
   onPress: () => void;
   compact?: boolean;
 }) {

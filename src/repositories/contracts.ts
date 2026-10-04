@@ -1,4 +1,5 @@
 import { Catalog, Content, ContentType } from "../domain/models";
+import { HomeFeed, HomeLanguage } from "../domain/home";
 export interface ContentQuery {
   query?: string;
   type?: ContentType;
@@ -13,6 +14,9 @@ export interface ContentRepository {
   search(
     query: ContentQuery,
   ): Promise<{ items: Content[]; nextOffset?: number; nextCursor?: string }>;
+  // One read of the precomputed `homeFeeds/{language}` doc; null when none
+  // has been published for that language yet.
+  getHome(language: HomeLanguage): Promise<HomeFeed | null>;
 }
 export interface ProgressionService {
   startSession(input: {

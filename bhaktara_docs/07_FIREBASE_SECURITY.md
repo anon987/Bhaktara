@@ -78,3 +78,7 @@ deletion - data deletion/export procedures where applicable
 ## Implementation checkpoint — 2026-10-04
 
 Root `firestore.rules` implements the current local-emulator subset, with auth-required published/active catalog reads and query limits, owner-only profile updates and favorites, blocked client progression writes, and signed-in-only league reads. Sensitive and unimplemented collections remain denied, including CMS client writes and device registration. Server profile provisioning is not implemented. Rules are exercised by `npm run test:emulators`; no rules have been deployed to a cloud project. See [Firebase development](../docs/FIREBASE_DEVELOPMENT.md).
+
+## Implementation checkpoint — 2026-10-05 (Home feed)
+
+`homeFeeds/{language}` allows a single-document `get` to any authenticated session (including anonymous) for `hi`/`en` when `isPublished == true`. A missing doc reads as absent, so the app can show its empty state. List queries and all client writes are denied; `homeLayout` stays admin-only through the default deny. Covered by `emulator-tests/home.test.ts`. Not yet deployed to any cloud project.
