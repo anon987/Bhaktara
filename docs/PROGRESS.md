@@ -58,6 +58,10 @@ Open product decisions found in review: a permanently corrupt local record leave
 
 The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CDN-base config with fallback to placeholder art, and `npm run media:publish` (ffmpeg renditions, EXIF stripping, content-addressed immutable uploads, dev-only bucket guard). The dev bucket `bhaktara-media-dev` is provisioned with CORS and a public r2.dev read address (D-047); no API token, custom domain or DNS record exists yet. The Cloudflare Claude Code plugin (skills plus MCP) is installed at user scope. Steps and decisions are in [MEDIA_R2.md](MEDIA_R2.md).
 
+## Content import
+
+`npm run content:import` reads a CSV/JSON manifest plus assets, validates each row and its doc 12 §5 checklist, publishes media to R2, and upserts `content` and `contentPrivate` in the Firestore emulator. It is idempotent by `importKey` and reports failures per row. Covered by unit tests and an emulator integration test; CI installs ffmpeg for it. Real Firebase projects are not supported yet. See [CONTENT_IMPORT.md](CONTENT_IMPORT.md).
+
 ## Resume here
 
 1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.

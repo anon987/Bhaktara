@@ -57,6 +57,8 @@ Seed only through scripts or controlled admin imports. Never create records manu
 
 The script is idempotent: re-running it updates existing items instead of duplicating them. It uses a stable `importKey` per row.
 
+**Implementation checkpoint (2026-10-04):** `npm run content:import` implements this against the local Firestore emulator, with media published to the dev R2 bucket. The `importKey` is the content ID. Rows land in DRAFT or READY according to the doc 12 §5 checklist. Writing to a real Firebase project is pending. See `docs/CONTENT_IMPORT.md`.
+
 ## 4. Deity taxonomy
 
 Canonical deity IDs (one ID per deity, with localized names; no duplicates such as "Ram" and "Rama"):
