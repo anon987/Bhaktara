@@ -6,10 +6,19 @@ export type TabParams = {
   Sadhana: undefined;
   Profile: undefined;
 };
+// Doc 13 common content parameter: where the user opened the item from.
+export type ContentSource =
+  | "home_rail"
+  | "explore"
+  | "search"
+  | "deity"
+  | "collection"
+  | "banner"
+  | "notification";
 export type RootParams = {
   Main: undefined;
   Player: undefined;
-  Content: { contentId: string };
+  Content: { contentId: string; source?: ContentSource };
   Jaap: undefined;
   Meditation: undefined;
   Prayer: undefined;

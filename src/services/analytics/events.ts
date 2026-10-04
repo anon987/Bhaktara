@@ -2,6 +2,8 @@ export type AnalyticsEvent =
   | "onboarding_complete"
   | "onboarding_language_selected"
   | "content_view"
+  | "content_play"
+  | "content_complete"
   | "content_favorite"
   | "jaap_mala_complete"
   | "meditation_complete"
