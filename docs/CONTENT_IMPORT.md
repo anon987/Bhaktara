@@ -6,7 +6,7 @@
 3. upserts `content/{importKey}` and the private provenance record `contentPrivate/{importKey}`;
 4. reports failures per row.
 
-**Target:** the local Firestore emulator only (`demo-bhaktara`). No real Firebase project exists yet. Media goes to the dev R2 bucket (credentials in `.env.r2`), or to a local folder with `--local-media`.
+**Target:** the local Firestore emulator (`demo-bhaktara`) by default. `--project dev` writes to `bhaktara-dev` through the Firebase Admin SDK using Application Default Credentials: run `gcloud auth application-default login` as a member of the project. Staging and prod also need `--confirm-project <id>`. The script refuses a real project while `FIRESTORE_EMULATOR_HOST` is set. Media goes to the dev R2 bucket (credentials in `.env.r2`), or to a local folder with `--local-media`.
 
 ## Workflow
 
@@ -15,14 +15,18 @@ npm run emulators                 # terminal 1: Auth + Firestore emulators
 npm run seed:emulators            # deities (and sample catalog) for validation
 npm run content:import -- --manifest catalog/manifest.csv --dry-run   # check every row first
 npm run content:import -- --manifest catalog/manifest.csv             # media → R2, docs → emulator
+npm run content:import -- --manifest catalog/manifest.csv --project dev   # docs → bhaktara-dev
 ```
+
+For the real dev project, seed its deities first with `npm run seed:dev` (no emulator needed).
 
 | Option | Effect |
 | --- | --- |
 | `--assets <dir>` | Folder that `audio`/`image`/`video` paths are relative to (default: the manifest's folder) |
 | `--dry-run` | Validates rows and renders media in a temporary folder; uploads and writes nothing. Deity IDs are only checked against Firestore in a real run |
 | `--local-media <dir>` | Write renditions to a folder instead of R2 (offline testing; serve it and set `EXPO_PUBLIC_MEDIA_BASE_URL=http://127.0.0.1:<port>`) |
-| `--publish-ready` | Dev only: rows with a complete checklist become PUBLISHED, so the app shows them |
+| `--project <dev\|staging\|prod>` | Write to a real project; `--confirm-project <id>` is required except for dev |
+| `--publish-ready` | Emulator and dev only: rows with a complete checklist become PUBLISHED, so the app shows them |
 | `--confirm-bucket <b>` | Required to upload to a bucket not ending in `-dev` |
 | `--report <file>` | Writes the per-row results as JSON |
 
@@ -61,7 +65,6 @@ Checklist columns: everything gets `titleChecked`, `taxonomyChecked`, `thumbnail
 
 ## Not covered yet
 
-- Writing to a real Firebase project: it needs the dev project, an Admin SDK service account, and a guard for non-dev projects.
 - Collections, banners, deities and festivals.
 - Deleting R2 objects replaced by new keys. That is the scheduled cleanup job in doc 09 §5.
 

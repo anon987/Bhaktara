@@ -62,6 +62,10 @@ The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CD
 
 `npm run content:import` reads a CSV/JSON manifest plus assets, validates each row and its doc 12 §5 checklist, publishes media to R2, and upserts `content` and `contentPrivate` in the Firestore emulator. It is idempotent by `importKey` and reports failures per row. Covered by unit tests and an emulator integration test; CI installs ffmpeg for it. Real Firebase projects are not supported yet. See [CONTENT_IMPORT.md](CONTENT_IMPORT.md).
 
+## Firebase dev project
+
+`bhaktara-dev` exists under the operator's Google account on the Spark plan; billing is off. `.firebaserc` alias `dev`; the default stays the local `demo-bhaktara`. Firestore `(default)` is Standard edition, Native mode, in `asia-south1` (Mumbai), with delete protection enabled. The repository's `firestore.rules` and all 8 composite indexes are deployed. A live unauthenticated read and write both return 403. Anonymous and Google sign-in are enabled. The Android app is registered with the debug SHA-1/SHA-256, and a Web app supplies the JavaScript SDK config. The app has a `cloud` backend mode, verified from Node: anonymous sign-in plus the catalog query against deployed rules and indexes. `seed:dev` has loaded the placeholder catalog (13 items, 5 deities, 2 banners), and `content:import --project dev` can add real items; both use the Admin SDK with Application Default Credentials. Still pending: on-device verification in cloud mode, App Check, and real launch content.
+
 ## Resume here
 
 1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.

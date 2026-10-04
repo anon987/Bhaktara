@@ -2,21 +2,18 @@ import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import {
-  collection,
-  doc,
-  Firestore,
-  getDoc,
-  getDocs,
-  serverTimestamp,
-  writeBatch,
-} from "firebase/firestore";
+import { FieldValue, Firestore } from "firebase-admin/firestore";
 import { contentSchema } from "../../src/domain/models";
 import { mediaSchema } from "../../src/domain/media";
 import { publishedContentSchema } from "../../src/repositories/firestoreSchemas";
 import { MediaType } from "../media/process";
 import { createUploader, publishMedia, Uploader } from "../media/publish";
-import { emulatorEnvironment } from "../emulator/environment";
+import {
+  describeTarget,
+  FirestoreTarget,
+  resolveTarget,
+  withFirestore,
+} from "../firebase/target";
 import {
   buildDocuments,
   DeityInfo,
@@ -30,13 +27,17 @@ import {
 const usage = `Usage: npm run content:import -- --manifest <file.csv|file.json> [options]
 
 Validates each row, publishes its media, and upserts content/{importKey} and
-contentPrivate/{importKey} in the local Firestore emulator (doc 18 §3).
+contentPrivate/{importKey} in Firestore (doc 18 §3). The local emulator is the
+default target.
 
 Options:
+  --project <dev>        Write to a real project (dev, staging, prod) using
+                         Application Default Credentials.
+  --confirm-project <id> Required for any project other than bhaktara-dev.
   --assets <dir>         Folder that asset paths are relative to (default: manifest folder).
   --dry-run              Validate rows and process media locally; write nothing.
   --local-media <dir>    Write renditions to <dir> instead of uploading to R2.
-  --publish-ready        Dev only: publish rows whose checklist is complete.
+  --publish-ready        Emulator/dev only: publish rows whose checklist is complete.
   --confirm-bucket <b>   Required to upload to a bucket not ending in "-dev".
   --report <file>        Also write the per-row report as JSON.`;
 
@@ -64,7 +65,7 @@ export async function loadManifest(path: string) {
 }
 
 async function readDeities(db: Firestore) {
-  const snapshot = await getDocs(collection(db, "deities"));
+  const snapshot = await db.collection("deities").get();
   return new Map<string, DeityInfo>(
     snapshot.docs.map((item) => {
       const data = item.data() as Partial<DeityInfo>;
@@ -86,9 +87,18 @@ export async function importManifest(options: {
   localMedia?: string;
   publishReady?: boolean;
   confirmBucket?: string;
+  target?: FirestoreTarget;
   log?: (message: string) => void;
 }): Promise<RowResult[]> {
   const log = options.log ?? (() => undefined);
+  const target = options.target ?? { kind: "emulator" };
+  // Staging and prod publish only through the reviewed workflow (D-036).
+  if (
+    options.publishReady &&
+    target.kind === "project" &&
+    target.projectId !== "bhaktara-dev"
+  )
+    throw new Error("--publish-ready is only allowed for the emulator and dev");
   const records = await loadManifest(options.manifest);
   const assets = resolve(options.assets ?? dirname(options.manifest));
   const results: RowResult[] = [];
@@ -122,7 +132,6 @@ export async function importManifest(options: {
         ? { kind: "local", dir: options.localMedia }
         : { kind: "r2", confirmBucket: options.confirmBucket },
   );
-  const environment = options.dryRun ? null : await emulatorEnvironment();
   try {
     const run = async (db: Firestore | null) => {
       const deities = db ? await readDeities(db) : null;
@@ -156,8 +165,9 @@ export async function importManifest(options: {
             }),
           );
           const existing = db
-            ? (((await getDoc(doc(db, "content", row.importKey))).data() as
-                ExistingContent | undefined) ?? null)
+            ? (((
+                await db.collection("content").doc(row.importKey).get()
+              ).data() as ExistingContent | undefined) ?? null)
             : null;
           const built = buildDocuments({
             row,
@@ -165,7 +175,7 @@ export async function importManifest(options: {
             deities: deities ?? new Map(),
             existing,
             publishReady: options.publishReady ?? false,
-            now: serverTimestamp(),
+            now: FieldValue.serverTimestamp(),
           });
           // The app must be able to read the document once it is published.
           contentSchema.parse({ ...built.content, id: built.contentId });
@@ -177,11 +187,14 @@ export async function importManifest(options: {
           result.status = built.status;
           result.missingChecks = built.missing;
           if (db) {
-            const batch = writeBatch(db);
-            batch.set(doc(db, "content", built.contentId), built.content);
+            const batch = db.batch();
+            batch.set(
+              db.collection("content").doc(built.contentId),
+              built.content,
+            );
             // Merge keeps createdAt/createdBy from the first import.
             batch.set(
-              doc(db, "contentPrivate", built.contentId),
+              db.collection("contentPrivate").doc(built.contentId),
               built.privateRecord,
               { merge: true },
             );
@@ -198,13 +211,9 @@ export async function importManifest(options: {
         );
       }
     };
-    if (environment)
-      await environment.withSecurityRulesDisabled((context) =>
-        run(context.firestore() as unknown as Firestore),
-      );
-    else await run(null);
+    if (options.dryRun) await run(null);
+    else await withFirestore(target, run);
   } finally {
-    await environment?.cleanup();
     if (scratch) await rm(scratch, { recursive: true, force: true });
   }
   return results;
@@ -221,6 +230,8 @@ async function main(argv: string[]) {
       "publish-ready": { type: "boolean", default: false },
       "confirm-bucket": { type: "string" },
       report: { type: "string" },
+      project: { type: "string" },
+      "confirm-project": { type: "string" },
       help: { type: "boolean", default: false },
     },
   });
@@ -229,9 +240,12 @@ async function main(argv: string[]) {
     process.exitCode = values.help ? 0 : 1;
     return;
   }
-  // Only the local emulator is supported until a real Firebase project exists.
-  process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
+  const target = resolveTarget(values.project, values["confirm-project"]);
+  if (target.kind === "emulator")
+    process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
+  if (!values["dry-run"]) console.error(`Target: ${describeTarget(target)}`);
   const results = await importManifest({
+    target,
     manifest: values.manifest,
     assets: values.assets,
     dryRun: values["dry-run"],

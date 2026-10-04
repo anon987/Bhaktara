@@ -20,6 +20,7 @@ import {
 import { importManifest } from "../scripts/content/import";
 import { checklist } from "../scripts/content/manifest";
 import { seedEmulator } from "../scripts/emulator/seed";
+import { resolveTarget, withFirestore } from "../scripts/firebase/target";
 import { projectId } from "../scripts/emulator/environment";
 import { createFirestoreRepository } from "../src/repositories/firestoreRepository";
 
@@ -192,4 +193,34 @@ test("manifest import validates rows, writes content, and is idempotent", async 
     assert.equal(provenance.importKey, "import-wallpaper");
     assert.ok(provenance.createdAt, "createdAt survives updates");
   });
+});
+
+test("operator scripts write to real projects only when named and confirmed", async () => {
+  assert.deepEqual(resolveTarget(), { kind: "emulator" });
+  assert.deepEqual(resolveTarget("dev"), {
+    kind: "project",
+    projectId: "bhaktara-dev",
+  });
+  assert.throws(() => resolveTarget("prod"), /--confirm-project bhaktara-prod/);
+  assert.deepEqual(resolveTarget("prod", "bhaktara-prod"), {
+    kind: "project",
+    projectId: "bhaktara-prod",
+  });
+  assert.throws(() => resolveTarget("dhanevo-dev"), /Unknown project/);
+  // An emulator variable must never silently redirect "real" writes.
+  await assert.rejects(
+    withFirestore(
+      { kind: "project", projectId: "bhaktara-dev" },
+      async () => 1,
+    ),
+    /Unset FIRESTORE_EMULATOR_HOST/,
+  );
+  await assert.rejects(
+    importManifest({
+      manifest: join(dir, "manifest.csv"),
+      publishReady: true,
+      target: { kind: "project", projectId: "bhaktara-staging" },
+    }),
+    /only allowed for the emulator and dev/,
+  );
 });

@@ -82,3 +82,17 @@ References: [Expo Firebase setup](https://docs.expo.dev/guides/using-firebase/),
 ## Next work
 
 Confirm a real development Firebase project; add server profile provisioning, a development App Check strategy, account-aware preference/favorite sync, and server practice APIs with validation/idempotency tests. Reviewed R2 assets and real background audio follow. Google linking/merge precedes live leagues. No cloud deployment is included here.
+
+## Cloud dev project (`bhaktara-dev`)
+
+`EXPO_PUBLIC_BACKEND_MODE=cloud` connects the app to the real dev project using the Firebase Web app config (see `.env.example`). Only `bhaktara-dev`, `bhaktara-staging` and `bhaktara-prod` are accepted, and the app ID must be a Web app ID because the app uses the JavaScript SDK. Put the values in `.env.local`. Restart Metro with `--clear` after changing them.
+
+`.env.local` overrides the fixture default for every local command, including `expo export`. Run `EXPO_PUBLIC_BACKEND_MODE=fixture npm run export:web` when building for `scripts/smoke.mjs`; shell variables take precedence over `.env` files.
+
+Project state: Firestore `(default)` in `asia-south1` with delete protection; rules and indexes deployed from this repository with `npx firebase deploy --only firestore --project dev`. Anonymous and Google sign-in are enabled. The Android app `com.bhaktara.app` has the shared debug keystore's SHA-1/SHA-256 registered; release signing needs its own fingerprints. The `default` alias stays `demo-bhaktara`, so cloud commands must name `--project dev`.
+
+`npm run seed:dev` writes the same validated placeholder catalog to `bhaktara-dev` (no rules-test draft) via the Admin SDK and Application Default Credentials. `content:import --project dev` imports real items there; see [CONTENT_IMPORT.md](CONTENT_IMPORT.md).
+
+Verified on 2026-10-04 with the app's own session and repository code from Node:
+- Anonymous sign-in succeeded.
+- After seeding, the startup catalog returned 12 items, 5 deities and 2 banners, and a "hanumaan" search found the three Hanuman items. Both passed the deployed rules and indexes.
