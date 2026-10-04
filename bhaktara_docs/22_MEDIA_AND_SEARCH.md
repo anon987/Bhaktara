@@ -139,3 +139,7 @@ An on-device search index (a JSON file on the CDN plus fuzzy search in the app) 
 ## Implementation checkpoint — 2026-10-04
 
 The local Firebase adapter now implements bounded search-token queries with popularity/document-ID cursors and query-bound cursor validation. Text search filters additional words and deity within each returned page because Firestore permits only one array-contains clause. Without text, deity filtering runs server-side. Empty filtered pages retain their continuation cursor. Seed-generated tokens share normalization with queries; production publishing is still pending. The root `firestore.indexes.json` contains required indexes. Production CDN delivery/media remain unimplemented.
+
+## Implementation checkpoint — R2 media (2026-10-04)
+
+Client and operator sides of Part A are implemented; no Cloudflare resources are provisioned yet. Shared key validation, the doc 06 `MediaVariant` schema and the URL join live in `src/domain/media.ts`. The CDN base is the build-time `EXPO_PUBLIC_MEDIA_BASE_URL` (the `appConfig/app.mediaBaseUrl` runtime override is pending). Art components load CDN keys and fall back to local placeholder art. `npm run media:publish` implements the A4 media processor (ffmpeg renditions per A3 and doc 12 §6, metadata stripping, content-addressed keys, immutable cache headers, dev-bucket guard). Presigned CMS uploads, `processMedia` on Cloud Run, audio playback and native save remain pending. Runbook: `docs/MEDIA_R2.md`.

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { mediaSchema } from "./media";
 export const localizedSchema = z.object({ hi: z.string(), en: z.string() });
 export const contentTypes = [
   "BHAJAN",
@@ -16,7 +17,7 @@ export const contentSchema = z.object({
   description: localizedSchema,
   deityIds: z.array(z.string()),
   searchTokens: z.array(z.string()),
-  media: z.object({ thumb: z.object({ key: z.string() }) }),
+  media: mediaSchema,
   durationSeconds: z.number().optional(),
   saveGate: z.enum(["REWARDED", "FREE"]),
   isShareable: z.boolean(),

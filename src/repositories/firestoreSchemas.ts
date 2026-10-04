@@ -1,23 +1,11 @@
 import { z } from "zod";
 import { contentSchema, localizedSchema } from "../domain/models";
+import { mediaVariantSchema as variant } from "../domain/media";
 
-const key = z
-  .string()
-  .min(1)
-  .max(512)
-  .refine(
-    (value) =>
-      !value.includes(":") &&
-      !value.startsWith("/") &&
-      !value.split("/").includes(".."),
-    "Media must use asset keys",
-  );
-const variant = z.object({ key });
 export const publishedContentSchema = contentSchema.extend({
   id: z.string().min(1),
   status: z.literal("PUBLISHED"),
   popularityScore: z.number().finite().nonnegative(),
-  media: z.object({ thumb: variant }),
   searchTokens: z.array(z.string().min(1)).max(200),
   durationSeconds: z.number().positive().optional(),
 });

@@ -54,6 +54,10 @@ A full code review fixed these defects, each with a regression test:
 
 Open product decisions found in review: a permanently corrupt local record leaves the app on the retry screen (no reset path); jaap completion triggers on any 108 boundary of the cumulative count, so leftover beads from a previous day count toward today; deity chips on the Jaap screen are not yet used.
 
+## Cloudflare R2 media foundation
+
+The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CDN-base config with fallback to placeholder art, and `npm run media:publish` (ffmpeg renditions, EXIF stripping, content-addressed immutable uploads, dev-only bucket guard). It is not provisioned yet: no bucket, domain or API token exists. The Cloudflare Claude Code plugin (skills plus MCP) is installed at user scope. Steps and decisions are in [MEDIA_R2.md](MEDIA_R2.md).
+
 ## Resume here
 
 1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.

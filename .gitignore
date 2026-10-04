@@ -60,3 +60,6 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .firebase/
+
+# Local media renditions from `media:publish --dry-run`
+media-out/

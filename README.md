@@ -8,7 +8,7 @@ Progress saved on **2026-10-04**: storage recovery and TypeScript fixes are comp
 
 ## Run
 
-See [Firebase development setup](docs/FIREBASE_DEVELOPMENT.md) for anonymous auth, catalog adapters, local emulators, seed data, and security tests. Standard commands retain fixture mode unless `EXPO_PUBLIC_BACKEND_MODE=emulator` is set.
+Media is served from Cloudflare R2: see [R2 media setup](docs/MEDIA_R2.md). See [Firebase development setup](docs/FIREBASE_DEVELOPMENT.md) for anonymous auth, catalog adapters, local emulators, seed data, and security tests. Standard commands retain fixture mode unless `EXPO_PUBLIC_BACKEND_MODE=emulator` is set.
 
 Use Node 24 LTS, npm, Android Studio/SDK, and JDK 17. Install an Android SDK/platform compatible with the generated Expo project. Set `ANDROID_HOME` to your SDK and `JAVA_HOME` to JDK 17.
 

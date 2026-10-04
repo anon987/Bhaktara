@@ -28,6 +28,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
     "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.63.0",
     "@testing-library/react-native": "^13.3.3",
@@ -59,6 +60,7 @@
     "export:web": "expo export --platform web --clear",
     "emulators": "firebase emulators:start --project demo-bhaktara --only auth,firestore",
     "seed:emulators": "tsx scripts/emulator/seed.ts",
+    "media:publish": "tsx --env-file-if-exists=.env.r2 scripts/media/publish.ts",
     "test:emulators": "firebase emulators:exec --project demo-bhaktara --only auth,firestore \"tsx --test emulator-tests/*.test.ts\""
   },
   "private": true

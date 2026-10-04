@@ -1,5 +1,6 @@
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useState } from "react";
+import { Image, StyleSheet, View } from "react-native";
+import { resolveMediaUrl } from "../services/media/config";
 import Svg, {
   Circle,
   Defs,
@@ -10,7 +11,8 @@ import Svg, {
   Rect,
   Stop,
 } from "react-native-svg";
-// Asset-key resolver seam. Replace this symbolic, locally drawn art with licensed CDN variants.
+// Asset-key resolver seam: CDN keys load from R2 via the configured media base;
+// placeholder keys, unconfigured builds and failed loads use symbolic local art.
 const palettes: Record<string, [string, string, string]> = {
   shiva: ["#203E43", "#678C88", "#DCBF81"],
   krishna: ["#324D42", "#97AA75", "#F0D293"],
@@ -18,15 +20,25 @@ const palettes: Record<string, [string, string, string]> = {
   hanuman: ["#7C352B", "#D5814F", "#F6D7A0"],
   durga: ["#632D3D", "#B56870", "#EDCB83"],
 };
-export function DevotionalArt({
-  assetKey,
-  size = 160,
-  lit = false,
-}: {
-  assetKey: string;
-  size?: number;
-  lit?: boolean;
-}) {
+type ArtProps = { assetKey: string; size?: number; lit?: boolean };
+export function DevotionalArt({ assetKey, size = 160, lit = false }: ArtProps) {
+  const uri = resolveMediaUrl(assetKey);
+  const [failed, setFailed] = useState<string | null>(null);
+  if (uri && failed !== uri)
+    return (
+      <View accessible={false} style={[styles.frame, { height: size }]}>
+        <Image
+          source={{ uri }}
+          resizeMode="cover"
+          onError={() => setFailed(uri)}
+          style={StyleSheet.absoluteFill}
+        />
+        {lit && <View pointerEvents="none" style={styles.glow} />}
+      </View>
+    );
+  return <SymbolicArt assetKey={assetKey} size={size} lit={lit} />;
+}
+function SymbolicArt({ assetKey, size = 160, lit = false }: ArtProps) {
   const id = React.useId().replace(/:/g, "");
   const deity = assetKey.split("/").pop() ?? "";
   const [dark, light, gold] = palettes[deity] ?? palettes.ganesha;
@@ -104,4 +116,13 @@ export function DevotionalArt({
 }
 const styles = StyleSheet.create({
   frame: { borderRadius: 18, overflow: "hidden", width: "100%" },
+  // Warm wash standing in for the lit-diya state on photographic art.
+  glow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "#FFD98A2E",
+  },
 });

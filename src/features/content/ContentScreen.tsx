@@ -73,7 +73,13 @@ export function ContentScreen({
   );
   return (
     <Page title={t("preview")} onBack={navigation.goBack}>
-      <DevotionalArt assetKey={item.media.thumb.key} size={350} />
+      {/* Detail screens load the larger variant; lists stay on thumb (doc 22 §A5). */}
+      <DevotionalArt
+        assetKey={
+          (item.media.mobile ?? item.media.poster ?? item.media.thumb).key
+        }
+        size={350}
+      />
       <Txt muted size={11} style={{ textAlign: "center" }}>
         {t("placeholder")}
       </Txt>
