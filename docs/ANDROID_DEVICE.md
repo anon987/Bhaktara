@@ -4,6 +4,8 @@ Verified on **2026-10-04** with Samsung SM_E076B (ARM64), JDK 17, and the Expo d
 
 ## Build
 
+Fetch the native Firebase config first (Git-ignored): `npm run firebase:android-config`.
+
 On the current workstation, from the project root:
 
 ```sh

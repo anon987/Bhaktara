@@ -96,3 +96,16 @@ Project state: Firestore `(default)` in `asia-south1` with delete protection; ru
 Verified on 2026-10-04 with the app's own session and repository code from Node:
 - Anonymous sign-in succeeded.
 - After seeding, the startup catalog returned 12 items, 5 deities and 2 banners, and a "hanumaan" search found the three Hanuman items. Both passed the deployed rules and indexes.
+
+## Native Firebase (Android)
+
+Android uses React Native Firebase (D-048); the web build and Node tests use the JavaScript SDK. `src/services/firebase/client.native.ts` is selected automatically on Android.
+
+1. `npm run firebase:android-config` writes `google-services.json` for `bhaktara-dev` (Git-ignored; Expo copies it into `android/app`).
+2. After changing native dependencies, `firebase.json`'s `react-native` section or `app.json`: `npx expo prebuild --no-install --platform android`, review the diff, then rebuild (see [ANDROID_DEVICE.md](ANDROID_DEVICE.md)).
+
+The privacy settings in `firebase.json` (`react-native` section) keep Analytics and Crashlytics collection, advertising-ID and SSAID collection, and automatic screen reporting off until the privacy policy and consent flow ship. Enabling them later is a config change plus a rebuild. The in-app privacy text must change at the same time.
+
+- **Remote Config** (`src/services/remoteConfig`): defaults for the doc 11 ad switches (off until M4) and a `media_base_url` override. It fetches once per launch.
+- **App Check (monitor mode):** the App Check API is enabled on `bhaktara-dev`. Debug builds use the debug provider. Each install logs a debug token: `adb logcat | grep "App Check debug token"`. Treat it as a secret and register it with `npx firebase appcheck:debugtokens:create <token> --project bhaktara-dev --app 1:83349652654:android:bd2a4c399e1d15da2f993f --display-name "<device>"`. Delete tokens for retired devices. Release builds use Play Integrity, which still has to be registered in Firebase Console → App Check before release. Do not enforce App Check until M4.
+- **Emulator mode on Android:** the native client uses a separate app with the `demo-bhaktara` project, so emulator data never mixes with `bhaktara-dev`.

@@ -63,3 +63,7 @@ ui-debug.log
 
 # Local media renditions from `media:publish --dry-run`
 media-out/
+
+# Per-environment Firebase native config (fetch with npm run firebase:android-config)
+google-services.json
+GoogleService-Info.plist

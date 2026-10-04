@@ -18,17 +18,11 @@ export function getBackend(): Promise<Backend> {
           content: mockContentRepository,
           session: { ensureSession: async () => null },
         };
-      const [{ createFirebaseClient }, { createFirestoreRepository }] =
-        await Promise.all([
-          import("../firebase/client"),
-          import("../../repositories/firestoreRepository"),
-        ]);
-      const { db, session } = createFirebaseClient(config);
-      return {
-        mode: config.mode,
-        content: createFirestoreRepository(db, session),
-        session,
-      };
+      // Resolves to client.native.ts (React Native Firebase) on Android/iOS
+      // and client.ts (JavaScript SDK) on web.
+      const { createFirebaseClient } = await import("../firebase/client");
+      const { content, session } = await createFirebaseClient(config);
+      return { mode: config.mode, content, session };
     })().catch((error) => {
       pending = undefined;
       throw error;

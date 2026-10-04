@@ -13,4 +13,15 @@ function readMediaBaseUrl(): string | null {
   }
 }
 export const mediaBaseUrl = readMediaBaseUrl();
-export const resolveMediaUrl = (key: string) => mediaUrl(mediaBaseUrl, key);
+// Remote Config can move the CDN without a release (doc 22 §A2). Invalid or
+// empty values keep the build's base.
+let runtimeBaseUrl: string | null = null;
+export function setRuntimeMediaBaseUrl(value: string) {
+  try {
+    runtimeBaseUrl = parseMediaBaseUrl(value);
+  } catch {
+    runtimeBaseUrl = null;
+  }
+}
+export const resolveMediaUrl = (key: string) =>
+  mediaUrl(runtimeBaseUrl ?? mediaBaseUrl, key);

@@ -16,13 +16,19 @@
         "backgroundColor": "#FBF7EF"
       },
       "predictiveBackGestureEnabled": true,
-      "package": "com.bhaktara.app"
+      "package": "com.bhaktara.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/analytics",
+      "@react-native-firebase/crashlytics",
+      "@react-native-firebase/app-check"
     ],
     "scheme": "bhaktara",
     "splash": {

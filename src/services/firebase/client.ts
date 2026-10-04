@@ -7,11 +7,14 @@ import {
 } from "firebase/firestore";
 import { BackendConfig } from "../backend/config";
 import { createSessionService } from "../auth/session";
+import { createFirestoreRepository } from "../../repositories/firestoreRepository";
 import { authPersistence } from "./persistence";
+import { jsFirestoreApi } from "./jsFirestoreApi";
 
-type FirebaseConfig = Exclude<BackendConfig, { mode: "fixture" }>;
+export type FirebaseConfig = Exclude<BackendConfig, { mode: "fixture" }>;
 
-export function createFirebaseClient(config: FirebaseConfig) {
+// Web build: the Firebase JavaScript SDK. Android/iOS use client.native.ts.
+export async function createFirebaseClient(config: FirebaseConfig) {
   const name =
     config.mode === "emulator"
       ? `bhaktara-emulator-${config.host}`
@@ -32,10 +35,7 @@ export function createFirebaseClient(config: FirebaseConfig) {
   const auth = existing
     ? getAuth(app)
     : initializeAuth(app, { persistence: authPersistence });
-  // Long polling avoids WebChannel streaming issues in React Native.
-  const db = existing
-    ? getFirestore(app)
-    : initializeFirestore(app, { experimentalForceLongPolling: true });
+  const db = existing ? getFirestore(app) : initializeFirestore(app, {});
   if (!existing && config.mode === "emulator") {
     connectAuthEmulator(auth, `http://${config.host}:9099`, {
       disableWarnings: true,
@@ -55,5 +55,8 @@ export function createFirebaseClient(config: FirebaseConfig) {
       return { uid: user.uid, isAnonymous: user.isAnonymous };
     },
   });
-  return { db, session };
+  return {
+    session,
+    content: createFirestoreRepository(db, session, jsFirestoreApi),
+  };
 }

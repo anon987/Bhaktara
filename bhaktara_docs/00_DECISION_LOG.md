@@ -114,6 +114,10 @@ Format: ID · Decision · Date · Affects
 
 - **D-047 · Dev media endpoint.** The dev bucket `bhaktara-media-dev` (APAC location hint) serves public reads through its rate-limited r2.dev address until a Bhaktara domain is bought. A Bhaktara-owned domain (`media.<domain>`) is required before the first public release, because shipped builds embed the media base URL. · Affects: 22, 23
 
+## Round 11 — Firebase SDK (2026-10-05)
+
+- **D-048 · Native Firebase SDK.** Android/iOS use React Native Firebase for Auth, Firestore, Analytics, Crashlytics, Remote Config and App Check (native offline cache, App Check on every request). The web preview and Node emulator tests keep the Firebase JavaScript SDK. The Firestore repository receives the SDK's modular API, so its query logic is shared and tested in both. Analytics and Crashlytics collection stays disabled in `firebase.json` until the privacy policy and consent flow ship (M4). · Affects: 05, 07, 13, 15
+
 ## Pending / resolved items
 
 - ~~P-01~~ Resolved by D-022.

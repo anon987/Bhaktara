@@ -4,9 +4,32 @@
     "indexes": "firestore.indexes.json"
   },
   "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9099 },
-    "firestore": { "host": "127.0.0.1", "port": 8080 },
-    "ui": { "enabled": true, "host": "127.0.0.1", "port": 4000 },
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 4000
+    },
     "singleProjectMode": true
+  },
+  "react-native": {
+    "analytics_auto_collection_enabled": false,
+    "google_analytics_adid_collection_enabled": false,
+    "google_analytics_ssaid_collection_enabled": false,
+    "google_analytics_automatic_screen_reporting_enabled": false,
+    "google_analytics_default_allow_analytics_storage": false,
+    "google_analytics_default_allow_ad_storage": false,
+    "google_analytics_default_allow_ad_user_data": false,
+    "google_analytics_default_allow_ad_personalization_signals": false,
+    "crashlytics_auto_collection_enabled": false,
+    "crashlytics_debug_enabled": false,
+    "app_check_token_auto_refresh": true
   }
 }

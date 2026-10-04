@@ -16,3 +16,24 @@ jest.mock("lucide-react-native", () => {
     { get: (_target, key) => (key === "__esModule" ? true : Icon) },
   );
 });
+
+// React Native Firebase needs native modules; the startup imports get fakes.
+// (Auth and Firestore load lazily in cloud/emulator mode, which tests inject.)
+jest.mock("@react-native-firebase/analytics", () => ({
+  getAnalytics: jest.fn(() => ({})),
+  logEvent: jest.fn(async () => undefined),
+}));
+jest.mock("@react-native-firebase/remote-config", () => {
+  const instance: {
+    settings: object;
+    defaultConfig: Record<string, string | boolean>;
+  } = { settings: {}, defaultConfig: {} };
+  return {
+    getRemoteConfig: () => instance,
+    fetchAndActivate: jest.fn(async () => false),
+    getValue: (_config: unknown, key: string) => ({
+      asBoolean: () => instance.defaultConfig[key] === true,
+      asString: () => String(instance.defaultConfig[key] ?? ""),
+    }),
+  };
+});

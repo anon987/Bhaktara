@@ -66,7 +66,18 @@ The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CD
 
 `bhaktara-dev` exists under the operator's Google account on the Spark plan; billing is off. `.firebaserc` alias `dev`; the default stays the local `demo-bhaktara`. Firestore `(default)` is Standard edition, Native mode, in `asia-south1` (Mumbai), with delete protection enabled. The repository's `firestore.rules` and all 8 composite indexes are deployed. A live unauthenticated read and write both return 403. Anonymous and Google sign-in are enabled. The Android app is registered with the debug SHA-1/SHA-256, and a Web app supplies the JavaScript SDK config. The app has a `cloud` backend mode, verified from Node: anonymous sign-in plus the catalog query against deployed rules and indexes. `seed:dev` has loaded the placeholder catalog (13 items, 5 deities, 2 banners), and `content:import --project dev` can add real items; both use the Admin SDK with Application Default Credentials. Still pending: on-device verification in cloud mode, App Check, and real launch content.
 
-## Resume here
+## Native Firebase (D-048)
+
+On Android, Auth, Firestore, Analytics, Crashlytics, Remote Config and App Check now use React Native Firebase. The web preview and Node tests keep the JavaScript SDK through a shared repository adapter. Analytics and Crashlytics collection is disabled in `firebase.json` until the privacy policy ships. Remote Config carries the doc 11 ad switches (off) and a media base override.
+
+Verified on 2026-10-05:
+- On Samsung SM_E076B (ARM64 debug build):
+  - Native anonymous auth restored the session.
+  - The catalog, search filters and detail/player loaded from `bhaktara-dev`.
+  - There were no JavaScript errors or crashes.
+- The App Check API was enabled and the phone's debug token registered; a server-side exchange issued a token.
+- The stale Expo placeholder launcher icons were replaced by the branded lotus icons generated from `app.json`. The `android-icon-*` and `splash-icon` assets are unused Expo placeholders.
+
 
 1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.
 2. Confirm the real development Firebase project and configuration. Add server profile provisioning and a development App Check strategy before cloud integration.

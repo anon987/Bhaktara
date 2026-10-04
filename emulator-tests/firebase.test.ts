@@ -24,6 +24,7 @@ import {
   where,
 } from "firebase/firestore";
 import { createFirestoreRepository } from "../src/repositories/firestoreRepository";
+import { jsFirestoreApi } from "../src/services/firebase/jsFirestoreApi";
 import { createSessionService } from "../src/services/auth/session";
 import { seedEmulator } from "../scripts/emulator/seed";
 import { projectId } from "../scripts/emulator/environment";
@@ -222,7 +223,7 @@ test("real anonymous auth drives validated catalog search and cursor pagination"
     assert.ok(a?.isAnonymous);
     assert.equal(a.uid, b?.uid);
     assert.equal(creations, 1);
-    const repository = createFirestoreRepository(db, session);
+    const repository = createFirestoreRepository(db, session, jsFirestoreApi);
     const catalog = await repository.getCatalog();
     assert.equal(catalog.deities.length, 5);
     assert.equal(catalog.banners.length, 2);

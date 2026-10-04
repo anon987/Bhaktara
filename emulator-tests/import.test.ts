@@ -23,6 +23,7 @@ import { seedEmulator } from "../scripts/emulator/seed";
 import { resolveTarget, withFirestore } from "../scripts/firebase/target";
 import { projectId } from "../scripts/emulator/environment";
 import { createFirestoreRepository } from "../src/repositories/firestoreRepository";
+import { jsFirestoreApi } from "../src/services/firebase/jsFirestoreApi";
 
 let env: RulesTestEnvironment;
 let dir: string;
@@ -156,9 +157,13 @@ test("manifest import validates rows, writes content, and is idempotent", async 
 
   // The app's repository finds it through generated search tokens. The
   // rules-testing context is the compat type; modular calls unwrap it.
-  const repository = createFirestoreRepository(user as unknown as Firestore, {
-    ensureSession: async () => ({ uid: "alice", isAnonymous: true }),
-  });
+  const repository = createFirestoreRepository(
+    user as unknown as Firestore,
+    {
+      ensureSession: async () => ({ uid: "alice", isAnonymous: true }),
+    },
+    jsFirestoreApi,
+  );
   const found = await repository.search({ query: "anjaneya", limit: 30 });
   assert.deepEqual(
     found.items.map((item) => item.id),

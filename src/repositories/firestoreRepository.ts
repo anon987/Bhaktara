@@ -1,17 +1,4 @@
-import {
-  collection,
-  doc,
-  documentId,
-  Firestore,
-  getDocFromServer,
-  getDocsFromServer,
-  limit,
-  orderBy,
-  query,
-  QueryConstraint,
-  startAfter,
-  where,
-} from "firebase/firestore";
+import type { Firestore, QueryConstraint } from "firebase/firestore";
 import { z } from "zod";
 import { ContentRepository } from "./contracts";
 import { searchWords } from "../domain/search";
@@ -22,6 +9,7 @@ import {
 } from "./firestoreSchemas";
 import { SessionService } from "../services/auth/session";
 import { contentSchema } from "../domain/models";
+import { FirestoreApi } from "./firestoreApi";
 
 const cursorSchema = z.object({
   score: z.number().finite(),
@@ -31,7 +19,20 @@ const cursorSchema = z.object({
 export function createFirestoreRepository(
   db: Firestore,
   session: SessionService,
+  api: FirestoreApi,
 ): ContentRepository {
+  const {
+    collection,
+    doc,
+    documentId,
+    getDocFromServer,
+    getDocsFromServer,
+    limit,
+    orderBy,
+    query,
+    startAfter,
+    where,
+  } = api;
   const repository: ContentRepository = {
     async getById(id) {
       if (!id || id.includes("/")) throw new Error("Invalid content ID");

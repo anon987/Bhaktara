@@ -19,6 +19,7 @@ import { Backend, getBackend } from "../../services/backend";
 import { ContentQuery, ContentRepository } from "../../repositories/contracts";
 import { Language, StringKey, translate } from "../../i18n/strings";
 import { analytics } from "../../services/analytics";
+import { remoteConfig } from "../../services/remoteConfig";
 type AppContextValue = {
   local: LocalState;
   ready: boolean;
@@ -63,6 +64,9 @@ export function AppProvider({
   const [selectedContentId, selectContent] = useState<string | null>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const writes = useRef(Promise.resolve());
+  useEffect(() => {
+    void remoteConfig.start();
+  }, []);
   const retry = useCallback(() => {
     setCatalogMode("loading");
     setConnection("loading");
