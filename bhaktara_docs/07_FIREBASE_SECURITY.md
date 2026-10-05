@@ -82,3 +82,5 @@ Root `firestore.rules` implements the current local-emulator subset, with auth-r
 ## Implementation checkpoint — 2026-10-05 (Home feed)
 
 `homeFeeds/{language}` allows a single-document `get` to any authenticated session (including anonymous) for `hi`/`en` when `isPublished == true`. A missing doc reads as absent, so the app can show its empty state. List queries and all client writes are denied; `homeLayout` stays admin-only through the default deny. Covered by `emulator-tests/home.test.ts`. Not yet deployed to any cloud project.
+
+Home feed builder (same date): `homeLayout/{hi,en}` allows a single-document `get` to SUPER_ADMIN and CONTENT_ADMIN (`home.read` in `src/domain/cms.ts`); lists and all client writes stay denied. Layout changes go through the `updateHomeLayout` callable (role check, strict Zod validation, revision check, audit entry in the same transaction). `jobState/buildHomeFeed` is server-only (default deny). Covered by `emulator-tests/admin-rules.test.ts` and `functions/test/home.test.ts`.
