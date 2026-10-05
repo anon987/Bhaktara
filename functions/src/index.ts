@@ -8,6 +8,7 @@ import * as banners from "./banners";
 import * as content from "./content";
 import { Actor, actorFrom } from "./core";
 import * as home from "./home";
+import * as media from "./media";
 import { setAdminRole as setRole } from "./roles";
 import { requestUploadUrl as uploadSlot } from "./uploads";
 
@@ -51,6 +52,14 @@ export const requestUploadUrl = admin(
   {
     secrets: r2Secrets,
   },
+);
+
+// Doc 22 §A4 step 4: render staged originals on the Cloud Run media
+// processor (MEDIA_PROCESSOR_URL; R2 keys live with the processor, not here)
+// and write the variants onto content.media. Processing can take minutes.
+export const processMedia = admin(
+  (actor, data) => media.processMedia(actor, data),
+  { timeoutSeconds: 540 },
 );
 
 // Doc 08 §4 buildHomeFeed: writes that can change Home only mark the feed
