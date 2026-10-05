@@ -138,3 +138,23 @@ Implemented in `functions/src/home.ts` and run in the local emulators only (the 
 | `rebuildHomeFeed` | `{}` | Forces a rebuild of both languages and writes a `home.feed.rebuild` audit entry. Returns `{ status: BUILT \| SUPERSEDED, reason, reads, nextChangeAt, languages: { hi, en: { status: WRITTEN \| UNCHANGED \| SKIPPED, reason?, sections, banners } } }`. |
 
 When a stored layout is missing or invalid, that language is skipped and its previous feed is kept. Deferred: FESTIVALS resolution, and regenerating `searchTokens` in `onContentWrite` (today the content callables and the importer generate them).
+
+## Implementation checkpoint — 2026-10-05 (habit layer)
+
+Implemented in `functions/src/progression.ts` (Firestore I/O) and `functions/src/progressionEngine.ts` (pure rules), with shared rules and contracts in `src/domain/progression.ts`. Emulator-verified; not yet deployed to `bhaktara-dev`.
+
+| Callable | Input | Notes |
+|---|---|---|
+| `setTimezone` | `{ timezone, language? }` | Creates `users/{uid}` with default preferences if missing (server-owned profile). A change is accepted at most once per 24 h; a refused change returns the stored zone with `reason: "TIMEZONE_CHANGE_LIMIT"` instead of failing, because the app calls it on every start. |
+| `startSession` | `{ sessionId, type: JAAP\|MEDITATION, targetMalas?, targetMinutes?, deityId? }` | The **client generates `sessionId`** (16–64 URL-safe chars), so a retried start returns the existing session. Starting a session makes it the user's only completable session of that type (`userStats.activeSessions`), so parallel sessions cannot multiply credit. Rate limit: 300 starts per practice day. |
+| `completeSession` | `{ sessionId, malasCompleted? \| minutesCompleted? }` | Credit is bounded by server time: 60 s per mala, minutes ≤ elapsed (15 s grace for the app's clock). A claim above the bound is reduced; nothing creditable is `SESSION_TOO_SHORT`. Older than 12 h is `SESSION_EXPIRED`; a replaced session is `SESSION_SUPERSEDED`. The result is stored on the session, so **retries return the same result** (or the same rejection). |
+| `completePrayerChecklist` | `{ bhaktiDay?, itemIds }` | `itemIds` must cover `appConfig/sadhana.prayerItems` (`CHECKLIST_INCOMPLETE`). The day is the server's; the client day is only logged when it differs. Already done today returns `status: "ALREADY_DONE"`. |
+
+Every practice call returns a `PracticeResult`: XP granted, ledger lines (GRANTED/CAPPED), totals, level and rank (with level-up/rank-up flags), streak, today's tasks, completed challenges and unlocked badges. The app shows it without another read.
+
+- **Transaction:** one Firestore transaction per practice call reads the session, profile, `userStats`, the day, the user's challenge progress and the candidate ledger documents, then writes all changes. Rejections are committed (the session is marked REJECTED) and thrown after the transaction.
+- **Reasons** travel in `HttpsError.details.reason` (`SESSION_TOO_SHORT`, `SESSION_EXPIRED`, `SESSION_SUPERSEDED`, `SESSION_TYPE_MISMATCH`, `RATE_LIMITED`, `CHECKLIST_INCOMPLETE`).
+- **Daily cap:** XP beyond 300 is logged with status `CAPPED`; a reward that partly fits is granted up to the cap.
+- **Config:** `appConfig/gamification` and `appConfig/sadhana` are cached per instance for 60 s (not in the emulator); missing or invalid documents fall back to the doc 10 defaults with an error log.
+- **`expireChallenges`** runs daily at 04:05 IST and marks ended ACTIVE `userChallenges` as EXPIRED (index `status` + `expiresAt`).
+- Deferred to M3: `recordMandirVisit`, `recordContentListen`, weekly league XP.
