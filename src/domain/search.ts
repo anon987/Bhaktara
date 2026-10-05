@@ -30,3 +30,32 @@ export function buildSearchTokens(sources: string[]): string[] {
   }
   return [...tokens].slice(0, 200);
 }
+
+export type SearchDeity = {
+  name: { hi: string; en: string };
+  aliases: string[];
+};
+// Doc 22 B1 token sources for a content item: titles, tags, deity names and
+// aliases (unknown deities fall back to their ID) and category IDs. Used by the
+// manifest importer and the CMS Cloud Functions so both index identically.
+export function contentSearchTokens(
+  content: {
+    title: { hi: string; en: string };
+    tags: string[];
+    deityIds: string[];
+    categoryIds: string[];
+  },
+  deities: ReadonlyMap<string, SearchDeity>,
+): string[] {
+  const deityTerms = content.deityIds.flatMap((id) => {
+    const deity = deities.get(id);
+    return deity ? [deity.name.en, deity.name.hi, ...deity.aliases] : [id];
+  });
+  return buildSearchTokens([
+    content.title.en,
+    content.title.hi,
+    ...content.tags,
+    ...deityTerms,
+    ...content.categoryIds,
+  ]);
+}

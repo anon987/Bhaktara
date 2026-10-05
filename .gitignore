@@ -70,3 +70,6 @@ GoogleService-Info.plist
 
 # Claude Code agent worktrees (each is a full checkout of another branch)
 .claude/worktrees/
+
+# Admin CMS functions bundle
+functions/lib/

@@ -1,0 +1,25 @@
+{
+  "name": "bhaktara-functions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bhaktara Admin CMS Cloud Functions (2nd gen). Deploying requires the Blaze plan.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "tsx --test --test-concurrency=1 test/unit/*.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "~6.0.3"
+  }
+}
