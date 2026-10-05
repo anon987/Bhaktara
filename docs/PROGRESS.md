@@ -1,10 +1,10 @@
 # Bhaktara progress and handoff
 
-Last updated: **2026-10-05** (M2 habit layer).
+Last updated: **2026-10-06** (M2 habit layer deployed to dev).
 
 ## Current checkpoint
 
-Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M1 app features are verified on a Samsung SM_E076B. **The M2 habit layer is code-complete on `feature/m2-progression` (server) and `feature/m2-sadhana-sync` (app)**: server-authoritative practice sessions, reward ledger, XP, levels, streaks, daily/weekly challenges and badges in Cloud Functions, and redesigned devotional Sadhana screens wired to them. The Blaze plan is now enabled on `bhaktara-dev` (operator, 2026-10-05), but **no function has been deployed yet**: the first deploy is billed and waits for the operator's go-ahead, so the CMS and the habit layer still run only in the emulators.
+Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M1 app features are verified on a Samsung SM_E076B. **The M2 habit layer is code-complete on `feature/m2-progression` (server) and `feature/m2-sadhana-sync` (app)**: server-authoritative practice sessions, reward ledger, XP, levels, streaks, daily/weekly challenges and badges in Cloud Functions, and redesigned devotional Sadhana screens wired to them. The Blaze plan is enabled on `bhaktara-dev`, and **all 24 Cloud Functions, the rules and the indexes are deployed there (2026-10-06)**, with the habit config, V1 badges and development challenges seeded. A live smoke test and the phone confirm XP, streak, badges and server-timed sessions. Not yet deployed: the Cloud Run media processor and the admin web Hosting; R2 upload secrets are not set.
 
 Live milestone status is in [MILESTONES.md](MILESTONES.md), generated from `docs/progress/roadmap.json` (`npm run progress`; CI runs `progress:check`).
 
@@ -12,10 +12,11 @@ Branches: `main` (production), `develop` (integration), `feature/*` merged into 
 
 ## Start here (next session)
 
-1. **Deploy to `bhaktara-dev`** once the operator confirms (blocker `dev-functions-deploy`): `firebase deploy --project dev --only firestore:rules,firestore:indexes,functions`, then `npm run seed:progression:dev` (gamification and Sadhana config, V1 badges, development challenges). This unblocks the CMS items and every M2 server item.
-2. **Rebuild the Android app** (native packages added: `@react-native-firebase/functions`, `expo-haptics`; ~9 min, [ANDROID_DEVICE.md](ANDROID_DEVICE.md)) and verify on the phone: a mala earns XP after a minute, a too-fast mala is explained, meditation and prayer bless, the streak lamp lights, the calendar fills, airplane mode practises without earning. Ask the operator before installing if another app is open.
-3. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`.
-4. Still open from M1: `p-11` (deity list), real launch content, "Save wallpaper" on device.
+1. **Ask the operator how the new practice screens feel on the phone** (jaap mala, dhyan lamp, prayer thali, blessing sheet) and adjust. A meditation was credited on the phone on 2026-10-06 (30 XP, streak 1); jaap with a real minute-long mala, prayer, history and airplane mode still need a hands-on check.
+2. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`, then `npm run seed:progression:dev`.
+3. **Admin CMS live check:** deploy the admin web to Hosting (`npm run admin:build`, `firebase deploy --project dev --only hosting`) and verify sign-in and roles against the deployed functions.
+4. **Media pipeline (needs confirmation, billed/token):** create the R2 upload token (`m0-r2-token`), store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, deploy the Cloud Run processor and set `MEDIA_PROCESSOR_URL`.
+5. Still open from M1: `p-11` (deity list), real launch content, "Save wallpaper" on device.
 
 Working rules for this repository:
 - Run at most two background agents at once and never a Gradle build alongside two busy agents (the workstation crashed under more).
@@ -45,7 +46,14 @@ Decisions: D-050 (earning needs a connection; offline practice is kept on the de
 - Tests: 129 Jest tests pass (practice flows with a fake server: one session per mala, blessing, offline note, too-fast note, leftover beads).
 - Visually checked in the web preview at phone size (Hindi). The blessing sheet with real XP is covered by Jest only until the functions are deployed.
 
+Deployed to `bhaktara-dev` on 2026-10-06: `firebase deploy --project dev --non-interactive --force --only firestore,functions` (24 functions in asia-south1), then `npm run seed:progression:dev`. The phone runs the new native build (RNFB functions, expo-haptics) against it.
+
 Gotchas found this session:
+- **First 2nd-gen deploy:** the CLI enables Cloud Functions, Build, Artifact Registry, Run, Eventarc and Scheduler. The four Firestore triggers failed once with "Permission denied while using the Eventarc Service Agent" (propagation) and deployed on a retry a few minutes later. `--force` is needed to accept their retry policy (they are idempotent). The CLI set a 1-day cleanup policy on the asia-south1 image repository.
+- **R2 secrets:** the CLI resolves `defineSecret` params for the whole codebase, even for excluded functions, so the R2 secrets are now declared only when `R2_UPLOAD_SECRETS=true`; until then `requestUploadUrl` answers that uploads are not configured.
+- **Firestore index:** ordering `users/{uid}/days` by document ID descending failed on the real project (`failed-precondition`, the emulator does not enforce indexes). The history query now uses an ascending ID range and reverses in code. The provider logs the error code of a failed refresh.
+- **Android text:** bold Devanagari in a self-sizing `Text` inside a centred pill lost its last word ("शुरू करें" → "शुरू"); giving the text the pill's full width fixed it. Watch for this in other pills.
+- **Node smoke tests:** in an `.mts` script the JS SDK's callable did not attach the ID token (ESM/CJS split); calling the HTTPS endpoint with `Authorization: Bearer <idToken>` works.
 - **Jest hung** while crawling `.claude/worktrees` (nine stale M1 agent worktrees, ~4.9 GB) and `android/` build output; `jest.config.js` now limits `roots` to `tests`, `src` and `modules`. The worktrees themselves are untouched.
 - **Web preview mode:** `.env.local` selects cloud mode, and `EXPO_PUBLIC_BACKEND_MODE=emulator` on the command line did not override it in the web bundle (also not with `EXPO_NO_DOTENV=1`). To preview against the emulators, temporarily select emulator mode in `.env.local` or investigate further.
 
