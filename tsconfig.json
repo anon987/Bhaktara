@@ -3,6 +3,7 @@
   "include": [
     "App.tsx",
     "index.ts",
+    "modules/**/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "tests/**/*.ts",

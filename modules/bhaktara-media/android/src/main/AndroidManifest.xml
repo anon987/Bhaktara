@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <!-- WallpaperManager.setStream needs this normal (install-time) permission. -->
+  <uses-permission android:name="android.permission.SET_WALLPAPER" />
+  <!-- RingtoneManager.setActualDefaultRingtoneUri needs this special app-op. The user grants it
+       on the system "Modify system settings" screen, opened only after tapping "Set as ringtone". -->
+  <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+</manifest>

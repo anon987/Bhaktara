@@ -1,21 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { Heart, Play, Share2 } from "lucide-react-native";
+import { Heart, Play } from "lucide-react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
 import {
   Button,
-  Card,
   IconButton,
   Notice,
   Page,
   Row,
   Txt,
-  useUnavailable,
 } from "../../components/ui";
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { colors } from "../../theme/tokens";
-import { platformServices } from "../../services/platform";
+import { SaveActions } from "./SaveActions";
 export function ContentScreen({
   route,
   navigation,
@@ -26,7 +24,6 @@ export function ContentScreen({
     "loading",
   );
   const [attempt, setAttempt] = useState(0);
-  const unavailable = useUnavailable();
   const item = catalog?.content.find(
     (value) => value.id === route.params.contentId,
   );
@@ -109,25 +106,7 @@ export function ContentScreen({
           <Notice text={t("noAudio")} />
         </>
       )}
-      {["WALLPAPER", "RINGTONE", "STATUS"].includes(item.type) && (
-        <Card>
-          <Button
-            label={t("save")}
-            onPress={() => unavailable("adsUnavailable")}
-          />
-          {item.type === "STATUS" && (
-            <Button
-              secondary
-              icon={Share2}
-              label={t("share")}
-              onPress={() => {
-                void platformServices.share.shareStatus(item.media.thumb.key);
-                unavailable("shareUnavailable");
-              }}
-            />
-          )}
-        </Card>
-      )}
+      <SaveActions item={item} />
       <Txt size={11} muted>
         {t("demo")}
       </Txt>
