@@ -57,7 +57,8 @@ type ProgressionValue = {
   resetMeditation: () => void;
   setMeditationMinutes: (minutes: number) => void;
   // Prayer checklist.
-  offerPrayer: (itemIds: string[]) => Promise<boolean>;
+  // The server's status, or null when it could not be reached.
+  offerPrayer: (itemIds: string[]) => Promise<PracticeResult["status"] | null>;
   blessing: Blessing | null;
   dismissBlessing: () => void;
   // Latest mala result, for the inline jaap celebration.
@@ -160,6 +161,9 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
 
   const celebrate = useCallback(
     (kind: PracticeKind, result: PracticeResult) => {
+      // A repeat of a practice already credited today earns nothing; the
+      // screen closes it quietly instead of showing a 0 XP blessing.
+      if (result.status === "ALREADY_DONE") return;
       const entry = { kind, result, key: nextKey() };
       // Every mala gets the inline celebration; milestones get the full sheet.
       if (kind === "mala") setMalaBlessing(entry);
@@ -405,17 +409,17 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
   const offerPrayer = useCallback(
     async (itemIds: string[]) => {
       completeTask("prayer");
-      if (!progression) return true;
+      if (!progression) return "COMPLETED" as const;
       try {
         const result = await progression.completePrayer({
           bhaktiDay: today(),
           itemIds,
         });
         celebrate("prayer", result);
-        return true;
+        return result.status;
       } catch (error) {
         fail(practiceFailure(error));
-        return false;
+        return null;
       }
     },
     [completeTask, progression, today, celebrate, fail],

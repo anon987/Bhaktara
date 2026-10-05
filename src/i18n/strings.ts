@@ -495,6 +495,11 @@ export const strings = {
   ],
   aartiRounds: ["rounds", "चक्कर"],
   aartiAuto: ["Do the aarti for me", "अपने आप आरती करें"],
+  pujaAgain: ["Do the puja again", "फिर से पूजा करें"],
+  pujaRepeatDone: [
+    "Puja complete. Today’s XP was already given.",
+    "पूजा संपन्न। आज के अंक पहले ही मिल चुके हैं।",
+  ],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {
