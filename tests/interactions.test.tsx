@@ -126,29 +126,41 @@ test("yesterday's leftover beads do not count toward today (D-051)", async () =>
   expect(state(screen).days).toEqual({});
 });
 
-test("prayer is offered step by step on the thali", async () => {
+test("prayer is a short puja before the chosen deity (D-053)", async () => {
   const screen = render(
     <PrayerScreen navigation={navigation as never} route={{} as never} />,
     { wrapper: Wrapper },
   );
   await waitFor(() =>
-    expect(screen.getByText("Step 1 / 3 · Flowers")).toBeTruthy(),
+    expect(screen.getByText("Step 1 / 6 · Flowers")).toBeTruthy(),
   );
-  // One step at a time; completing is offered only after the last one.
-  expect(screen.queryByText("Complete the prayer")).toBeNull();
-  fireEvent.press(screen.getByText("Offer · Flowers"));
-  expect(screen.getByText("Set one good intention")).toBeTruthy();
-  fireEvent.press(screen.getByText("Offer · Lamp"));
-  fireEvent.press(screen.getByText("Offer · Incense"));
+  // The shrine sizes itself to its space (layout events do not fire in Jest).
+  fireEvent(screen.getByTestId("puja-stage"), "layout", {
+    nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 360 } },
+  });
+  // The deity is the chosen one (first in the catalog by default).
+  expect(screen.getByText("Om Namah Shivaya")).toBeTruthy();
+  fireEvent.press(screen.getByText("Offer flowers"));
+  expect(screen.getByText("Om dhoopam aaghrapayami")).toBeTruthy();
+  fireEvent.press(screen.getByText("Offer incense"));
+  fireEvent.press(screen.getByText("Light the lamp"));
+  fireEvent.press(screen.getByText("Offer prasad"));
+  // Aarti: three rounds round the deity; the automatic aarti does them.
+  expect(screen.getByText("Aarti: 0 / 3 rounds")).toBeTruthy();
+  fireEvent.press(screen.getByText("Do the aarti for me"));
+  await waitFor(
+    () => expect(screen.getByText("Bow with folded hands")).toBeTruthy(),
+    { timeout: 10000 },
+  );
   expect(state(screen).days).toEqual({});
   await act(async () => {
-    fireEvent.press(screen.getByText("Complete the prayer"));
+    fireEvent.press(screen.getByText("Bow with folded hands"));
   });
   expect(state(screen).days[localPracticeDay()].prayer).toBe(true);
   await waitFor(() =>
     expect(screen.getByText("Today’s prayer is offered.")).toBeTruthy(),
   );
-});
+}, 20000);
 
 test("elapsed meditation restored from storage completes locally", async () => {
   jest.spyOn(localStore, "read").mockResolvedValue({

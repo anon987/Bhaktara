@@ -12,7 +12,7 @@ Branches: `main` (production), `develop` (integration), `feature/*` merged into 
 
 ## Start here (next session)
 
-1. **Ask the operator how the new practice screens feel on the phone** (jaap mala, dhyan lamp, prayer thali, blessing sheet) and adjust. A meditation was credited on the phone on 2026-10-06 (30 XP, streak 1); jaap with a real minute-long mala, prayer, history and airplane mode still need a hands-on check.
+1. **Ask the operator how the new practice screens feel on the phone** (jaap mala, dhyan lamp, the new puja, blessing sheet) and adjust. A meditation was credited on the phone on 2026-10-06 (30 XP, streak 1); jaap with a real minute-long mala, prayer, history and airplane mode still need a hands-on check.
 2. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`, then `npm run seed:progression:dev`.
 3. **Admin CMS live check:** the admin web is live at https://bhaktara-dev.web.app (2026-10-06). The operator account holds SUPER_ADMIN (see [ADMIN_CMS.md](ADMIN_CMS.md)); verify content CRUD, banners, the Home manager and the audit log against the deployed functions.
 4. **Media pipeline (needs confirmation, billed/token):** create the R2 upload token (`m0-r2-token`), store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, deploy the Cloud Run processor and set `MEDIA_PROCESSOR_URL`.
@@ -40,7 +40,7 @@ Decisions: D-050 (earning needs a connection; offline practice is kept on the de
 - `ProgressionProvider` confirms the timezone, loads a snapshot (stats, today, 42 days, challenges, badges) and runs the practice flows; `BlessingSheet` shows XP, streak, level, sankalps and milestones with falling petals.
 - Jaap: a 108-bead mala (sumeru and tassel, the deity's mantra and traditional mala: rudraksha, tulsi, chandan…), the whole screen is the tap target, haptic tick per bead, bell and petals per mala, "+15 अंक" rising from the mala. One server session per mala.
 - Dhyan: duration tiles, a diya with a breathing halo and "साँस लें / साँस छोड़ें", a light ring that fills, three bell strikes at the end.
-- Prarthana: a guided puja thali, one step at a time (पुष्प, दीप, धूप), an aarti lamp circling the plate on completion.
+- Prarthana (reworked 2026-10-06, D-053): a short puja before the chosen deity in a small mandir — पुष्प, धूप, दीप, नैवेद्य with their Sanskrit lines, an aarti circled round the deity with a finger (three rounds, automatic fallback), then the kshama prarthana and pranam. The earlier thali-only version felt wrong to the operator: no deity, mindfulness steps instead of puja, wrong order, aarti that played by itself.
 - Sadhana tab: akhand-jyoti streak lamp with level garland, today's three lamps, sankalp cards with marigold-garland progress, a lamp calendar and milestone medallions. Home and Profile show real XP, level and streak once the server answers.
 - The bell (`assets/sounds/bell.m4a`) is synthesised by `scripts/media/generate-bell.py` and stays silent while a bhajan plays.
 - Tests: 129 Jest tests pass (practice flows with a fake server: one session per mala, blessing, offline note, too-fast note, leftover beads).

@@ -423,22 +423,11 @@ export const strings = {
   endDhyan: ["End meditation", "ध्यान समाप्त करें"],
   dhyanDone: ["Meditation complete. Om shanti.", "ध्यान पूर्ण। ॐ शांति।"],
   // Prayer
-  prarthanaHint: [
-    "Offer each step on the thali, one by one.",
-    "हर चरण को एक-एक करके थाली में अर्पित करें।",
-  ],
   offer: ["Offer", "अर्पित करें"],
-  offered: ["Offered", "अर्पित"],
-  completePrayer: ["Complete the prayer", "प्रार्थना पूर्ण करें"],
   prayerDoneToday: [
     "Today’s prayer is offered.",
     "आज की प्रार्थना अर्पित हो चुकी है।",
   ],
-  offeringPushp: ["Flowers", "पुष्प"],
-  offeringDeep: ["Lamp", "दीप"],
-  offeringDhoop: ["Incense", "धूप"],
-  offeringAkshat: ["Rice and kumkum", "अक्षत-रोली"],
-  offeringGhanti: ["Bell", "घंटी"],
   step: ["Step", "चरण"],
   // Blessing sheet
   blessMala: ["Mala complete", "माला पूर्ण"],
@@ -482,6 +471,30 @@ export const strings = {
   longestStreak: ["Longest streak", "सबसे लंबी लगातार"],
   milestones: ["Milestones", "पड़ाव"],
   notYet: ["Not yet", "अभी नहीं"],
+  // Puja (prayer task, D-053)
+  pujaHint: [
+    "A short puja for your chosen deity",
+    "अपने इष्ट देव की छोटी-सी पूजा",
+  ],
+  pujaChange: ["Change", "बदलें"],
+  pujaChoose: ["Whom will you worship today?", "आज किनकी पूजा करेंगे?"],
+  pujaStepPushp: ["Flowers", "पुष्प"],
+  pujaStepDhoop: ["Incense", "धूप"],
+  pujaStepDeep: ["Lamp", "दीप"],
+  pujaStepNaivedya: ["Prasad", "नैवेद्य"],
+  pujaStepAarti: ["Aarti", "आरती"],
+  pujaStepPranam: ["Pranam", "प्रणाम"],
+  pujaDoPushp: ["Offer flowers", "फूल चढ़ाएँ"],
+  pujaDoDhoop: ["Offer incense", "धूप दिखाएँ"],
+  pujaDoDeep: ["Light the lamp", "दीप जलाएँ"],
+  pujaDoNaivedya: ["Offer prasad", "भोग लगाएँ"],
+  pujaDoPranam: ["Bow with folded hands", "हाथ जोड़कर प्रणाम करें"],
+  aartiHint: [
+    "Move the plate round the Lord with your finger",
+    "थाली को उँगली से प्रभु के चारों ओर घुमाएँ",
+  ],
+  aartiRounds: ["rounds", "चक्कर"],
+  aartiAuto: ["Do the aarti for me", "अपने आप आरती करें"],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {

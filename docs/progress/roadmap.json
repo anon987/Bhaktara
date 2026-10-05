@@ -633,10 +633,11 @@
           "id": "m2-prayer",
           "title": "Sadhana: prayer checklist",
           "status": "in_progress",
-          "notes": "Guided puja thali: one step at a time, each offering placed on the plate, aarti lamp on completion; completePrayerChecklist validates the configured steps. On-device check by the operator pending.",
+          "notes": "Short puja before the chosen deity (D-053): panchopachar offerings with Sanskrit line and Hindi meaning, finger-circled aarti (3 rounds, automatic fallback), kshama prarthana and pranam record the prayer via completePrayerChecklist. Live on bhaktara-dev; verified in the phone-size web preview; on-device check by the operator pending.",
           "evidence": [
-            "src/features/sadhana/PracticeScreens.tsx",
-            "src/features/sadhana/art/Thali.tsx"
+            "src/features/sadhana/PujaScreen.tsx",
+            "src/features/sadhana/art/Shrine.tsx",
+            "src/features/sadhana/Aarti.tsx"
           ]
         },
         {
