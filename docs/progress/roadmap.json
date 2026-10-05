@@ -380,10 +380,11 @@
           "id": "m1-favorites",
           "title": "App: favorites",
           "status": "in_progress",
-          "notes": "Device-local favorites with paginated resolution; Firestore favorites rules exist and are tested, but nothing syncs to the account yet.",
+          "notes": "Account-backed favorites (users/{uid}/favorites) with optimistic updates, persistent retry queue and one-time device migration; emulator-tested. Merged to develop; needs on-device verification. Google-account merge (D-017) pending.",
           "evidence": [
-            "src/app/providers/AppProvider.tsx",
-            "src/features/profile/FavoriteList.tsx"
+            "src/repositories/favoritesRepository.ts",
+            "src/services/favorites/sync.ts",
+            "emulator-tests/favorites.test.ts"
           ]
         },
         {
