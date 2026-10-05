@@ -26,6 +26,7 @@ import {
   resolveTarget,
   withFirestore,
 } from "../firebase/target";
+import { seedProgression } from "../progression/seed";
 
 // Validated placeholder catalog: deities, banners, sample content, the Home
 // layouts and collections, and the precomputed Home feeds. These are
@@ -156,6 +157,8 @@ export async function seed(target: FirestoreTarget) {
       });
     await batch.commit();
   });
+  // Habit-layer config, badges and development challenges (doc 10).
+  await seedProgression(target);
 }
 
 export const seedEmulator = () => seed({ kind: "emulator" });

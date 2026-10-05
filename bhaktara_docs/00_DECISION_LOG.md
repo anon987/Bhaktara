@@ -122,6 +122,12 @@ Format: ID · Decision · Date · Affects
 
 - **D-049 · Guided ringtone permission.** Setting a ringtone needs Android's "Modify system settings" special access, which is granted only on the system Settings screen and never by an in-app dialog. Bhaktara first explains the step in large type with an animated switch, then shrinks into a picture-in-picture guide ("Turn ON the switch") over that screen, watches the permission natively and returns to full screen by itself to set the sound. Without picture-in-picture it opens the screen and continues on return. Picture-in-picture is used only for this guide; status videos never enter it. · Affects: 03, 05, 15
 
+## Round 13 — Habit layer (2026-10-05)
+
+- **D-050 · Earning needs a connection.** Practice (jaap, meditation, prayer) always works, also offline, but XP, streaks, challenges and badges are earned only when the server records the practice: a jaap or meditation session must be started online so the server knows when it began. Offline practice is kept on the device and is never credited later. The app says so in plain words ("इस बार अंक नहीं मिलेंगे"). · Affects: 08, 10, 15
+- **D-051 · Jaap count per practice day.** The bead count starts again at 04:00 (D-024); beads left over from yesterday do not count toward today's mala. Malas already completed stay in the history. · Affects: 03, 10
+- **D-052 · Devotional practice screens.** Sadhana practice uses devotional metaphors instead of generic cards: a 108-bead mala with sumeru and the deity's mantra and traditional mala (jaap), a lamp with a breathing halo (meditation), a puja thali filled step by step with an aarti lamp (prayer), the streak as an akhand jyoti, today's tasks as three lamps and the history as a lamp calendar. Large type, Hindi first, one step at a time. The doc 10 numeric defaults are adopted as the initial `appConfig/gamification` values. · Affects: 03, 04, 10
+
 ## Pending / resolved items
 
 - ~~P-01~~ Resolved by D-022.

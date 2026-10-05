@@ -107,3 +107,26 @@ jest.mock("expo-video", () => {
     VideoView: (props: object) => React.createElement(View, props),
   };
 });
+
+// Haptics need a native module; practice screens only fire and forget.
+jest.mock("expo-haptics", () => ({
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: "light" },
+  NotificationFeedbackType: { Success: "success" },
+}));
+
+// expo-audio needs its native module; the Sadhana bell only plays and seeks.
+// Player tests install their own richer fake.
+jest.mock("expo-audio", () => ({
+  createAudioPlayer: () => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+    remove: jest.fn(),
+    replace: jest.fn(),
+    addListener: jest.fn(),
+    playing: false,
+  }),
+  setAudioModeAsync: jest.fn(async () => undefined),
+}));

@@ -4,7 +4,10 @@ module.exports = {
     "^lucide-react-native$":
       "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js",
   },
-  testMatch: ["**/tests/**/*.test.ts", "**/tests/**/*.test.tsx"], // Agent worktrees live under .claude/ and hold full repo copies.
+  testMatch: ["**/tests/**/*.test.ts", "**/tests/**/*.test.tsx"],
+  // Crawl only source folders: android/ build output and agent worktrees under
+  // .claude/ hold gigabytes that made test discovery hang.
+  roots: ["<rootDir>/tests", "<rootDir>/src", "<rootDir>/modules"], // Agent worktrees live under .claude/ and hold full repo copies.
   // admin/ is a separate Vite app with its own dependencies and Vitest suite.
   testPathIgnorePatterns: [
     "/node_modules/",

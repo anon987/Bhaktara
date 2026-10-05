@@ -11,11 +11,20 @@ import {
   signInAnonymously,
 } from "@react-native-firebase/auth";
 import * as nativeFirestore from "@react-native-firebase/firestore";
+import {
+  connectFunctionsEmulator,
+  getFunctions,
+  httpsCallable,
+} from "@react-native-firebase/functions";
 import type { Firestore } from "firebase/firestore";
 import { createSessionService } from "../auth/session";
 import { createFirestoreRepository } from "../../repositories/firestoreRepository";
 import { createFirestoreFavoritesRepository } from "../../repositories/favoritesRepository";
 import { FirestoreApi } from "../../repositories/firestoreApi";
+import {
+  Callable,
+  createProgressionRepository,
+} from "../../repositories/progressionRepository";
 import { startAppCheck } from "./appCheck";
 import type { FirebaseConfig } from "./client";
 
@@ -56,10 +65,16 @@ export async function createFirebaseClient(config: FirebaseConfig) {
   }
   const auth = getAuth(app);
   const db = nativeFirestore.getFirestore(app);
+  // Callables live in asia-south1, next to Firestore (functions/src/index.ts).
+  const functions = getFunctions(app, "asia-south1");
   if (config.mode === "emulator") {
     connectAuthEmulator(auth, `http://${config.host}:9099`);
     nativeFirestore.connectFirestoreEmulator(db, config.host, 8080);
+    connectFunctionsEmulator(functions, config.host, 5001);
   }
+  const call: Callable = async (name, data) =>
+    (await httpsCallable(functions, name, { timeout: 20_000 })(data))
+      .data as never;
   let restored: Promise<void> | null = null;
   const session = createSessionService({
     // The first auth-state event means the persisted session (if any) is restored.
@@ -92,6 +107,12 @@ export async function createFirebaseClient(config: FirebaseConfig) {
       firestore,
       session,
       firestoreApi,
+    ),
+    progression: createProgressionRepository(
+      firestore,
+      session,
+      firestoreApi,
+      call,
     ),
   };
 }

@@ -62,7 +62,25 @@ service cloud.firestore {
     }
     match /userStats/{uid} { allow get: if owner(uid); }
     match /entitlements/{uid} { allow get: if owner(uid); }
-    match /userChallenges/{id} { allow read: if owner(resource.data.uid); }
+    // Doc IDs are {uid}_{challengeId}_{periodKey}, so the app can get its own
+    // progress by ID, including challenges it has not started (absent doc).
+    match /userChallenges/{id} {
+      allow get: if authenticated() && id.split('_')[0] == request.auth.uid;
+      allow list: if authenticated() && resource.data.uid == request.auth.uid && bounded(50);
+    }
+    // Habit-layer catalog (doc 06 §5): active challenges and badges, and the
+    // gamification and Sadhana config the app displays. Admin-written only.
+    match /challenges/{id} {
+      allow get: if authenticated() && resource.data.isActive == true;
+      allow list: if authenticated() && resource.data.isActive == true && bounded(50);
+    }
+    match /badges/{id} {
+      allow get: if authenticated() && resource.data.isActive == true;
+      allow list: if authenticated() && resource.data.isActive == true && bounded(50);
+    }
+    match /appConfig/{id} {
+      allow get: if authenticated() && id in ['gamification', 'sadhana'];
+    }
     match /leagueCohorts/{id} {
       allow get: if signedIn();
       allow list: if signedIn() && bounded(30);

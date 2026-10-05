@@ -30,6 +30,9 @@ import {
   useUnavailable,
 } from "../../components/ui";
 import { FavoriteList } from "./FavoriteList";
+import { Milestones, useStats } from "../sadhana/SadhanaParts";
+import { useOptionalProgression } from "../sadhana/ProgressionProvider";
+import { rankNames } from "../../domain/progression";
 import { colors } from "../../theme/tokens";
 import { CatalogMode } from "../../domain/models";
 import { platformServices } from "../../services/platform";
@@ -38,10 +41,11 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootParams>
 >;
 export function ProfileScreen({ navigation }: Props) {
-  const { t, local, catalog, setLanguage, setCatalogMode, connection } =
-    useApp();
+  const { t, local, setLanguage, setCatalogMode, connection } = useApp();
   const unavailable = useUnavailable();
   const showDialog = useDialog();
+  const stats = useStats();
+  const snapshot = useOptionalProgression()?.snapshot;
   return (
     <Page title={t("profile")}>
       <DataBoundary>
@@ -68,7 +72,7 @@ export function ProfileScreen({ navigation }: Props) {
             )}
           </Txt>
           <Chip
-            label={`${t("rank")} · ${t("level")} ${catalog?.sampleStats.level}`}
+            label={`${stats.real ? rankNames[stats.rank][local.language] : t("rank")} · ${t("level")} ${stats.level}`}
             onPress={() => showDialog(t("rank"), t("rankInfo"))}
           />
         </View>
@@ -77,22 +81,24 @@ export function ProfileScreen({ navigation }: Props) {
             <View style={{ alignItems: "center", gap: 5 }}>
               <Sparkles size={23} color={colors.gold} />
               <Txt bold size={24}>
-                {catalog?.sampleStats.totalXp} XP
+                {stats.totalXp} {t("points")}
               </Txt>
             </View>
             <View style={{ alignItems: "center", gap: 5 }}>
               <Flame size={23} color={colors.primary} />
               <Txt bold size={24}>
-                {catalog?.sampleStats.currentStreak}
+                {stats.currentStreak}
               </Txt>
               <Txt muted size={12}>
                 {t("streak")}
               </Txt>
             </View>
           </Row>
-          <Txt muted size={11} style={{ textAlign: "center" }}>
-            {t("sample")}
-          </Txt>
+          {!stats.real && (
+            <Txt muted size={11} style={{ textAlign: "center" }}>
+              {t("sample")}
+            </Txt>
+          )}
         </Card>
         <Button
           secondary
@@ -100,31 +106,35 @@ export function ProfileScreen({ navigation }: Props) {
           onPress={() => unavailable("authUnavailable")}
         />
         <Section title={t("badges")} />
-        <Row>
-          {[
-            { icon: Flower2, en: "First Sadhana", hi: "पहली साधना" },
-            { icon: Flame, en: "7-day streak", hi: "7 दिन की स्ट्रीक" },
-            { icon: Award, en: "First mala", hi: "पहली माला" },
-          ].map(({ icon: Icon, en, hi }) => (
-            <Card
-              key={en}
-              style={{
-                flex: 1,
-                padding: 10,
-                alignItems: "center",
-                minHeight: 132,
-              }}
-            >
-              <Icon size={31} color={colors.gold} />
-              <Txt size={11} bold style={{ textAlign: "center" }}>
-                {local.language === "en" ? en : hi}
-              </Txt>
-              <Txt muted size={10}>
-                {t("preview")}
-              </Txt>
-            </Card>
-          ))}
-        </Row>
+        {snapshot && snapshot.badges.length > 0 ? (
+          <Milestones badges={snapshot.badges} />
+        ) : (
+          <Row>
+            {[
+              { icon: Flower2, en: "First Sadhana", hi: "पहली साधना" },
+              { icon: Flame, en: "7-day streak", hi: "7 दिन की स्ट्रीक" },
+              { icon: Award, en: "First mala", hi: "पहली माला" },
+            ].map(({ icon: Icon, en, hi }) => (
+              <Card
+                key={en}
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  alignItems: "center",
+                  minHeight: 132,
+                }}
+              >
+                <Icon size={31} color={colors.gold} />
+                <Txt size={11} bold style={{ textAlign: "center" }}>
+                  {local.language === "en" ? en : hi}
+                </Txt>
+                <Txt muted size={10}>
+                  {t("preview")}
+                </Txt>
+              </Card>
+            ))}
+          </Row>
+        )}
         <Section title={t("favorites")} />
         <FavoriteList
           key={connection}

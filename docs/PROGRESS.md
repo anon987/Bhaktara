@@ -1,10 +1,10 @@
 # Bhaktara progress and handoff
 
-Last updated: **2026-10-05**.
+Last updated: **2026-10-05** (M2 habit layer).
 
 ## Current checkpoint
 
-Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M0 is mostly done; M1 app features are built and verified on a Samsung SM_E076B: catalog, search, detail, background audio with lock-screen controls, status video, wallpaper set, ringtone save and the guided set-ringtone flow. The CMS backend (Cloud Functions, admin web app, Cloud Run media processor) is code-complete and emulator-verified but cannot be deployed on the Spark plan.
+Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M1 app features are verified on a Samsung SM_E076B. **The M2 habit layer is code-complete on `feature/m2-progression` (server) and `feature/m2-sadhana-sync` (app)**: server-authoritative practice sessions, reward ledger, XP, levels, streaks, daily/weekly challenges and badges in Cloud Functions, and redesigned devotional Sadhana screens wired to them. The Blaze plan is now enabled on `bhaktara-dev` (operator, 2026-10-05), but **no function has been deployed yet**: the first deploy is billed and waits for the operator's go-ahead, so the CMS and the habit layer still run only in the emulators.
 
 Live milestone status is in [MILESTONES.md](MILESTONES.md), generated from `docs/progress/roadmap.json` (`npm run progress`; CI runs `progress:check`).
 
@@ -12,19 +12,42 @@ Branches: `main` (production), `develop` (integration), `feature/*` merged into 
 
 ## Start here (next session)
 
-1. **Decide the open blockers** (they gate most remaining M1 items):
-   - `blaze-plan`: enable billing on `bhaktara-dev` to deploy Functions and Cloud Run (admin auth/CRUD, banners, Home manager, audit, media pipeline).
-   - `p-11`: the canonical deity list (blocks deity and wallpaper seeding).
-   - Launch content: real bhajans, aartis, mantras, chalisas, ringtones and status videos via `npm run content:import -- --project dev` ([CONTENT_IMPORT.md](CONTENT_IMPORT.md)).
-2. **Finish open M1 app items**: confirm "Save wallpaper" on the device (Pictures/Bhaktara), and spot-check favorites sync and the CMS-driven Home.
-3. **Start M2 (habit layer)** without waiting for Blaze: server-authoritative practice sessions, XP, streaks and challenges are emulator-testable (`npm run test:emulators`, `npm run test:functions`).
+1. **Deploy to `bhaktara-dev`** once the operator confirms (blocker `dev-functions-deploy`): `firebase deploy --project dev --only firestore:rules,firestore:indexes,functions`, then `npm run seed:progression:dev` (gamification and Sadhana config, V1 badges, development challenges). This unblocks the CMS items and every M2 server item.
+2. **Rebuild the Android app** (native packages added: `@react-native-firebase/functions`, `expo-haptics`; ~9 min, [ANDROID_DEVICE.md](ANDROID_DEVICE.md)) and verify on the phone: a mala earns XP after a minute, a too-fast mala is explained, meditation and prayer bless, the streak lamp lights, the calendar fills, airplane mode practises without earning. Ask the operator before installing if another app is open.
+3. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`.
+4. Still open from M1: `p-11` (deity list), real launch content, "Save wallpaper" on device.
 
 Working rules for this repository:
 - Run at most two background agents at once and never a Gradle build alongside two busy agents (the workstation crashed under more).
 - Never print or commit `.env.r2`, `.env.local`, `google-services.json` or App Check debug tokens.
-- Dev is the default target; staging/prod, DNS, token creation and cache purges need explicit confirmation (doc 23).
+- Dev is the default target; staging/prod, DNS, token creation, cache purges and anything billed (including deploys) need explicit confirmation (doc 23).
 - Native changes need a rebuild ([ANDROID_DEVICE.md](ANDROID_DEVICE.md), about 9 minutes incremental); JS changes reload through Metro.
-- Bhaktara is used by elderly people: large type, Hindi first, plain words and guided flows for anything that leaves the app.
+- Bhaktara is used by elderly people: large type, Hindi first, plain words and guided flows for anything that leaves the app. Practice screens use devotional metaphors (D-052).
+
+## M2 habit layer (2026-10-05)
+
+Decisions: D-050 (earning needs a connection; offline practice is kept on the device and never credited later), D-051 (the jaap count starts again at 04:00), D-052 (devotional practice screens; doc 10 defaults adopted).
+
+**Server** (`functions/src/progression.ts`, pure rules in `functions/src/progressionEngine.ts`, shared contracts in `src/domain/progression.ts`; details in doc 08 and doc 06 checkpoints):
+- Callables `setTimezone` (also creates the server-owned profile), `startSession`, `completeSession`, `completePrayerChecklist`; scheduled `expireChallenges` (04:05 IST).
+- One transaction per practice: server-timed credit (60 s per mala; meditation minutes ≤ elapsed), daily tasks from `appConfig/sadhana`, full-Sadhana bonus, Brahma Muhurta, streak, challenges, badges, the 300 XP cap. Ledger `rewardTransactions/{uid}_{type}_{sourceId}`; client-generated session IDs and stored results make retries and parallel calls pay once; only the latest session of a type can complete.
+- Rules: own `userChallenges` by ID, active `challenges` and `badges`, `appConfig/gamification|sadhana`; progression stays server-written. New index `userChallenges(status, expiresAt)`.
+- Seed: `npm run seed:progression:dev` (also part of the emulator seed).
+- Tests: 12 engine unit tests plus 7 emulator suites (33 tests in `npm run test:functions`, all passing).
+
+**App** (`src/features/sadhana/`):
+- `ProgressionProvider` confirms the timezone, loads a snapshot (stats, today, 42 days, challenges, badges) and runs the practice flows; `BlessingSheet` shows XP, streak, level, sankalps and milestones with falling petals.
+- Jaap: a 108-bead mala (sumeru and tassel, the deity's mantra and traditional mala: rudraksha, tulsi, chandan…), the whole screen is the tap target, haptic tick per bead, bell and petals per mala, "+15 अंक" rising from the mala. One server session per mala.
+- Dhyan: duration tiles, a diya with a breathing halo and "साँस लें / साँस छोड़ें", a light ring that fills, three bell strikes at the end.
+- Prarthana: a guided puja thali, one step at a time (पुष्प, दीप, धूप), an aarti lamp circling the plate on completion.
+- Sadhana tab: akhand-jyoti streak lamp with level garland, today's three lamps, sankalp cards with marigold-garland progress, a lamp calendar and milestone medallions. Home and Profile show real XP, level and streak once the server answers.
+- The bell (`assets/sounds/bell.m4a`) is synthesised by `scripts/media/generate-bell.py` and stays silent while a bhajan plays.
+- Tests: 129 Jest tests pass (practice flows with a fake server: one session per mala, blessing, offline note, too-fast note, leftover beads).
+- Visually checked in the web preview at phone size (Hindi). The blessing sheet with real XP is covered by Jest only until the functions are deployed.
+
+Gotchas found this session:
+- **Jest hung** while crawling `.claude/worktrees` (nine stale M1 agent worktrees, ~4.9 GB) and `android/` build output; `jest.config.js` now limits `roots` to `tests`, `src` and `modules`. The worktrees themselves are untouched.
+- **Web preview mode:** `.env.local` selects cloud mode, and `EXPO_PUBLIC_BACKEND_MODE=emulator` on the command line did not override it in the web bundle (also not with `EXPO_NO_DOTENV=1`). To preview against the emulators, temporarily select emulator mode in `.env.local` or investigate further.
 
 ## Guided ringtone permission (2026-10-05)
 
@@ -82,7 +105,7 @@ The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CD
 
 ## Firebase dev project
 
-`bhaktara-dev` exists under the operator's Google account on the Spark plan; billing is off. `.firebaserc` alias `dev`; the default stays the local `demo-bhaktara`. Firestore `(default)` is Standard edition, Native mode, in `asia-south1` (Mumbai), with delete protection enabled. The repository's `firestore.rules` and all 8 composite indexes are deployed. A live unauthenticated read and write both return 403. Anonymous and Google sign-in are enabled. The Android app is registered with the debug SHA-1/SHA-256, and a Web app supplies the JavaScript SDK config. The app has a `cloud` backend mode, verified from Node: anonymous sign-in plus the catalog query against deployed rules and indexes. `seed:dev` has loaded the placeholder catalog (13 items, 5 deities, 2 banners), and `content:import --project dev` can add real items; both use the Admin SDK with Application Default Credentials. Still pending: on-device verification in cloud mode, App Check, and real launch content.
+`bhaktara-dev` exists under the operator's Google account; the Blaze plan was enabled on 2026-10-05 (nothing deployed beyond rules and indexes yet). `.firebaserc` alias `dev`; the default stays the local `demo-bhaktara`. Firestore `(default)` is Standard edition, Native mode, in `asia-south1` (Mumbai), with delete protection enabled. The repository's `firestore.rules` and all 8 composite indexes are deployed. A live unauthenticated read and write both return 403. Anonymous and Google sign-in are enabled. The Android app is registered with the debug SHA-1/SHA-256, and a Web app supplies the JavaScript SDK config. The app has a `cloud` backend mode, verified from Node: anonymous sign-in plus the catalog query against deployed rules and indexes. `seed:dev` has loaded the placeholder catalog (13 items, 5 deities, 2 banners), and `content:import --project dev` can add real items; both use the Admin SDK with Application Default Credentials. Still pending: on-device verification in cloud mode, App Check, and real launch content.
 
 ## Save, set and share (Android)
 
@@ -103,9 +126,9 @@ Verified on 2026-10-05:
 
 ## Remaining limitations and decisions
 
-- Cloud Functions and Cloud Run are not deployed (Spark plan), so the admin CMS, banners, Home manager, audit log and server media processing run only in the emulators.
+- Cloud Functions and Cloud Run are not deployed yet (Blaze is enabled; the first deploy waits for confirmation), so the admin CMS, banners, Home manager, audit log, server media processing and the habit layer run only in the emulators.
 - No launch content: the catalog holds synthetic test items only.
-- Server XP, streaks, rewards, challenges, leagues, Mandir bell audio, notifications and ads are not built (M2–M4). Sample progression in the UI is non-authoritative.
+- Server XP, streaks, challenges and badges are built but not deployed; leagues, Mandir, notifications and ads are not built (M3–M4).
 - Media is served from the rate-limited r2.dev address; a Bhaktara domain is needed before release (D-047).
 - Analytics and Crashlytics collection is disabled until the privacy policy and consent flow ship (M4).
 - Open decisions: P-11 (deity list) and P-12 (north-star KPI). Google account link/merge must precede live leagues.

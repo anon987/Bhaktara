@@ -1,15 +1,6 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
-import {
-  Check,
-  ChevronRight,
-  CircleDot,
-  Flower2,
-  HeartHandshake,
-  LockKeyhole,
-  Timer,
-  Trophy,
-} from "lucide-react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { LockKeyhole, Trophy } from "lucide-react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -18,40 +9,45 @@ import { useApp } from "../../app/providers/AppProvider";
 import {
   Button,
   Card,
-  Chip,
   DataBoundary,
   Notice,
   Page,
-  Progress,
   Row,
-  Section,
   Txt,
   useUnavailable,
 } from "../../components/ui";
 import { colors } from "../../theme/tokens";
-import { localPracticeDay } from "../../domain/practice";
 import { StringKey } from "../../i18n/strings";
 import { authService } from "../../services/integrations";
+import { useProgression } from "./ProgressionProvider";
+import {
+  LampCalendar,
+  Milestones,
+  SankalpCard,
+  StreakHero,
+  TodayLamps,
+} from "./SadhanaParts";
+
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Sadhana">,
   NativeStackScreenProps<RootParams>
 >;
+type SectionKey = "today" | "challenges" | "league" | "history";
+const sections: SectionKey[] = ["today", "challenges", "league", "history"];
+
 export function SadhanaScreen({ navigation }: Props) {
-  const { t, local, catalog } = useApp();
+  const { t } = useApp();
+  const { status, snapshot } = useProgression();
   const unavailable = useUnavailable();
-  const [section, setSection] = useState<
-    "today" | "challenges" | "league" | "history"
-  >("today");
-  const tasks = local.days[localPracticeDay()];
-  const done = Object.values(tasks ?? {}).filter(Boolean).length;
+  const [section, setSection] = useState<SectionKey>("today");
+  const earningNote =
+    status === "off"
+      ? t("deviceOnly")
+      : status === "offline"
+        ? t("earnOnline")
+        : null;
   const league = (
-    <Card
-      style={{
-        backgroundColor: colors.dark,
-        borderColor: colors.dark,
-        padding: 26,
-      }}
-    >
+    <Card style={styles.league}>
       <Trophy color="#D8B574" size={38} />
       <Txt bold size={23} style={{ color: colors.white }}>
         {t("joinLeague")}
@@ -59,7 +55,7 @@ export function SadhanaScreen({ navigation }: Props) {
       <Txt style={{ color: "#E2D3C7" }}>{t("leagueHint")}</Txt>
       <Row>
         <LockKeyhole size={17} color="#D8B574" />
-        <Txt size={12} style={{ color: "#E2D3C7" }}>
+        <Txt size={13} style={{ color: "#E2D3C7" }}>
           {t("bronze")}
         </Txt>
       </Row>
@@ -70,149 +66,126 @@ export function SadhanaScreen({ navigation }: Props) {
           unavailable("authUnavailable");
         }}
       />
-      <Txt size={11} style={{ color: "#D8C9BA" }}>
+      <Txt size={12} style={{ color: "#D8C9BA" }}>
         {t("leaguePreview")}
       </Txt>
     </Card>
   );
   return (
     <Page title={t("sadhana")} subtitle={t("dailyHint")}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {(["today", "challenges", "league", "history"] as const).map((key) => (
-          <Chip
-            key={key}
-            label={t(key)}
-            selected={section === key}
-            onPress={() => setSection(key)}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.tabs} accessibilityRole="tablist">
+        {sections.map((key) => {
+          const selected = section === key;
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setSection(key)}
+              style={[styles.tab, selected && styles.tabSelected]}
+            >
+              <Txt
+                bold
+                size={15}
+                style={{ color: selected ? colors.white : colors.ink }}
+              >
+                {t(key === "challenges" ? "sankalpTitle" : (key as StringKey))}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </View>
       <DataBoundary>
         {section === "today" && (
           <>
-            <Card style={{ backgroundColor: colors.greenPale }}>
-              <Row>
-                <Flower2 size={35} color={colors.green} />
-                <View style={{ flex: 1 }}>
-                  <Txt bold size={22}>
-                    {t("practice")}
-                  </Txt>
-                  <Txt muted size={13}>
-                    {done}/3 {t("tasks")}
-                  </Txt>
-                </View>
-              </Row>
-              <Progress value={done / 3} label={t("daily")} />
-            </Card>
-            {[
-              { key: "jaap", hint: "jaapHint", route: "Jaap", icon: CircleDot },
-              {
-                key: "meditation",
-                hint: "meditationHint",
-                route: "Meditation",
-                icon: Timer,
-              },
-              {
-                key: "prayer",
-                hint: "prayerHint",
-                route: "Prayer",
-                icon: HeartHandshake,
-              },
-            ].map(({ key, hint, route, icon: Icon }) => (
-              <Pressable
-                key={key}
-                accessibilityRole="button"
-                onPress={() => navigation.navigate(route as "Jaap")}
-              >
-                <Card>
-                  <Row>
-                    <View
-                      style={{
-                        padding: 13,
-                        backgroundColor: colors.pale,
-                        borderRadius: 17,
-                      }}
-                    >
-                      <Icon color={colors.primary} size={25} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Txt bold size={18}>
-                        {t(key as StringKey)}
-                      </Txt>
-                      <Txt muted size={12}>
-                        {tasks?.[key as "jaap"]
-                          ? t("completed")
-                          : t(hint as StringKey)}
-                      </Txt>
-                    </View>
-                    {tasks?.[key as "jaap"] ? (
-                      <Check color={colors.green} size={23} />
-                    ) : (
-                      <ChevronRight size={21} color={colors.muted} />
-                    )}
-                  </Row>
-                </Card>
-              </Pressable>
-            ))}
-            <Section title={t("league")} />
-            {league}
+            <StreakHero />
+            <TodayLamps onOpen={(route) => navigation.navigate(route)} />
           </>
         )}
         {section === "challenges" && (
           <>
-            <Txt muted>{t("challengeHint")}</Txt>
-            {catalog?.challenges.map((item) => (
-              <Card key={item.id}>
-                <Row style={{ justifyContent: "space-between" }}>
-                  <Txt size={12} bold style={{ color: colors.primary }}>
-                    {item.period === "DAILY" ? t("today") : t("challenges")}
-                  </Txt>
-                  <Txt bold style={{ color: colors.primary }}>
-                    +{item.xpReward} XP
-                  </Txt>
-                </Row>
-                <Txt bold size={23}>
-                  {item.title[local.language]}
-                </Txt>
-                <Progress
-                  value={item.progress / item.target}
-                  label={item.title[local.language]}
-                />
-                <Txt muted size={13}>
-                  {item.progress}/{item.target}
-                </Txt>
-                <Txt muted size={11}>
-                  {t("sampleChallenge")}
-                </Txt>
-              </Card>
-            ))}
+            <Txt muted size={16}>
+              {t("sankalpHint")}
+            </Txt>
+            {!snapshot ? (
+              <Notice text={t("sankalpOffline")} />
+            ) : snapshot.challenges.length === 0 ? (
+              <Notice text={t("noSankalp")} />
+            ) : (
+              snapshot.challenges.map((challenge) => (
+                <SankalpCard key={challenge.id} challenge={challenge} />
+              ))
+            )}
           </>
         )}
         {section === "league" && league}
         {section === "history" && (
           <>
-            <Txt muted>{t("historyHint")}</Txt>
-            {Object.entries(local.days)
-              .sort(([a], [b]) => b.localeCompare(a))
-              .map(([day, record]) => (
-                <Card key={day}>
-                  <Row style={{ justifyContent: "space-between" }}>
-                    <Txt bold>{day}</Txt>
-                    <Txt>
-                      {Object.values(record).filter(Boolean).length}/3{" "}
-                      {t("tasks")}
+            <LampCalendar />
+            {snapshot && (
+              <View style={styles.totals}>
+                {(
+                  [
+                    ["totalMalas", snapshot.counters.malas],
+                    ["totalMinutes", snapshot.counters.meditationMinutes],
+                    ["longestStreak", snapshot.longestStreak],
+                  ] as [StringKey, number][]
+                ).map(([label, value]) => (
+                  <View key={label} style={styles.total}>
+                    <Txt bold size={28} style={{ color: colors.primary }}>
+                      {value}
                     </Txt>
-                  </Row>
-                </Card>
-              ))}
+                    <Txt muted size={13} style={{ textAlign: "center" }}>
+                      {t(label)}
+                    </Txt>
+                  </View>
+                ))}
+              </View>
+            )}
+            {snapshot && snapshot.badges.length > 0 && (
+              <>
+                <Txt bold size={20}>
+                  {t("milestones")}
+                </Txt>
+                <Milestones badges={snapshot.badges} />
+                <Txt muted size={13}>
+                  {t("rankInfo")}
+                </Txt>
+              </>
+            )}
           </>
         )}
-        <Notice text={t("localOnly")} />
+        {earningNote && <Notice text={earningNote} />}
       </DataBoundary>
     </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tab: {
+    minHeight: 46,
+    paddingHorizontal: 16,
+    borderRadius: 23,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  tabSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  league: {
+    backgroundColor: colors.dark,
+    borderColor: colors.dark,
+    padding: 26,
+  },
+  totals: { flexDirection: "row", gap: 10 },
+  total: {
+    flex: 1,
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+});

@@ -140,10 +140,14 @@
         {
           "id": "m0-auth-profile",
           "title": "Server-owned user profile provisioning",
-          "status": "not_started",
-          "notes": "Rules deny client profile creation, so a Cloud Function must create profiles. Can be built against emulators; cloud deploy needs Blaze.",
+          "status": "blocked",
+          "notes": "setTimezone (called at app start) and the first practice call create users/{uid} server-side with default preferences; emulator-verified, including the owner-update rule.",
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
+          ],
+          "evidence": [
+            "functions/src/progression.ts",
+            "functions/test/progression.test.ts"
           ]
         },
         {
@@ -431,89 +435,89 @@
           "id": "m1-admin-auth",
           "title": "Admin: auth and roles",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: role claims + checks in every callable, grant-role script, admin web sign-in and role gate. Deploy (Functions, Hosting) needs Blaze.",
+          "notes": "Code complete and emulator-verified: role claims + checks in every callable, grant-role script, admin web sign-in and role gate. Deploy (Functions, Hosting) waits for the dev deploy.",
           "evidence": [
             "src/domain/cms.ts",
             "admin/",
             "docs/ADMIN_CMS.md"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-admin-crud",
           "title": "Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036)",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: content callables with D-036 workflow + checklist gating, admin web list/editor/transitions. Deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: content callables with D-036 workflow + checklist gating, admin web list/editor/transitions. Deploy waits for the dev deploy.",
           "evidence": [
             "functions/src/content.ts",
             "admin/"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-media-images",
           "title": "Media pipeline: image variants",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: image variants via CLI importer and the Cloud Run processMedia service (presigned staging upload → renditions → final keys). Cloud Run deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: image variants via CLI importer and the Cloud Run processMedia service (presigned staging upload → renditions → final keys). Cloud Run deploy waits for the dev deploy.",
           "evidence": [
             "scripts/media/process.ts",
             "services/media-processor/",
             "docs/MEDIA_PROCESSOR.md"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-media-audio",
           "title": "Media pipeline: audio normalization",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: loudness-normalized AAC/MP3 via CLI importer and processMedia. Cloud Run deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: loudness-normalized AAC/MP3 via CLI importer and processMedia. Cloud Run deploy waits for the dev deploy.",
           "evidence": [
             "scripts/media/process.ts",
             "services/media-processor/"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-media-video",
           "title": "Media pipeline: video renditions",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: 720p H.264 + poster via CLI importer and processMedia. Cloud Run deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: 720p H.264 + poster via CLI importer and processMedia. Cloud Run deploy waits for the dev deploy.",
           "evidence": [
             "scripts/media/process.ts",
             "services/media-processor/"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-admin-banners",
           "title": "Admin: banner manager",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: banner callables + admin web banner manager. Deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: banner callables + admin web banner manager. Deploy waits for the dev deploy.",
           "evidence": [
             "functions/src/banners.ts",
             "admin/"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-admin-home-sections",
           "title": "Admin: home section manager",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: Home manager callables (layout, preview, rebuild); admin web screen for it still to add. Deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: Home manager callables (layout, preview, rebuild); admin web screen for it still to add. Deploy waits for the dev deploy.",
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ],
           "evidence": [
             "functions/src/home.ts"
@@ -523,13 +527,13 @@
           "id": "m1-admin-audit",
           "title": "Admin: audit log",
           "status": "blocked",
-          "notes": "Code complete and emulator-verified: audit entry per mutation in the same transaction + admin web audit viewer. Deploy needs Blaze.",
+          "notes": "Code complete and emulator-verified: audit entry per mutation in the same transaction + admin web audit viewer. Deploy waits for the dev deploy.",
           "evidence": [
             "functions/src/content.ts",
             "admin/"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
@@ -610,99 +614,153 @@
           "id": "m2-daily-plan",
           "title": "Sadhana: daily plan",
           "status": "in_progress",
-          "notes": "Local Today task list with a 04:00 day boundary (D-024); not server-backed.",
+          "notes": "Three lamps (jaap, dhyan, prarthana) from appConfig/sadhana; tasks, full-Sadhana bonus and Brahma Muhurta are server-decided. Jest-verified; on-device check waits for the functions deploy and a native rebuild.",
           "evidence": [
-            "src/features/sadhana/SadhanaScreen.tsx"
+            "src/features/sadhana/SadhanaScreen.tsx",
+            "src/features/sadhana/SadhanaParts.tsx"
           ]
         },
         {
           "id": "m2-jaap",
           "title": "Sadhana: jaap",
           "status": "in_progress",
-          "notes": "Persistent local 108-bead counter; server practice sessions pending. Open question: leftover beads from a previous day count toward today.",
+          "notes": "108-bead mala with sumeru, deity mantra and mala type, haptic tick, bell and petals. One server session per mala (60 s minimum); the bead count starts again at 04:00 (D-051). Jest-verified; device check pending.",
           "evidence": [
-            "src/features/sadhana/PracticeScreens.tsx"
+            "src/features/sadhana/PracticeScreens.tsx",
+            "src/features/sadhana/art/MalaRing.tsx"
           ]
         },
         {
           "id": "m2-meditation",
           "title": "Sadhana: meditation timer",
           "status": "in_progress",
-          "notes": "Wall-clock local timer survives backgrounding; not anti-cheat evidence until server sessions exist.",
+          "notes": "Diya with breathing halo and a light ring that fills; server session bounds the credited minutes; stopping early credits whole minutes. Device check pending.",
           "evidence": [
-            "src/features/sadhana/PracticeScreens.tsx"
+            "src/features/sadhana/PracticeScreens.tsx",
+            "src/features/sadhana/art/Diya.tsx"
           ]
         },
         {
           "id": "m2-prayer",
           "title": "Sadhana: prayer checklist",
           "status": "in_progress",
-          "notes": "Local checklist only.",
+          "notes": "Guided puja thali: one step at a time, each offering placed on the plate, aarti lamp on completion; completePrayerChecklist validates the configured steps. Device check pending.",
           "evidence": [
-            "src/features/sadhana/PracticeScreens.tsx"
+            "src/features/sadhana/PracticeScreens.tsx",
+            "src/features/sadhana/art/Thali.tsx"
           ]
         },
         {
           "id": "m2-history",
           "title": "Sadhana: history",
           "status": "in_progress",
-          "notes": "Local history sorted by date; no server record.",
+          "notes": "Lamp calendar (5 weeks) from users/{uid}/days, totals and milestones. Device check pending.",
           "evidence": [
-            "src/features/sadhana/SadhanaScreen.tsx"
+            "src/features/sadhana/SadhanaParts.tsx"
           ]
         },
         {
           "id": "m2-xp",
           "title": "XP (single currency, D-023)",
-          "status": "not_started",
-          "notes": "UI shows non-authoritative sample values only."
+          "status": "blocked",
+          "notes": "Server-only XP per doc 10 §2 (config in appConfig/gamification), 300/day cap with CAPPED ledger lines; shown as अंक. Emulator-verified.",
+          "evidence": [
+            "functions/src/progressionEngine.ts",
+            "src/domain/progression.ts"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-levels",
           "title": "Levels and ranks (D-027)",
-          "status": "not_started",
-          "notes": "Sample rank display only."
+          "status": "blocked",
+          "notes": "Level curve 50 × (level−1)^1.6 and D-027 ranks from config; level-up and rank-up in the reward result. Unit-tested.",
+          "evidence": [
+            "src/domain/progression.ts",
+            "tests/progression.test.ts"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-streak",
           "title": "Streak (server-authoritative, D-024/D-026)",
-          "status": "not_started",
-          "notes": "Rules already reject direct client progression writes."
+          "status": "blocked",
+          "notes": "D-024/D-026 streak in the practice transaction (task, mala or daily challenge qualifies); never moves backwards after a timezone change; app shows a lapsed streak as 0. Emulator-verified.",
+          "evidence": [
+            "functions/src/progressionEngine.ts",
+            "functions/test/unit/progression.test.ts"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-daily-challenges",
           "title": "Daily challenges",
-          "status": "not_started",
-          "notes": "Challenges tab is a preview."
+          "status": "blocked",
+          "notes": "Challenges progress in the same transaction, per period (user's practice day); userChallenges/{uid}_{challengeId}_{periodKey}; expireChallenges at 04:05 IST. Emulator-verified.",
+          "evidence": [
+            "functions/src/progression.ts"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-weekly-challenges",
           "title": "Weekly challenges",
-          "status": "not_started",
-          "notes": "Challenges tab is a preview."
+          "status": "blocked",
+          "notes": "Weekly period = Monday 04:00 IST week (shared with leagues). Emulator-verified with the dev challenge set.",
+          "evidence": [
+            "functions/src/progression.ts",
+            "scripts/progression/seed.ts"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-badges",
           "title": "Badges",
-          "status": "not_started",
-          "notes": "Sample badges in Profile only."
+          "status": "blocked",
+          "notes": "V1 badge set (doc 10 §7) evaluated on every practice; league badges wait for M3. Unlocks shown in the blessing sheet, History and Profile.",
+          "evidence": [
+            "scripts/progression/seed.ts",
+            "src/features/sadhana/SadhanaParts.tsx"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-ledger",
           "title": "Reward ledger",
-          "status": "not_started",
-          "notes": "Server-side only; no generic award-XP client endpoint."
+          "status": "blocked",
+          "notes": "rewardTransactions/{uid}_{type}_{sourceId}, written only by the practice transaction; retries and parallel calls pay once (emulator test).",
+          "evidence": [
+            "functions/src/progression.ts",
+            "functions/test/progression.test.ts"
+          ],
+          "blockedBy": [
+            "dev-functions-deploy"
+          ]
         },
         {
           "id": "m2-functions",
           "title": "Idempotent Cloud Functions for practice sessions and rewards",
-          "status": "not_started",
-          "notes": "ProgressionService contract exists in the client. Emulator-testable; cloud deploy needs Blaze.",
+          "status": "blocked",
+          "notes": "setTimezone, startSession, completeSession, completePrayerChecklist and expireChallenges; 26 unit + 33 emulator tests pass. Not yet deployed.",
           "evidence": [
-            "src/repositories/contracts.ts"
+            "functions/src/progression.ts",
+            "functions/src/progressionEngine.ts",
+            "functions/src/index.ts"
           ],
           "blockedBy": [
-            "blaze-plan"
+            "dev-functions-deploy"
           ]
         },
         {
@@ -726,8 +784,11 @@
         {
           "id": "m2-seed-challenges",
           "title": "Seed: 8 weeks of challenges and the full V1 badge set",
-          "status": "not_started",
-          "notes": "Doc 18 targets."
+          "status": "in_progress",
+          "notes": "Config and the V1 badge set are seeded (npm run seed:progression:dev); the four challenges are development placeholders. The reviewed 8-week launch set is still to write.",
+          "evidence": [
+            "scripts/progression/seed.ts"
+          ]
         }
       ]
     },
@@ -1086,10 +1147,10 @@
   ],
   "blockers": [
     {
-      "id": "blaze-plan",
-      "title": "Enable the Firebase Blaze plan on bhaktara-dev",
-      "kind": "billing",
-      "detail": "The dev project is on Spark, which cannot deploy Cloud Functions. Admin CMS, profile provisioning and reward functions stay emulator-only until billing is enabled.",
+      "id": "dev-functions-deploy",
+      "title": "Deploy Cloud Functions to bhaktara-dev",
+      "kind": "decision",
+      "detail": "Blaze is enabled on bhaktara-dev (operator, 2026-10-05). The first deploy of Functions (and the Cloud Run media processor and admin Hosting) is billed and waits for operator confirmation; until then the CMS and the habit layer run only in the emulators, and the phone earns no XP in cloud mode.",
       "ref": "docs/FIREBASE_DEVELOPMENT.md"
     },
     {

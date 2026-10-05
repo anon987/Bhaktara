@@ -4,6 +4,8 @@ const timerSchema = z.object({
   durationSeconds: z.number().positive(),
   remainingSeconds: z.number().nonnegative(),
   endsAt: z.number().nullable(),
+  // Server practice session for this sitting (null offline or in fixture mode).
+  sessionId: z.string().nullable().default(null),
 });
 export const localStateSchema = z
   .object({
@@ -11,7 +13,11 @@ export const localStateSchema = z
     onboarded: z.boolean(),
     favorites: z.array(z.string()),
     deityId: z.string().nullable(),
+    // Beads chanted on `jaapDay` (D-051: the count starts again at 04:00).
     jaapCount: z.number().int().nonnegative(),
+    jaapDay: z.string().nullable().default(null),
+    // Server session of the mala in progress, kept across app restarts.
+    jaapSessionId: z.string().nullable().default(null),
     timer: timerSchema,
     days: z.record(
       z.string(),
@@ -30,7 +36,14 @@ export const initialState: LocalState = {
   favorites: [],
   deityId: null,
   jaapCount: 0,
-  timer: { durationSeconds: 300, remainingSeconds: 300, endsAt: null },
+  jaapDay: null,
+  jaapSessionId: null,
+  timer: {
+    durationSeconds: 300,
+    remainingSeconds: 300,
+    endsAt: null,
+    sessionId: null,
+  },
   days: {},
 };
 const KEY = "bhaktara.local.v1";
