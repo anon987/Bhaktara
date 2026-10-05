@@ -30,6 +30,7 @@ import {
   PracticeErrorReason,
   PracticeResult,
   prayerInputSchema,
+  requiredPrayerIds,
   profileInputSchema,
   RewardLine,
   SadhanaConfig,
@@ -588,7 +589,7 @@ export async function completePrayerChecklist(
 ): Promise<PracticeResult> {
   const input = parse(prayerInputSchema, data);
   const catalog = await loadCatalog();
-  const required = catalog.sadhana.prayerItems.map((item) => item.id);
+  const required = requiredPrayerIds(catalog.sadhana);
   if (!required.every((id) => input.itemIds.includes(id)))
     throw practiceError("CHECKLIST_INCOMPLETE", "Complete every prayer step.");
   const now = Timestamp.now();

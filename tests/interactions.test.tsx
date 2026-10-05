@@ -126,43 +126,69 @@ test("yesterday's leftover beads do not count toward today (D-051)", async () =>
   expect(state(screen).days).toEqual({});
 });
 
-test("prayer is a short puja before the chosen deity (D-053)", async () => {
+// Circles the finger round the deity (the scene is laid out at 300 × 360,
+// which puts the deity at about (150, 209); the item rides 40 above).
+function circleRound(
+  screen: { getByTestId(id: string): unknown },
+  turns: number,
+) {
+  const hand = screen.getByTestId("puja-hand") as never;
+  const at = (angle: number) => ({
+    nativeEvent: {
+      locationX: 150 + Math.cos(angle) * 80,
+      locationY: 209 + Math.sin(angle) * 80 + 40,
+    },
+  });
+  fireEvent(hand, "responderGrant", at(0));
+  for (let step = 1; step <= turns * 24; step++)
+    fireEvent(hand, "responderMove", at((step / 24) * Math.PI * 2));
+  fireEvent(hand, "responderRelease", at(0));
+}
+
+test("the puja is performed from the tray of offerings (D-054)", async () => {
   const screen = render(
     <PrayerScreen navigation={navigation as never} route={{} as never} />,
     { wrapper: Wrapper },
   );
-  await waitFor(() =>
-    expect(screen.getByText("Step 1 / 6 · Flowers")).toBeTruthy(),
-  );
-  // The shrine sizes itself to its space (layout events do not fire in Jest).
+  await waitFor(() => expect(screen.getByTestId("puja-stage")).toBeTruthy());
   fireEvent(screen.getByTestId("puja-stage"), "layout", {
     nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 360 } },
   });
-  // The deity is the chosen one (first in the catalog by default).
-  expect(screen.getByText("Om Namah Shivaya")).toBeTruthy();
-  fireEvent.press(screen.getByText("Offer flowers"));
-  expect(screen.getByText("Om dhoopam aaghrapayami")).toBeTruthy();
-  fireEvent.press(screen.getByText("Offer incense"));
-  fireEvent.press(screen.getByText("Light the lamp"));
-  fireEvent.press(screen.getByText("Offer prasad"));
-  // Aarti: three rounds round the deity; the automatic aarti does them.
-  expect(screen.getByText("Aarti: 0 / 3 rounds")).toBeTruthy();
-  fireEvent.press(screen.getByText("Do the aarti for me"));
-  await waitFor(
-    () => expect(screen.getByText("Bow with folded hands")).toBeTruthy(),
-    { timeout: 10000 },
-  );
+  // Optional offerings: kalash, bell, tilak.
+  fireEvent.press(screen.getByLabelText("Sprinkle water from the kalash"));
+  fireEvent.press(screen.getByLabelText("Ring the bell"));
+  fireEvent.press(screen.getByLabelText("Apply the chandan-roli tilak"));
+  // Flowers suited to Shiva (the first deity): bilva, dhatura… never tulsi.
+  fireEvent.press(screen.getByLabelText("Offer flowers and a garland"));
+  expect(screen.getByLabelText("Bilva leaves")).toBeTruthy();
+  expect(screen.getByLabelText("Dhatura")).toBeTruthy();
+  expect(screen.queryByLabelText("Tulsi")).toBeNull();
+  fireEvent.press(screen.getByLabelText("Bilva leaves"));
+  fireEvent.press(screen.getByLabelText("Rudraksha garland"));
+  // Incense, waved freely.
+  fireEvent.press(screen.getByLabelText("Offer incense"));
+  circleRound(screen, 2);
+  // The item settles back on the altar (timers, so wait inside act).
+  await act(() => new Promise((resolve) => setTimeout(resolve, 2300)));
+  expect(screen.queryByTestId("puja-hand")).toBeNull();
+  // Shiva's bhog.
+  fireEvent.press(screen.getByLabelText("Offer bhog"));
+  fireEvent.press(screen.getByLabelText("Milk"));
+  // Aarti with the lamp, three circles round the deity.
+  fireEvent.press(screen.getByLabelText("Do the aarti with the lamp"));
+  circleRound(screen, 4);
+  // The item settles back on the altar (timers, so wait inside act).
+  await act(() => new Promise((resolve) => setTimeout(resolve, 2300)));
+  expect(screen.queryByTestId("puja-hand")).toBeNull();
   expect(state(screen).days).toEqual({});
+  // The shankh completes the puja and records the day's prayer.
   await act(async () => {
-    fireEvent.press(screen.getByText("Bow with folded hands"));
+    fireEvent.press(screen.getByLabelText("Blow the shankh"));
   });
   expect(state(screen).days[localPracticeDay()].prayer).toBe(true);
-  await waitFor(() =>
-    expect(screen.getByText("Today’s prayer is offered.")).toBeTruthy(),
-  );
 }, 20000);
 
-test("a puja already offered today can be performed again", async () => {
+test("the puja is never locked once today's prayer is recorded", async () => {
   jest.spyOn(localStore, "read").mockResolvedValue({
     ...initialState,
     language: "en",
@@ -175,11 +201,10 @@ test("a puja already offered today can be performed again", async () => {
     { wrapper: Wrapper },
   );
   await waitFor(() =>
-    expect(screen.getByText("Today’s prayer is offered.")).toBeTruthy(),
+    expect(screen.getByLabelText("Ring the bell")).toBeTruthy(),
   );
-  fireEvent.press(screen.getByText("Do the puja again"));
-  expect(screen.getByText("Step 1 / 6 · Flowers")).toBeTruthy();
-  expect(screen.getByText("Change")).toBeTruthy();
+  fireEvent.press(screen.getByLabelText("Offer flowers and a garland"));
+  expect(screen.getByLabelText("Bilva leaves")).toBeTruthy();
 });
 
 test("elapsed meditation restored from storage completes locally", async () => {
