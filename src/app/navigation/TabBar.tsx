@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  AccessibilityInfo,
   Animated,
   Easing,
   Platform,
@@ -17,33 +16,15 @@ import { MiniPlayer } from "../../features/player/MiniPlayer";
 import { StringKey } from "../../i18n/strings";
 import { TabParams } from "./routes";
 import { TabGlyph, ToranDrop } from "./TabIcons";
+import { useReducedMotion } from "../../components/useReducedMotion";
+
+export { useReducedMotion };
 
 const useNativeDriver = Platform.OS !== "web";
 // Strong ease-out: the change starts immediately under the finger.
 const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
 const PILL = { width: 60, height: 34 };
 const DROP = 11;
-
-export function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    let active = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((value) => {
-        if (active) setReduced(value);
-      })
-      .catch(() => undefined);
-    const subscription = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      setReduced,
-    );
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, []);
-  return reduced;
-}
 
 // Each glyph settles with a gesture that suits it. Reduced motion keeps only
 // the outline-to-filled crossfade.

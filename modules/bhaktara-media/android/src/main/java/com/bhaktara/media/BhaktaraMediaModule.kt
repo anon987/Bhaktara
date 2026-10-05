@@ -2,29 +2,43 @@ package com.bhaktara.media
 
 import android.Manifest
 import android.annotation.TargetApi
+import android.app.Activity
+import android.app.AppOpsManager
+import android.app.PictureInPictureParams
 import android.app.WallpaperManager
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Process
 import android.provider.BaseColumns
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Rational
 import expo.modules.interfaces.permissions.PermissionsResponseListener
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Coroutine
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import kotlin.coroutines.resume
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 // Saved media lands in a "Bhaktara" folder inside the standard public directory for its kind.
 private const val ALBUM = "Bhaktara"
@@ -107,6 +121,49 @@ class BhaktaraMediaModule : Module() {
         askForPermission(Manifest.permission.WRITE_SETTINGS)
         Settings.System.canWrite(context)
       }
+    }
+
+    // Picture-in-picture is available: Android 8+, the device has the feature, and the user has
+    // not switched it off for Bhaktara (Settings → Apps → Special access → Picture-in-picture).
+    Function("canUsePictureInPicture") {
+      canUsePictureInPicture(appContext.currentActivity)
+    }
+
+    // Guided permission flow for elderly users: shrinks Bhaktara into a small picture-in-picture
+    // window that keeps showing "turn on the switch", then opens this app's "Modify system
+    // settings" screen full screen beneath it. Resolves false (opening nothing) when
+    // picture-in-picture is unavailable, so the caller can fall back to the plain flow.
+    AsyncFunction("openWriteSettingsWithGuideAsync") {
+      val activity = appContext.currentActivity
+      if (activity == null || !canUsePictureInPicture(activity)) return@AsyncFunction false
+      val entered = try {
+        activity.enterPictureInPictureMode(
+          PictureInPictureParams.Builder().setAspectRatio(Rational(3, 4)).build()
+        )
+      } catch (error: IllegalStateException) {
+        false
+      }
+      if (!entered) return@AsyncFunction false
+      activity.startActivity(
+        Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${context.packageName}"))
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      )
+      true
+    }.runOnQueue(Queues.MAIN)
+
+    // Waits (natively: JS timers are paused while Bhaktara is in picture-in-picture) until
+    // "Modify system settings" is turned on, then brings Bhaktara back to full screen so the user
+    // does not have to find the way back. Resolves false if stopped or after 10 minutes.
+    AsyncFunction("waitForWriteSettingsAsync") Coroutine { ->
+      val granted = waitForWriteSettings()
+      if (granted) returnToApp()
+      granted
+    }
+
+    // Ends a pending waitForWriteSettingsAsync (the user came back on their own).
+    Function("stopWaitingForWriteSettings") {
+      settingsWatch?.complete(false)
+      Unit
     }
 
     // Resolves with the content:// URI of the saved item.
@@ -292,6 +349,75 @@ class BhaktaraMediaModule : Module() {
       }
     }
     return null
+  }
+
+  private var settingsWatch: CompletableDeferred<Boolean>? = null
+
+  private suspend fun waitForWriteSettings(): Boolean {
+    if (Settings.System.canWrite(context)) return true
+    val done = CompletableDeferred<Boolean>()
+    settingsWatch?.complete(false)
+    settingsWatch = done
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+    val listener = AppOpsManager.OnOpChangedListener { _, packageName ->
+      if (packageName == context.packageName && Settings.System.canWrite(context)) {
+        done.complete(true)
+      }
+    }
+    appOps.startWatchingMode(AppOpsManager.OPSTR_WRITE_SETTINGS, context.packageName, listener)
+    return try {
+      coroutineScope {
+        // Some vendor settings screens change the app-op without notifying watchers.
+        val poll = launch {
+          while (isActive) {
+            delay(500)
+            if (Settings.System.canWrite(context)) done.complete(true)
+          }
+        }
+        val granted = withTimeoutOrNull(10 * 60_000L) { done.await() } ?: false
+        poll.cancel()
+        granted
+      }
+    } finally {
+      appOps.stopWatchingMode(listener)
+      if (settingsWatch === done) settingsWatch = null
+    }
+  }
+
+  // A visible picture-in-picture window may start activities; re-launching the singleTask main
+  // activity expands it back to full screen over the settings screen.
+  private suspend fun returnToApp() = withContext(Dispatchers.Main) {
+    val activity = appContext.currentActivity ?: return@withContext
+    try {
+      activity.startActivity(
+        Intent(activity, activity.javaClass).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+      )
+    } catch (error: RuntimeException) {
+      // Blocked (e.g. the guide window was dismissed); the user returns on their own.
+    }
+  }
+
+  private fun canUsePictureInPicture(activity: Activity?): Boolean {
+    if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+    if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+      return false
+    }
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
+    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      appOps.unsafeCheckOpNoThrow(
+        AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
+        Process.myUid(),
+        context.packageName
+      )
+    } else {
+      @Suppress("DEPRECATION")
+      appOps.checkOpNoThrow(
+        AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
+        Process.myUid(),
+        context.packageName
+      )
+    }
+    return mode == AppOpsManager.MODE_ALLOWED
   }
 
   // Uses the Expo permissions service, which also runs the WRITE_SETTINGS system-screen flow

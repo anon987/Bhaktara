@@ -6,6 +6,8 @@ import {
 import { resolveMediaUrl } from "../media/config";
 import { MediaRequest, PlatformResult, PlatformServices } from "./contracts";
 import { stubServices } from "./stub";
+import { settingsGuide } from "./settingsGuide";
+import { AppState } from "react-native";
 
 // Downloads land in the app cache first (doc 22 §A5: `full`, `file` and
 // `video720` load only on an explicit save), then the native module writes
@@ -108,6 +110,53 @@ async function withDownload(
   }
 }
 
+// While the picture-in-picture guide is up, waits until "Modify system
+// settings" is turned on (watched natively, because JS timers are paused while
+// Bhaktara is in picture-in-picture; the module then brings the app back) or
+// until the user comes back to Bhaktara on their own. Resolves with the result.
+export function waitForWriteSettings(
+  native: Pick<
+    BhaktaraMediaModule,
+    | "canWriteSettings"
+    | "waitForWriteSettingsAsync"
+    | "stopWaitingForWriteSettings"
+  >,
+  { settleMs = 1500 } = {},
+): Promise<boolean> {
+  const granted = () => {
+    try {
+      return native.canWriteSettings();
+    } catch {
+      return false;
+    }
+  };
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let done = false;
+    const finish = (value: boolean) => {
+      if (done) return;
+      done = true;
+      subscription.remove();
+      resolve(value);
+    };
+    // Returning to full screen (expanding the window or leaving settings)
+    // ends the wait; ignore the transient events while entering PiP.
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || Date.now() - started <= settleMs) return;
+      try {
+        native.stopWaitingForWriteSettings();
+      } catch {
+        // The native wait ends by itself after its timeout.
+      }
+      finish(granted());
+    });
+    native.waitForWriteSettingsAsync().then(
+      (value) => finish(value || granted()),
+      () => finish(granted()),
+    );
+  });
+}
+
 export function createAndroidServices(
   native: BhaktaraMediaModule | null,
   loadSharing: () => Promise<
@@ -117,6 +166,13 @@ export function createAndroidServices(
   const unavailable = async (): Promise<PlatformResult> => ({
     status: "unavailable",
   });
+  const canGuide = () => {
+    try {
+      return !!native && native.canUsePictureInPicture();
+    } catch {
+      return false;
+    }
+  };
   const needsSystemPermission = () => {
     try {
       return !!native && !native.canWriteSettings();
@@ -144,9 +200,22 @@ export function createAndroidServices(
     ringtone: {
       canSetRingtone: !!native,
       needsSystemPermission,
+      canGuideSystemPermission: canGuide,
       requestSystemPermission: async () => {
+        if (!native) return false;
         try {
-          return (await native?.requestWriteSettingsAsync()) ?? false;
+          if (!needsSystemPermission()) return true;
+          // Elder-friendly path: a picture-in-picture guide stays visible over
+          // the settings screen and Bhaktara returns by itself once allowed.
+          if (canGuide() && (await native.openWriteSettingsWithGuideAsync())) {
+            settingsGuide.show();
+            try {
+              return await waitForWriteSettings(native);
+            } finally {
+              settingsGuide.hide();
+            }
+          }
+          return await native.requestWriteSettingsAsync();
         } catch {
           return false;
         }

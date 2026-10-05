@@ -3,8 +3,12 @@ import { BhaktaraMediaModule } from "../modules/bhaktara-media";
 import { setRuntimeMediaBaseUrl } from "../src/services/media/config";
 import {
   createAndroidServices,
+  waitForWriteSettings,
   deviceFileName,
 } from "../src/services/platform/androidMedia";
+
+import { AppState } from "react-native";
+import { settingsGuide } from "../src/services/platform/settingsGuide";
 
 // In-memory stand-in for the expo-file-system File/Directory API.
 const mockFs = { existing: new Set<string>(), deleted: [] as string[] };
@@ -70,6 +74,10 @@ function fakeNative(
     canSetWallpaper: jest.fn(() => true),
     canWriteSettings: jest.fn(() => true),
     requestWriteSettingsAsync: jest.fn(async () => true),
+    canUsePictureInPicture: jest.fn(() => false),
+    openWriteSettingsWithGuideAsync: jest.fn(async () => false),
+    waitForWriteSettingsAsync: jest.fn(async () => false),
+    stopWaitingForWriteSettings: jest.fn(),
     saveToLibraryAsync: jest.fn(async () => "content://media/1"),
     setWallpaperAsync: jest.fn(async () => true),
     setRingtoneAsync: jest.fn(async () => "content://media/2"),
@@ -247,5 +255,75 @@ test("status share opens the system share sheet from a cache copy without saving
   sharing.isAvailableAsync.mockResolvedValueOnce(false);
   await expect(services.share.shareStatus(status)).resolves.toEqual({
     status: "unavailable",
+  });
+});
+
+describe("guided ringtone permission (picture-in-picture)", () => {
+  let appStateHandler: ((state: string) => void) | undefined;
+  beforeEach(() => {
+    jest.useFakeTimers();
+    appStateHandler = undefined;
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_type, handler) => {
+        appStateHandler = handler as (state: string) => void;
+        return { remove: jest.fn() } as never;
+      });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test("shows the guide while the native watch waits, then returns with the result", async () => {
+    let grant: (value: boolean) => void = () => undefined;
+    const native = fakeNative({
+      canWriteSettings: jest.fn(() => false),
+      canUsePictureInPicture: jest.fn(() => true),
+      openWriteSettingsWithGuideAsync: jest.fn(async () => true),
+      waitForWriteSettingsAsync: jest.fn(
+        () => new Promise<boolean>((resolve) => (grant = resolve)),
+      ),
+    });
+    const services = createAndroidServices(native);
+    expect(services.ringtone.canGuideSystemPermission?.()).toBe(true);
+    const result = services.ringtone.requestSystemPermission();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(settingsGuide.isActive()).toBe(true);
+    expect(native.waitForWriteSettingsAsync).toHaveBeenCalledTimes(1);
+    grant(true);
+    await expect(result).resolves.toBe(true);
+    expect(native.requestWriteSettingsAsync).not.toHaveBeenCalled();
+    expect(settingsGuide.isActive()).toBe(false);
+  });
+
+  test("coming back without turning it on stops the native watch", async () => {
+    const native = fakeNative({
+      canWriteSettings: jest.fn(() => false),
+      waitForWriteSettingsAsync: jest.fn(() => new Promise<boolean>(() => {})),
+    });
+    const wait = waitForWriteSettings(native);
+    // Transient events while entering picture-in-picture are ignored.
+    appStateHandler?.("active");
+    expect(native.stopWaitingForWriteSettings).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(2000);
+    appStateHandler?.("background");
+    appStateHandler?.("active");
+    await expect(wait).resolves.toBe(false);
+    expect(native.stopWaitingForWriteSettings).toHaveBeenCalledTimes(1);
+  });
+
+  test("falls back to the plain settings flow when picture-in-picture is unavailable", async () => {
+    const native = fakeNative({
+      canWriteSettings: jest.fn(() => false),
+      canUsePictureInPicture: jest.fn(() => true),
+      // Entering picture-in-picture failed (e.g. switched off for the app).
+      openWriteSettingsWithGuideAsync: jest.fn(async () => false),
+    });
+    const services = createAndroidServices(native);
+    await expect(services.ringtone.requestSystemPermission()).resolves.toBe(
+      true,
+    );
+    expect(native.requestWriteSettingsAsync).toHaveBeenCalledTimes(1);
+    expect(settingsGuide.isActive()).toBe(false);
   });
 });
