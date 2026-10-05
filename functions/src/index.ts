@@ -9,6 +9,7 @@ import * as content from "./content";
 import { Actor, actorFrom } from "./core";
 import * as home from "./home";
 import * as media from "./media";
+import * as progression from "./progression";
 import { setAdminRole as setRole } from "./roles";
 import { requestUploadUrl as uploadSlot } from "./uploads";
 
@@ -106,5 +107,30 @@ export const publishScheduledContent = onSchedule(
       result.failed.length
     )
       logger.info("Scheduled content run", result);
+  },
+);
+
+// Habit layer (doc 08 §2). Guests may call these (D-016); the app reports
+// activities and the server decides XP, streaks, challenges and badges.
+const player = <T>(
+  handler: (player: progression.Player, data: unknown) => Promise<T>,
+) =>
+  onCall((request) =>
+    handler(progression.playerFrom(request.auth), request.data),
+  );
+
+export const setTimezone = player(progression.setTimezone);
+export const startSession = player(progression.startSession);
+export const completeSession = player(progression.completeSession);
+export const completePrayerChecklist = player(
+  progression.completePrayerChecklist,
+);
+
+// Doc 08 §4: close ended daily and weekly challenges after the 04:00 rollover.
+export const expireChallenges = onSchedule(
+  { schedule: "5 4 * * *", timeZone: "Asia/Kolkata" },
+  async () => {
+    const result = await progression.expireChallenges();
+    if (result.expired) logger.info("Expired user challenges", result);
   },
 );

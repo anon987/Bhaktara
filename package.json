@@ -74,6 +74,7 @@
     "firebase:android-config": "firebase apps:sdkconfig ANDROID 1:83349652654:android:bd2a4c399e1d15da2f993f --project dev --out google-services.json",
     "seed:emulators": "tsx scripts/emulator/seed.ts",
     "seed:dev": "tsx scripts/emulator/seed.ts --project dev",
+    "seed:progression:dev": "tsx scripts/progression/seed.ts --project dev",
     "content:import": "tsx --env-file-if-exists=.env.r2 scripts/content/import.ts",
     "media:publish": "tsx --env-file-if-exists=.env.r2 scripts/media/publish.ts",
     "progress": "tsx scripts/progress/generate.ts",
