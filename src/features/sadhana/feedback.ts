@@ -16,36 +16,48 @@ export const malaPulse = () => {
   ).catch(() => undefined);
 };
 
-// The temple bell (assets/sounds/bell.m4a, synthesised by
-// scripts/media/generate-bell.py). Silent while a bhajan is playing, so it
-// never interrupts the user's own audio.
-export function useBell() {
+// Puja sounds, synthesised in the repo (scripts/media/generate-bell.py and
+// generate-puja-sounds.py): the temple bell, the hand ghanti and the shankh.
+// Silent while a bhajan or aarti is playing, so they never interrupt it.
+const sources = {
+  bell: require("../../../assets/sounds/bell.m4a"),
+  ghanti: require("../../../assets/sounds/ghanti.m4a"),
+  shankh: require("../../../assets/sounds/shankh.m4a"),
+};
+export type PujaSound = keyof typeof sources;
+
+export function useSound() {
   const { playing } = usePlayer();
-  const bell = useRef<AudioPlayer | null>(null);
+  const players = useRef<Partial<Record<PujaSound, AudioPlayer>>>({});
   useEffect(
     () => () => {
-      bell.current?.remove();
-      bell.current = null;
+      for (const player of Object.values(players.current)) player?.remove();
+      players.current = {};
     },
     [],
   );
   return useCallback(
-    (strikes = 1) => {
+    (sound: PujaSound, strikes = 1, gapMs = 1600) => {
       if (playing) return;
       try {
-        bell.current ??= createAudioPlayer(
-          require("../../../assets/sounds/bell.m4a"),
-        );
-        const player = bell.current;
+        const player = (players.current[sound] ??= createAudioPlayer(
+          sources[sound],
+        ));
         for (let strike = 0; strike < strikes; strike += 1)
           setTimeout(() => {
             void player.seekTo(0);
             player.play();
-          }, strike * 1600);
+          }, strike * gapMs);
       } catch {
         // Sound is a nicety; practice continues without it.
       }
     },
     [playing],
   );
+}
+
+// The temple bell, struck `strikes` times.
+export function useBell() {
+  const play = useSound();
+  return useCallback((strikes = 1) => play("bell", strikes), [play]);
 }

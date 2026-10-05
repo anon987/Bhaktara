@@ -423,12 +423,6 @@ export const strings = {
   endDhyan: ["End meditation", "ध्यान समाप्त करें"],
   dhyanDone: ["Meditation complete. Om shanti.", "ध्यान पूर्ण। ॐ शांति।"],
   // Prayer
-  offer: ["Offer", "अर्पित करें"],
-  prayerDoneToday: [
-    "Today’s prayer is offered.",
-    "आज की प्रार्थना अर्पित हो चुकी है।",
-  ],
-  step: ["Step", "चरण"],
   // Blessing sheet
   blessMala: ["Mala complete", "माला पूर्ण"],
   blessDhyan: ["Meditation complete", "ध्यान पूर्ण"],
@@ -472,34 +466,7 @@ export const strings = {
   milestones: ["Milestones", "पड़ाव"],
   notYet: ["Not yet", "अभी नहीं"],
   // Puja (prayer task, D-053)
-  pujaHint: [
-    "A short puja for your chosen deity",
-    "अपने इष्ट देव की छोटी-सी पूजा",
-  ],
-  pujaChange: ["Change", "बदलें"],
   pujaChoose: ["Whom will you worship today?", "आज किनकी पूजा करेंगे?"],
-  pujaStepPushp: ["Flowers", "पुष्प"],
-  pujaStepDhoop: ["Incense", "धूप"],
-  pujaStepDeep: ["Lamp", "दीप"],
-  pujaStepNaivedya: ["Prasad", "नैवेद्य"],
-  pujaStepAarti: ["Aarti", "आरती"],
-  pujaStepPranam: ["Pranam", "प्रणाम"],
-  pujaDoPushp: ["Offer flowers", "फूल चढ़ाएँ"],
-  pujaDoDhoop: ["Offer incense", "धूप दिखाएँ"],
-  pujaDoDeep: ["Light the lamp", "दीप जलाएँ"],
-  pujaDoNaivedya: ["Offer prasad", "भोग लगाएँ"],
-  pujaDoPranam: ["Bow with folded hands", "हाथ जोड़कर प्रणाम करें"],
-  aartiHint: [
-    "Move the plate round the Lord with your finger",
-    "थाली को उँगली से प्रभु के चारों ओर घुमाएँ",
-  ],
-  aartiRounds: ["rounds", "चक्कर"],
-  aartiAuto: ["Do the aarti for me", "अपने आप आरती करें"],
-  pujaAgain: ["Do the puja again", "फिर से पूजा करें"],
-  pujaRepeatDone: [
-    "Puja complete. Today’s XP was already given.",
-    "पूजा संपन्न। आज के अंक पहले ही मिल चुके हैं।",
-  ],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {

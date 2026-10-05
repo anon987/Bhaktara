@@ -205,22 +205,27 @@ export const sadhanaTasks = ["jaap", "meditation", "prayer"] as const;
 export type SadhanaTask = (typeof sadhanaTasks)[number];
 
 // The daily prayer is a short puja before the user's chosen deity (D-053),
-// in panchopachar order. `kind` picks the offering and its interaction;
-// `line` is the traditional Sanskrit line, `label` its plain meaning.
+// performed from a tray of offerings (D-054). `kind` is the tray item;
+// `required` items must be offered for the day's prayer to count (the
+// kalash, bell, tilak and garland are optional). `label` names the item for
+// screen readers; `line` is its Sanskrit samarpan line where there is one.
 export const pujaSteps = [
+  "kalash",
+  "ghanti",
+  "chandan",
   "pushp",
   "dhoop",
-  "deep",
   "naivedya",
-  "aarti",
-  "pranam",
+  "deep",
+  "shankh",
 ] as const;
 export type PujaStep = (typeof pujaSteps)[number];
 
 export const prayerItemSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]{1,40}$/),
   kind: z.enum(pujaSteps),
-  line: localizedSchema,
+  required: z.boolean(),
+  line: localizedSchema.optional(),
   label: localizedSchema,
 });
 export const sadhanaConfigSchema = z.object({
@@ -232,68 +237,66 @@ export const sadhanaConfigSchema = z.object({
 export type SadhanaConfig = z.infer<typeof sadhanaConfigSchema>;
 export type PrayerItem = z.infer<typeof prayerItemSchema>;
 
+export const requiredPrayerIds = (config: SadhanaConfig) =>
+  config.prayerItems.filter((item) => item.required).map((item) => item.id);
+
 const pujaStep = (
   kind: PujaStep,
-  line: { hi: string; en: string },
+  required: boolean,
   label: { hi: string; en: string },
-): PrayerItem => ({ id: kind, kind, line, label });
+  line?: { hi: string; en: string },
+): PrayerItem => ({
+  id: kind,
+  kind,
+  required,
+  label,
+  ...(line ? { line } : {}),
+});
 
 export const defaultSadhanaConfig: SadhanaConfig = {
-  version: 2,
+  version: 3,
   jaapTargetMalas: 1,
   meditationTargetMinutes: 5,
   prayerItems: [
+    pujaStep("kalash", false, {
+      hi: "कलश से जल छिड़कें",
+      en: "Sprinkle water from the kalash",
+    }),
+    pujaStep("ghanti", false, { hi: "घंटी बजाएँ", en: "Ring the bell" }),
+    pujaStep(
+      "chandan",
+      false,
+      { hi: "चंदन-रोली का तिलक लगाएँ", en: "Apply the chandan-roli tilak" },
+      { hi: "ॐ गन्धं समर्पयामि", en: "Om gandham samarpayami" },
+    ),
     pujaStep(
       "pushp",
+      true,
+      { hi: "फूल और माला चढ़ाएँ", en: "Offer flowers and a garland" },
       { hi: "ॐ पुष्पं समर्पयामि", en: "Om pushpam samarpayami" },
-      {
-        hi: "प्रभु के चरणों में फूल अर्पित करें",
-        en: "Offer flowers at the Lord’s feet",
-      },
     ),
     pujaStep(
       "dhoop",
+      true,
+      { hi: "धूप दिखाएँ", en: "Offer incense" },
       { hi: "ॐ धूपं आघ्रापयामि", en: "Om dhoopam aaghrapayami" },
-      {
-        hi: "प्रभु को सुगंधित धूप दिखाएँ",
-        en: "Offer fragrant incense to the Lord",
-      },
-    ),
-    pujaStep(
-      "deep",
-      { hi: "ॐ दीपं दर्शयामि", en: "Om deepam darshayami" },
-      { hi: "प्रभु के सामने दीप जलाएँ", en: "Light a lamp before the Lord" },
     ),
     pujaStep(
       "naivedya",
+      true,
+      { hi: "भोग लगाएँ", en: "Offer bhog" },
       { hi: "ॐ नैवेद्यं निवेदयामि", en: "Om naivedyam nivedayami" },
-      {
-        hi: "प्रभु को प्रसाद का भोग लगाएँ",
-        en: "Offer prasad to the Lord",
-      },
     ),
     pujaStep(
-      "aarti",
+      "deep",
+      true,
+      { hi: "दीप से आरती करें", en: "Do the aarti with the lamp" },
       {
         hi: "ॐ कर्पूर नीराजनं समर्पयामि",
         en: "Om karpoora neerajanam samarpayami",
       },
-      {
-        hi: "आरती की थाली प्रभु के चारों ओर तीन बार घुमाएँ",
-        en: "Circle the aarti plate round the Lord three times",
-      },
     ),
-    pujaStep(
-      "pranam",
-      {
-        hi: "आवाहनं न जानामि न जानामि विसर्जनम्। पूजां चैव न जानामि क्षमस्व परमेश्वर॥",
-        en: "Aavahanam na jaanaami na jaanaami visarjanam. Poojaam chaiva na jaanaami kshamasva parameshvara.",
-      },
-      {
-        hi: "पूजा में जो भूल हुई हो, प्रभु क्षमा करें। हाथ जोड़कर प्रणाम करें।",
-        en: "Lord, forgive any mistake in my worship. Fold your hands and bow.",
-      },
-    ),
+    pujaStep("shankh", true, { hi: "शंख बजाएँ", en: "Blow the shankh" }),
   ],
 };
 

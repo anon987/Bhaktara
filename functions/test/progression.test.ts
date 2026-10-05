@@ -301,14 +301,14 @@ describe("prayer checklist and full Sadhana", () => {
     const today = bhaktiDayAt(new Date(), "Asia/Kolkata");
     const prayer = await player.call("completePrayerChecklist", {
       bhaktiDay: today,
-      itemIds: ["pushp", "dhoop", "deep", "naivedya", "aarti", "pranam"],
+      itemIds: ["pushp", "dhoop", "naivedya", "deep", "shankh"],
     });
     assert.equal(prayer.fullSadhana, true);
     assert.ok(
       prayer.rewards.some((r) => r.type === "FULL_SADHANA" && r.xp === 20),
     );
     const again = await player.call("completePrayerChecklist", {
-      itemIds: ["pushp", "dhoop", "deep", "naivedya", "aarti", "pranam"],
+      itemIds: ["pushp", "dhoop", "naivedya", "deep", "shankh"],
     });
     assert.equal(again.status, "ALREADY_DONE");
     assert.equal(again.totalXp, prayer.totalXp);

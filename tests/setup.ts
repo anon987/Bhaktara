@@ -130,3 +130,18 @@ jest.mock("expo-audio", () => ({
   }),
   setAudioModeAsync: jest.fn(async () => undefined),
 }));
+
+// Reanimated and Worklets official mocks (the puja scene animates with them).
+jest.mock("react-native-worklets", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("react-native-worklets/src/mock"),
+);
+jest.mock("react-native-reanimated", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("react-native-reanimated/mock"),
+);
+
+// The Skia light/smoke layer needs native Skia; unit tests skip drawing it.
+jest.mock("../src/features/sadhana/puja/Effects", () => ({
+  PujaEffects: () => null,
+}));

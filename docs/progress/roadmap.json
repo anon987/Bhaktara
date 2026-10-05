@@ -633,11 +633,12 @@
           "id": "m2-prayer",
           "title": "Sadhana: prayer checklist",
           "status": "in_progress",
-          "notes": "Short puja before the chosen deity (D-053): panchopachar offerings with Sanskrit line and Hindi meaning, finger-circled aarti (3 rounds, automatic fallback), kshama prarthana and pranam record the prayer via completePrayerChecklist. Live on bhaktara-dev; verified in the phone-size web preview; on-device check by the operator pending.",
+          "notes": "Puja from a tray of animated, deity-suited offerings with free dhoop/diya movement and 2.5D Skia effects (D-053, D-054). Live on bhaktara-dev; verified in the phone-size web preview end to end; needs the native rebuild (Skia, Reanimated) for the phone.",
           "evidence": [
             "src/features/sadhana/PujaScreen.tsx",
-            "src/features/sadhana/art/Shrine.tsx",
-            "src/features/sadhana/Aarti.tsx"
+            "src/features/sadhana/puja/PujaScene.tsx",
+            "src/features/sadhana/puja/PujaTray.tsx",
+            "src/domain/puja.ts"
           ]
         },
         {
