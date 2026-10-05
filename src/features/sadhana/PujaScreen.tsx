@@ -46,9 +46,13 @@ export function PrayerScreen({
   const deities = catalog?.deities ?? [];
   const deity = deities.find((item) => item.id === local.deityId) ?? deities[0];
   const devotion = mantraFor(deity?.id);
-  const doneToday =
+  const recorded =
     (status === "ready" && snapshot?.today.tasks.prayer) ||
     local.days[today()]?.prayer === true;
+  // The puja may be performed again any time; XP is earned once a day.
+  const [again, setAgain] = useState(false);
+  const [repeatDone, setRepeatDone] = useState(false);
+  const doneToday = recorded && !again;
 
   const [offered, setOffered] = useState<ReadonlySet<PujaStep>>(new Set());
   const [choosing, setChoosing] = useState(false);
@@ -80,8 +84,13 @@ export function PrayerScreen({
     ring(3);
     setSending(true);
     offer("pranam");
-    await offerPrayer(steps.map((item) => item.id));
+    const status = await offerPrayer(steps.map((item) => item.id));
     setSending(false);
+    if (again && status !== null) {
+      // A repeat: no blessing sheet, the altar stays complete with a note.
+      setRepeatDone(true);
+      setAgain(false);
+    }
   };
 
   return (
@@ -180,7 +189,22 @@ export function PrayerScreen({
         </View>
         <StepDots steps={steps} done={shown} current={current?.kind} />
         {doneToday ? (
-          <SanctumNote text={t("prayerDoneToday")} />
+          <>
+            <SanctumNote
+              text={repeatDone ? t("pujaRepeatDone") : t("prayerDoneToday")}
+            />
+            <BrassButton
+              quiet
+              label={t("pujaAgain")}
+              onPress={() => {
+                setOffered(new Set());
+                setRounds(0);
+                setAutoAarti(false);
+                setRepeatDone(false);
+                setAgain(true);
+              }}
+            />
+          </>
         ) : current ? (
           <View style={styles.card}>
             <Txt bold size={15} style={{ color: sanctum.brassLight }}>

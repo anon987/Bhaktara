@@ -162,6 +162,26 @@ test("prayer is a short puja before the chosen deity (D-053)", async () => {
   );
 }, 20000);
 
+test("a puja already offered today can be performed again", async () => {
+  jest.spyOn(localStore, "read").mockResolvedValue({
+    ...initialState,
+    language: "en",
+    days: {
+      [localPracticeDay()]: { jaap: false, meditation: false, prayer: true },
+    },
+  });
+  const screen = render(
+    <PrayerScreen navigation={navigation as never} route={{} as never} />,
+    { wrapper: Wrapper },
+  );
+  await waitFor(() =>
+    expect(screen.getByText("Today’s prayer is offered.")).toBeTruthy(),
+  );
+  fireEvent.press(screen.getByText("Do the puja again"));
+  expect(screen.getByText("Step 1 / 6 · Flowers")).toBeTruthy();
+  expect(screen.getByText("Change")).toBeTruthy();
+});
+
 test("elapsed meditation restored from storage completes locally", async () => {
   jest.spyOn(localStore, "read").mockResolvedValue({
     ...initialState,
