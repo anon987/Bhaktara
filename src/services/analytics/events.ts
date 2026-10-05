@@ -6,6 +6,13 @@ export type AnalyticsEvent =
   | "content_complete"
   | "mandir_aarti_play"
   | "content_favorite"
+  // Doc 13 §2 save/set/share and §8 save_failed.
+  | "content_save_tap"
+  | "content_save_success"
+  | "content_share"
+  | "set_wallpaper"
+  | "set_ringtone"
+  | "save_failed"
   | "jaap_mala_complete"
   | "meditation_complete"
   | "mandir_deity_selected";

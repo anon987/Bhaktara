@@ -66,6 +66,10 @@ The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CD
 
 `bhaktara-dev` exists under the operator's Google account on the Spark plan; billing is off. `.firebaserc` alias `dev`; the default stays the local `demo-bhaktara`. Firestore `(default)` is Standard edition, Native mode, in `asia-south1` (Mumbai), with delete protection enabled. The repository's `firestore.rules` and all 8 composite indexes are deployed. A live unauthenticated read and write both return 403. Anonymous and Google sign-in are enabled. The Android app is registered with the debug SHA-1/SHA-256, and a Web app supplies the JavaScript SDK config. The app has a `cloud` backend mode, verified from Node: anonymous sign-in plus the catalog query against deployed rules and indexes. `seed:dev` has loaded the placeholder catalog (13 items, 5 deities, 2 banners), and `content:import --project dev` can add real items; both use the Admin SDK with Application Default Credentials. Still pending: on-device verification in cloud mode, App Check, and real launch content.
 
+## Save, set and share (Android)
+
+Wallpapers, ringtones and status videos can be saved to the gallery or ringtones (MediaStore), set as the home/lock wallpaper (WallpaperManager) or as the ringtone, notification or alarm sound (RingtoneManager), through the local Expo module `modules/bhaktara-media`. Status videos share through the system share sheet (`expo-sharing`) from a temporary cache copy. Downloads show progress and land in the app cache first. "Set as ringtone" explains and then opens the "Modify system settings" screen; Android 9 and older ask for storage permission. Saves pass a rewarded gate that is free while Remote Config keeps rewarded ads off; with no ad SDK before M4, an enabled gate falls back to no-fill and still saves. Placeholder items without CDN media show the actions as unavailable. Not yet verified on a device or in a native build.
+
 ## Native Firebase (D-048)
 
 On Android, Auth, Firestore, Analytics, Crashlytics, Remote Config and App Check now use React Native Firebase. The web preview and Node tests keep the JavaScript SDK through a shared repository adapter. Analytics and Crashlytics collection is disabled in `firebase.json` until the privacy policy ships. Remote Config carries the doc 11 ad switches (off) and a media base override.
@@ -85,7 +89,7 @@ Verified on 2026-10-05:
 
 ## Remaining limitations and decisions
 
-Cloud authentication and Google linking, real playback, bell audio, native saves/sharing, notifications, ads, server XP/streaks/rewards, live challenges/leagues, CMS, and production services are not connected. Sample progression is explicitly non-authoritative. No external services were provisioned or deployed.
+Cloud authentication and Google linking, real playback, bell audio, notifications, ads, server XP/streaks/rewards, live challenges/leagues, CMS, and production services are not connected. Sample progression is explicitly non-authoritative. No external services were provisioned or deployed.
 
 The final deity taxonomy (P-11) and primary KPI (P-12) remain undecided. Google account link/merge must precede live leagues. Keep client-local practice separate from server-authoritative rewards.
 
