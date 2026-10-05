@@ -432,10 +432,10 @@
           "id": "m1-admin-auth",
           "title": "Admin: auth and roles",
           "status": "in_progress",
-          "notes": "Code complete and emulator-verified: role claims + checks in every callable, grant-role script, admin web sign-in and role gate. Deploy (Functions, Hosting) waits for the dev deploy. Functions and the admin web (https://bhaktara-dev.web.app) deployed on 2026-10-06; an operator role grant and a live check are next.",
+          "notes": "Role claims checked in every callable, grant-role script, sign-in gate, Staff roles page (list, grant, remove). Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
           "evidence": [
             "src/domain/cms.ts",
-            "admin/",
+            "admin/src/pages/RolesPage.tsx",
             "docs/ADMIN_CMS.md"
           ]
         },
@@ -443,10 +443,10 @@
           "id": "m1-admin-crud",
           "title": "Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036)",
           "status": "in_progress",
-          "notes": "Code complete and emulator-verified: content callables with D-036 workflow + checklist gating, admin web list/editor/transitions. Functions and the admin web (https://bhaktara-dev.web.app) deployed on 2026-10-06; an operator role grant and a live check are next.",
+          "notes": "Content library (status tabs, type filter, search, paging) and the D-036 editor in the v2 look; media upload renders variants through processMedia. Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
           "evidence": [
-            "functions/src/content.ts",
-            "admin/",
+            "admin/src/pages/content/ContentLibraryPage.tsx",
+            "admin/src/content/ContentEditor.tsx",
             "docs/ADMIN_CMS.md"
           ]
         },
@@ -497,32 +497,30 @@
           "id": "m1-admin-banners",
           "title": "Admin: banner manager",
           "status": "in_progress",
-          "notes": "Code complete and emulator-verified: banner callables + admin web banner manager. Functions and the admin web (https://bhaktara-dev.web.app) deployed on 2026-10-06; an operator role grant and a live check are next.",
+          "notes": "Banner manager with an image picker from the media library. Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
           "evidence": [
-            "functions/src/banners.ts",
-            "admin/",
-            "docs/ADMIN_CMS.md"
+            "admin/src/banners/BannerManager.tsx",
+            "admin/src/pages/BannersPage.tsx"
           ]
         },
         {
           "id": "m1-admin-home-sections",
           "title": "Admin: home section manager",
           "status": "in_progress",
-          "notes": "Code complete and emulator-verified: Home manager callables (layout, preview, rebuild); admin web screen for it still to add. Functions and the admin web (https://bhaktara-dev.web.app) deployed on 2026-10-06; an operator role grant and a live check are next.",
+          "notes": "Home manager screen: per-language sections, reorder, show/hide, rail/quote/shortcut editors, phone preview, rebuild feeds. Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
           "evidence": [
-            "functions/src/home.ts",
-            "docs/ADMIN_CMS.md"
+            "admin/src/pages/HomeManagerPage.tsx",
+            "functions/src/home.ts"
           ]
         },
         {
           "id": "m1-admin-audit",
           "title": "Admin: audit log",
           "status": "in_progress",
-          "notes": "Code complete and emulator-verified: audit entry per mutation in the same transaction + admin web audit viewer. Functions and the admin web (https://bhaktara-dev.web.app) deployed on 2026-10-06; an operator role grant and a live check are next.",
+          "notes": "Audit log page in the v2 look; every v2 callable audits in its transaction. Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
           "evidence": [
-            "functions/src/content.ts",
-            "admin/",
-            "docs/ADMIN_CMS.md"
+            "admin/src/pages/AuditPage.tsx",
+            "functions/src/core.ts"
           ]
         },
         {
@@ -733,19 +731,21 @@
         {
           "id": "m2-admin-challenges",
           "title": "Admin: challenge manager",
-          "status": "not_started",
-          "notes": "Builds on the M1 admin core.",
-          "blockedBy": [
-            "m1-admin-auth"
+          "status": "in_progress",
+          "notes": "Challenge manager (catalogue page, metric labels, 8-week coverage strip; saveCatalogItem). Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
+          "evidence": [
+            "admin/src/pages/catalog/kinds.tsx",
+            "functions/src/catalog.ts"
           ]
         },
         {
           "id": "m2-admin-badges",
           "title": "Admin: badge manager",
-          "status": "not_started",
-          "notes": "Builds on the M1 admin core.",
-          "blockedBy": [
-            "m1-admin-auth"
+          "status": "in_progress",
+          "notes": "Badge manager (catalogue page; saveCatalogItem). Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
+          "evidence": [
+            "admin/src/pages/catalog/kinds.tsx",
+            "functions/src/catalog.ts"
           ]
         },
         {
@@ -755,6 +755,49 @@
           "notes": "Config and the V1 badge set are seeded (npm run seed:progression:dev); the four challenges are development placeholders. The reviewed 8-week launch set is still to write.",
           "evidence": [
             "scripts/progression/seed.ts"
+          ]
+        },
+        {
+          "id": "m2-admin-dashboard",
+          "title": "Admin: dashboard",
+          "status": "in_progress",
+          "notes": "Devotees, activity, streaks, 14-day practice chart, content pipeline, challenge queue, scheduled content, festivals and alerts (getDashboard, cached 5 min). Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
+          "evidence": [
+            "functions/src/dashboard.ts",
+            "admin/src/pages/DashboardPage.tsx"
+          ]
+        },
+        {
+          "id": "m2-admin-users",
+          "title": "Admin: users",
+          "status": "in_progress",
+          "notes": "Search by ID, email or name; filters; detail with practice grid; flag, notes, reset name (MODERATOR+); disable and delete with typed confirmation (SUPER_ADMIN; ledger anonymised). Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
+          "evidence": [
+            "functions/src/users.ts",
+            "admin/src/pages/users/UsersPage.tsx"
+          ]
+        },
+        {
+          "id": "m2-admin-config",
+          "title": "Admin: XP, Sadhana and puja config",
+          "status": "in_progress",
+          "notes": "Versioned appConfig editors with history and restore; stale saves refused; daily-cap and required-offering checks. Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
+          "evidence": [
+            "functions/src/catalog.ts",
+            "admin/src/pages/config/ConfigPage.tsx"
+          ]
+        },
+        {
+          "id": "m2-admin-media-library",
+          "title": "Admin: media library",
+          "status": "blocked",
+          "notes": "Image library for banners, deities, festivals, offerings and covers (requestAssetUpload, processAsset, deleteAsset) with an asset picker in the editors. Deployed; uploads wait for the R2 secrets and the Cloud Run processor.",
+          "blockedBy": [
+            "media-processor-deploy"
+          ],
+          "evidence": [
+            "functions/src/assets.ts",
+            "admin/src/pages/MediaLibraryPage.tsx"
           ]
         }
       ]
@@ -834,20 +877,25 @@
         {
           "id": "m3-admin-festivals",
           "title": "Admin: festival manager",
-          "status": "not_started",
-          "notes": "",
-          "blockedBy": [
-            "m1-admin-auth"
+          "status": "in_progress",
+          "notes": "Festival manager (date range, deities, collection, image; dashboard lists the next 45 days). Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
+          "evidence": [
+            "admin/src/pages/catalog/kinds.tsx",
+            "functions/src/catalog.ts"
           ]
         },
         {
           "id": "m3-admin-mandir",
           "title": "Admin: Mandir deity config",
-          "status": "not_started",
-          "notes": "",
+          "status": "in_progress",
+          "notes": "Deity catalogue (art required to activate) and Mandir offerings; per-deity puja offerings in versioned appConfig/puja (forbidden flowers refused). The app still reads offerings from code defaults. Final deity list waits for P-11. Admin panel v2 (D-055) deployed to bhaktara-dev on 2026-10-06 (https://bhaktara-dev.web.app); emulator-tested (functions/test/admin.test.ts, emulator-tests/admin-rules.test.ts). Operator live check next.",
           "blockedBy": [
-            "m1-admin-auth",
             "p-11"
+          ],
+          "evidence": [
+            "admin/src/pages/catalog/kinds.tsx",
+            "admin/src/pages/config/editors.tsx",
+            "functions/src/catalog.ts"
           ]
         },
         {

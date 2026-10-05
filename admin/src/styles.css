@@ -1,5 +1,7 @@
-.legacy /* Classes used by the editor screens that predate panel v2 (content editor, .legacy status moves, .legacy banner manager, .legacy audit log, .legacy sign-in gate), .legacy drawn in the panel
-   v2 theme (index.css tokens), .legacy so old and new screens look alike. */
+/* Classes used by the editor screens that predate panel v2 (content editor,
+   status moves, banner manager, audit log), scoped under .legacy and drawn in
+   the panel v2 theme (index.css tokens), so old and new screens look alike.
+   The sign-in gate and .visually-hidden apply everywhere. */
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -78,7 +80,7 @@
 .legacy .pager { display: flex; gap: 0.75rem; align-items: center; justify-content: center; padding-top: 1rem; font-size: 0.875rem; }
 .legacy .audit pre { white-space: pre-wrap; font-size: 0.75rem; color: var(--muted-foreground); }
 
-.legacy /* Sign-in gate */
+/* Sign-in gate */
 .gate { min-height: 100dvh; display: grid; place-items: center; padding: 1.5rem; background:
   radial-gradient(60rem 30rem at 10% -10%, color-mix(in oklch, var(--primary) 18%, transparent), transparent),
   radial-gradient(40rem 30rem at 110% 110%, color-mix(in oklch, var(--kumkum) 14%, transparent), transparent), var(--background); }

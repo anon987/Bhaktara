@@ -1,10 +1,10 @@
 # Bhaktara progress and handoff
 
-Last updated: **2026-10-06** (M2 habit layer deployed to dev).
+Last updated: **2026-10-06** (admin panel v2 deployed to dev; emulator memory fix).
 
 ## Current checkpoint
 
-Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M1 app features are verified on a Samsung SM_E076B. **The M2 habit layer is code-complete on `feature/m2-progression` (server) and `feature/m2-sadhana-sync` (app)**: server-authoritative practice sessions, reward ledger, XP, levels, streaks, daily/weekly challenges and badges in Cloud Functions, and redesigned devotional Sadhana screens wired to them. The Blaze plan is enabled on `bhaktara-dev`, and **all 24 Cloud Functions, the rules and the indexes are deployed there (2026-10-06)**, with the habit config, V1 badges and development challenges seeded. A live smoke test and the phone confirm XP, streak, badges and server-timed sessions. The admin web is on Hosting at https://bhaktara-dev.web.app. Not yet deployed: the Cloud Run media processor; R2 upload secrets are not set.
+Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M1 app features are verified on a Samsung SM_E076B. **The M2 habit layer is code-complete on `feature/m2-progression` (server) and `feature/m2-sadhana-sync` (app)**: server-authoritative practice sessions, reward ledger, XP, levels, streaks, daily/weekly challenges and badges in Cloud Functions, and redesigned devotional Sadhana screens wired to them. The Blaze plan is enabled on `bhaktara-dev`, and **all 24 Cloud Functions, the rules and the indexes are deployed there (2026-10-06)**, with the habit config, V1 badges and development challenges seeded. A live smoke test and the phone confirm XP, streak, badges and server-timed sessions. **Admin panel v2 (D-055)** is on Hosting at https://bhaktara-dev.web.app with 38 Cloud Functions deployed (dashboard, catalogue, versioned config, users, staff roles, media library). Not yet deployed: the Cloud Run media processor; R2 upload secrets are not set.
 
 Live milestone status is in [MILESTONES.md](MILESTONES.md), generated from `docs/progress/roadmap.json` (`npm run progress`; CI runs `progress:check`).
 
@@ -14,16 +14,29 @@ Branches: `main` (production), `develop` (integration), `feature/*` merged into 
 
 1. **Ask the operator how the new practice screens feel on the phone** (jaap mala, dhyan lamp, the new puja, blessing sheet) and adjust. A meditation was credited on the phone on 2026-10-06 (30 XP, streak 1); jaap with a real minute-long mala, prayer, history and airplane mode still need a hands-on check.
 2. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`, then `npm run seed:progression:dev`.
-3. **Admin CMS live check:** the admin web is live at https://bhaktara-dev.web.app (2026-10-06). The operator account holds SUPER_ADMIN (see [ADMIN_CMS.md](ADMIN_CMS.md)); verify content CRUD, banners, the Home manager and the audit log against the deployed functions.
-4. **Media pipeline (needs confirmation, billed/token):** create the R2 upload token (`m0-r2-token`), store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, deploy the Cloud Run processor and set `MEDIA_PROCESSOR_URL`.
+3. **Admin panel live check:** sign in at https://bhaktara-dev.web.app with the SUPER_ADMIN account ([ADMIN_CMS.md](ADMIN_CMS.md)) and walk the pages: dashboard, content, Home manager, catalogue, config (save one version and restore it), users, staff roles, audit. Nothing has been tried there with a real account yet.
+4. **Media pipeline (needs the owner's gcloud login, billed):** run `gcloud auth login` with the `bhaktara-dev` owner account, store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, build and deploy the Cloud Run processor ([MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md)), set `MEDIA_PROCESSOR_URL`, redeploy functions, and add the R2 CORS rule for the admin origin. Then the media library and content uploads work.
 5. Still open from M1: `p-11` (deity list), real launch content, "Save wallpaper" on device.
 
 Working rules for this repository:
 - Run at most two background agents at once and never a Gradle build alongside two busy agents (the workstation crashed under more).
+- **Memory (7.2 GB laptop):** `systemd-oomd` kills Zed or the whole desktop when memory pressure stays above 50%. The Functions emulator must run with `--inspect-functions 9229` (one shared worker; the scripts already pass it), and emulators, Metro, Gradle, Playwright and big test runs go one at a time. After a "crash", check `journalctl -u systemd-oomd | grep Killed`.
 - Never print or commit `.env.r2`, `.env.local`, `google-services.json` or App Check debug tokens.
 - Dev is the default target; staging/prod, DNS, token creation, cache purges and anything billed (including deploys) need explicit confirmation (doc 23).
 - Native changes need a rebuild ([ANDROID_DEVICE.md](ANDROID_DEVICE.md), about 9 minutes incremental); JS changes reload through Metro.
 - Bhaktara is used by elderly people: large type, Hindi first, plain words and guided flows for anything that leaves the app. Practice screens use devotional metaphors (D-052).
+
+## Admin panel v2 (2026-10-06)
+
+Decision: D-055. Branch `feature/admin-v2`. Guide: [ADMIN_CMS.md](ADMIN_CMS.md).
+
+- **Panel** (`admin/`): shadcn/ui + Tailwind v4 in the Bhaktara theme, light and dark; sidebar with a phone hamburger menu, ⌘K page search, page error boundary. Pages: dashboard, content library and editor, media library, Home manager, banners, collections, deities, categories, challenges, badges, puja offerings, Sadhana plan, XP & levels, festivals, Mandir offerings, users and user detail, staff roles, audit log. The M1 editor, banner manager and audit log keep their tested code inside a `.legacy` style scope.
+- **Server** (`functions/src/`): `dashboard.ts` (`getDashboard`), `catalog.ts` (`saveCatalogItem`, `deleteCatalogItem`, `saveConfig`, `rollbackConfig`), `users.ts` (`searchUsers`, `getUserDetail`, `moderateUser`, `setUserDisabled`, `deleteUserAccount`, `listAdmins`), `assets.ts` (`requestAssetUpload`, `processAsset`, `deleteAsset`). Schemas in `src/domain/admin.ts`; new permissions in `src/domain/cms.ts`.
+- **Rules and indexes:** staff reads for the catalogue, `appConfig` and its `versions`, and `mediaAssets`; indexes for user filters, practice-day counts and `mediaAssets(purpose, createdAt)`.
+- **Tests:** `functions/test/admin.test.ts` (11 emulator tests: permissions, dashboard, catalogue, config versions, users, staff, assets) and a panel v2 rules test. All suites pass: functions 26 unit + 45 emulator, rules 20, app Jest 134, admin Vitest 25.
+- **Fixed on the way:** stale page state when moving between config or catalogue pages; the content list crashing on items without a type; the Flagged users filter (an empty cursor); callables receiving `null` for unset fields; the sign-in screen layout and `.visually-hidden`.
+- **Deployed to `bhaktara-dev`:** rules, indexes, 38 functions (14 new) and Hosting. The sign-in page loads cleanly; a signed-in check is next (step 3 above).
+- **Open:** the app still reads puja offerings from code defaults, not `appConfig/puja` (add `puja` to the public `appConfig` rule when the app reads it). The panel bundle is one 1.6 MB chunk (490 KB gzipped); split pages with `React.lazy` if load time matters.
 
 ## M2 habit layer (2026-10-05)
 

@@ -112,7 +112,7 @@ function Panel({
 }) {
   return (
     <main className="gate" id="main">
-      <div className="gate-card">
+      <div className="gate-card legacy">
         <p className="env-badge">{environment}</p>
         {children}
       </div>
