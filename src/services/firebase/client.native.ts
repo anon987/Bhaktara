@@ -14,6 +14,7 @@ import * as nativeFirestore from "@react-native-firebase/firestore";
 import type { Firestore } from "firebase/firestore";
 import { createSessionService } from "../auth/session";
 import { createFirestoreRepository } from "../../repositories/firestoreRepository";
+import { createFirestoreFavoritesRepository } from "../../repositories/favoritesRepository";
 import { FirestoreApi } from "../../repositories/firestoreApi";
 import { startAppCheck } from "./appCheck";
 import type { FirebaseConfig } from "./client";
@@ -83,10 +84,12 @@ export async function createFirebaseClient(config: FirebaseConfig) {
       return { uid: user.uid, isAnonymous: user.isAnonymous };
     },
   });
+  const firestore = db as unknown as Firestore;
   return {
     session,
-    content: createFirestoreRepository(
-      db as unknown as Firestore,
+    content: createFirestoreRepository(firestore, session, firestoreApi),
+    favorites: createFirestoreFavoritesRepository(
+      firestore,
       session,
       firestoreApi,
     ),

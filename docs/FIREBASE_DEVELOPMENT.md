@@ -42,7 +42,7 @@ EXPO_PUBLIC_BACKEND_MODE=emulator npm start -- --localhost --port 8081 --clear
 
 Launch using [ANDROID_DEVICE.md](ANDROID_DEVICE.md). For an Android emulator set `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=10.0.2.2`; browser/ADB-reversed phones use `127.0.0.1` by default. Only these addresses and `localhost` are accepted. No API keys or service-account files are needed. See `.env.example`; optional `.env.local` is Git-ignored. Restart Metro with `--clear` when changing modes: Metro caches the inlined `EXPO_PUBLIC_*` values, so without it a build can silently keep the previous backend mode.
 
-Auth waits for persisted identity before creating a guest and shares concurrent requests. Native uses AsyncStorage; web uses browser local persistence. Connection failures show retry and never silently substitute fixtures. The app labels emulator mode and its privacy behavior. Practice/favorites remain device-local: Firebase identity does not mean progress is backed up.
+Auth waits for persisted identity before creating a guest and shares concurrent requests. Native uses AsyncStorage; web uses browser local persistence. Connection failures show retry and never silently substitute fixtures. The app labels emulator mode and its privacy behavior. Favorites sync to `users/{uid}/favorites` (device storage stays the cache, with a durable retry queue); practice remains device-local. An anonymous identity is lost with the app data, so this is not a backup until Google sign-in exists.
 
 ## Verify
 
@@ -72,7 +72,7 @@ Run `node scripts/smoke-firebase.mjs` in another terminal. It tests persistent a
 - Search sends the longest normalized token to Firestore. Remaining words and, during text search, deity matching filter the returned page. An empty filtered page may still have a cursor. Firestore permits only one `array-contains` clause per query.
 - Home is a bounded catalog adapter; server-precomputed feeds remain pending. Emulator progress values remain sample-only, with zero XP/streak and no challenges.
 - Rules block unauthenticated catalog access, unpublished/inactive records, unbounded catalog queries, cross-user access, direct progression writes, and guest leagues. Profile updates restrict fields/types.
-- Server profile creation, device registration, CMS client writes and unimplemented collections are denied. Favorites rules exist and are tested, but app favorites still do not sync. Trusted test seeding uses emulator-only rule bypass.
+- Server profile creation, device registration, CMS client writes and unimplemented collections are denied. Favorites are create/read/delete by the owner only, for published content of the matching type; `emulator-tests/favorites.test.ts` covers the rules, the repository and sync. Trusted test seeding uses emulator-only rule bypass.
 - Composite indexes are committed. Emulators do not prove cloud index readiness; verify before real development deployment.
 
 The JS SDK provides a shared Auth/Firestore adapter without changing the existing native build. Native Analytics/Crashlytics/App Check still need later integration. Firebase 12.19's RN persistence export is absent from its root TypeScript declarations; `src/types/firebase-auth.d.ts` narrowly declares the installed RN signature. Only the native persistence module calls it.

@@ -140,3 +140,7 @@ This is a Play Store requirement.
 ## Implementation checkpoint — 2026-10-04
 
 Optional emulator mode now silently creates an anonymous Firebase session after restoring persisted auth, with a single in-flight initialization and retry after errors. Native persistence uses AsyncStorage; browser persistence uses local storage. Fixture mode still creates no account. Google linking/merge, server profiles, sign-out/account deletion, and cloud environments remain pending. Local practice/favorites have not been migrated to account-owned server storage.
+
+## Implementation checkpoint — 2026-10-05 (favorites)
+
+With a backend session (emulator/cloud, guests included), favorites live in `users/{uid}/favorites/{contentId}` and device storage is the cache. Toggles update the cache at once and go through a durable, per-item coalesced queue (AsyncStorage `bhaktara.favorites.sync.v1`) that retries with backoff and survives restarts. Writes are idempotent: the doc ID is the content ID, a repeat create is detected by reading the doc back, deletes of missing docs succeed. On an account's first session the device's favorites are added once; drafts and unknown IDs are dropped from the cache. The account list (newest first) is mirrored into the cache on start, on return to foreground and when Profile opens (throttled to once a minute). A queue left by a different UID is discarded rather than sent; guest→Google merge of favorites (union, §4) stays with the server merge (D-017). Fixture mode is unchanged and device-only.

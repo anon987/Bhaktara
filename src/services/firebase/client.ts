@@ -8,6 +8,7 @@ import {
 import { BackendConfig } from "../backend/config";
 import { createSessionService } from "../auth/session";
 import { createFirestoreRepository } from "../../repositories/firestoreRepository";
+import { createFirestoreFavoritesRepository } from "../../repositories/favoritesRepository";
 import { authPersistence } from "./persistence";
 import { jsFirestoreApi } from "./jsFirestoreApi";
 
@@ -58,5 +59,6 @@ export async function createFirebaseClient(config: FirebaseConfig) {
   return {
     session,
     content: createFirestoreRepository(db, session, jsFirestoreApi),
+    favorites: createFirestoreFavoritesRepository(db, session, jsFirestoreApi),
   };
 }

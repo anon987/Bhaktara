@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   documentId,
   getDocFromServer,
@@ -7,7 +8,10 @@ import {
   limit,
   orderBy,
   query,
+  serverTimestamp,
+  setDoc,
   startAfter,
+  Timestamp,
   where,
 } from "firebase/firestore";
 import { FirestoreApi } from "../../repositories/firestoreApi";
@@ -15,6 +19,7 @@ import { FirestoreApi } from "../../repositories/firestoreApi";
 // JavaScript SDK implementation for the web build and Node emulator tests.
 export const jsFirestoreApi: FirestoreApi = {
   collection,
+  deleteDoc,
   doc,
   documentId,
   getDocFromServer,
@@ -22,6 +27,9 @@ export const jsFirestoreApi: FirestoreApi = {
   limit,
   orderBy,
   query,
+  serverTimestamp,
+  setDoc,
   startAfter,
+  Timestamp,
   where,
 };
