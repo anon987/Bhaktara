@@ -18,48 +18,13 @@ import { Txt } from "../../components/ui";
 import { useReducedMotion } from "../../components/useReducedMotion";
 import { formatTime, remainingAt } from "../../domain/practice";
 import { mantraFor } from "../../domain/mantras";
-import { StringKey } from "../../i18n/strings";
 import { sanctum } from "../../theme/tokens";
 import { Diya } from "./art/Diya";
 import { BEADS, MalaRing } from "./art/MalaRing";
 import { PetalShower } from "./art/PetalShower";
-import { Offering, offeringFor, Thali } from "./art/Thali";
 import { beadTick, malaPulse, useBell } from "./feedback";
 import { useProgression } from "./ProgressionProvider";
-import {
-  BrassButton,
-  SanctumNote,
-  SanctumPage,
-  useNoticeText,
-} from "./Sanctum";
-
-// Practice notices stay readable for a while, then step aside.
-function useTransientNotice() {
-  const { notice } = useProgression();
-  const [hidden, setHidden] = useState(0);
-  useEffect(() => {
-    if (!notice) return;
-    const handle = setTimeout(() => setHidden(notice.key), 7000);
-    return () => clearTimeout(handle);
-  }, [notice]);
-  const text = useNoticeText(notice);
-  return notice && notice.key !== hidden ? text : null;
-}
-
-// Whether this practice can earn XP right now (D-050), as a quiet line.
-function EarningNote() {
-  const { t } = useApp();
-  const { status } = useProgression();
-  const transient = useTransientNotice();
-  const text =
-    transient ??
-    (status === "off"
-      ? t("deviceOnly")
-      : status === "offline"
-        ? t("earnOnline")
-        : null);
-  return text ? <SanctumNote text={text} /> : null;
-}
+import { BrassButton, EarningNote, SanctumPage } from "./Sanctum";
 
 // ---- Jaap: a 108-bead mala ------------------------------------------------
 
@@ -469,92 +434,8 @@ export function MeditationScreen({
   );
 }
 
-// ---- Prarthana: offerings on a puja thali ------------------------------------
-
-const offeringNames: Record<Offering, StringKey> = {
-  pushp: "offeringPushp",
-  deep: "offeringDeep",
-  dhoop: "offeringDhoop",
-  akshat: "offeringAkshat",
-  ghanti: "offeringGhanti",
-};
-
-export function PrayerScreen({
-  navigation,
-}: NativeStackScreenProps<RootParams, "Prayer">) {
-  const { t, local } = useApp();
-  const { sadhana, snapshot, status, today, offerPrayer } = useProgression();
-  const ring = useBell();
-  const { width, height } = useWindowDimensions();
-  const items = sadhana.prayerItems;
-  const day = today();
-  const doneToday =
-    (status === "ready" && snapshot?.today.tasks.prayer) ||
-    local.days[day]?.prayer === true;
-  const [offered, setOffered] = useState<string[]>([]);
-  const [sending, setSending] = useState(false);
-  const [aarti, setAarti] = useState(false);
-  const slots = items.map((_, index) => offeringFor(index));
-  // Guided: one step at a time under a thali that stays in view, so every
-  // offering is seen landing on the plate.
-  const current = doneToday
-    ? -1
-    : items.findIndex((item) => !offered.includes(item.id));
-  const step = current >= 0 ? items[current] : null;
-  return (
-    <SanctumPage
-      title={t("prarthanaShort")}
-      subtitle={t("prarthanaHint")}
-      onBack={navigation.goBack}
-    >
-      <View style={styles.prayer}>
-        <View style={{ alignItems: "center" }}>
-          <Thali
-            size={Math.min(width - 110, height * 0.34, 300)}
-            slots={slots}
-            offered={items.map(
-              (item) => doneToday || offered.includes(item.id),
-            )}
-            aarti={doneToday || aarti}
-          />
-        </View>
-        {doneToday ? (
-          <SanctumNote text={t("prayerDoneToday")} />
-        ) : step ? (
-          <View style={styles.step}>
-            <Txt size={15} bold style={{ color: sanctum.brassLight }}>
-              {t("step")} {current + 1} / {items.length} ·{" "}
-              {t(offeringNames[slots[current]])}
-            </Txt>
-            <Txt bold size={23} style={{ color: sanctum.text }}>
-              {step.label[local.language]}
-            </Txt>
-            <BrassButton
-              label={`${t("offer")} · ${t(offeringNames[slots[current]])}`}
-              onPress={() => {
-                ring();
-                setOffered((values) => [...values, step.id]);
-              }}
-            />
-          </View>
-        ) : (
-          <BrassButton
-            label={t("completePrayer")}
-            disabled={sending}
-            onPress={async () => {
-              setSending(true);
-              setAarti(true);
-              ring(2);
-              await offerPrayer(items.map((item) => item.id));
-              setSending(false);
-            }}
-          />
-        )}
-        <EarningNote />
-      </View>
-    </SanctumPage>
-  );
-}
+// Prarthana is a short puja before the chosen deity (PujaScreen.tsx).
+export { PrayerScreen } from "./PujaScreen";
 
 const styles = StyleSheet.create({
   chips: { gap: 10, paddingHorizontal: 20, paddingVertical: 8 },
@@ -629,14 +510,5 @@ const styles = StyleSheet.create({
   halo: {
     position: "absolute",
     backgroundColor: "rgba(255, 158, 44, 0.25)",
-  },
-  prayer: { flex: 1, gap: 18, paddingHorizontal: 20, paddingBottom: 20 },
-  step: {
-    gap: 10,
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: "rgba(63, 26, 20, 0.7)",
-    borderWidth: 1,
-    borderColor: "rgba(243, 213, 138, 0.3)",
   },
 });

@@ -128,6 +128,10 @@ Format: ID · Decision · Date · Affects
 - **D-051 · Jaap count per practice day.** The bead count starts again at 04:00 (D-024); beads left over from yesterday do not count toward today's mala. Malas already completed stay in the history. · Affects: 03, 10
 - **D-052 · Devotional practice screens.** Sadhana practice uses devotional metaphors instead of generic cards: a 108-bead mala with sumeru and the deity's mantra and traditional mala (jaap), a lamp with a breathing halo (meditation), a puja thali filled step by step with an aarti lamp (prayer), the streak as an akhand jyoti, today's tasks as three lamps and the history as a lamp calendar. Large type, Hindi first, one step at a time. The doc 10 numeric defaults are adopted as the initial `appConfig/gamification` values. · Affects: 03, 04, 10
 
+## Round 14 — Prayer as puja (2026-10-06)
+
+- **D-053 · Prayer is a short puja before the chosen deity.** The daily prayer task (D-025) is performed before the user's Ishta devta in a small mandir, not on an empty plate. Steps follow panchopachar order: पुष्प → धूप → दीप → नैवेद्य → आरती → प्रणाम. Each shows the traditional Sanskrit line and its plain Hindi meaning; offerings appear on the altar. The aarti is performed by circling the thali round the deity with a finger, three rounds with a bell each (an "अपने आप आरती करें" button does it for those who cannot drag). The puja ends with the kshama prarthana and a pranam, which records the prayer. The deity is the one chosen for jaap/Mandir and can be changed before starting. The steps live in `appConfig/sadhana.prayerItems` (`kind`, `line`, `label`). This replaces the gratitude/intention/reflection checklist. · Affects: 03, 06, 10
+
 ## Pending / resolved items
 
 - ~~P-01~~ Resolved by D-022.

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,7 +8,7 @@ import { Txt } from "../../components/ui";
 import { useApp } from "../../app/providers/AppProvider";
 import { sanctum } from "../../theme/tokens";
 import { Toran } from "./art/Toran";
-import { PracticeNotice } from "./ProgressionProvider";
+import { PracticeNotice, useProgression } from "./ProgressionProvider";
 
 // The practice screens share one setting: a lamp-lit sanctum at dusk, framed
 // by a toran. Large back button and title; content decides its own layout.
@@ -174,3 +174,31 @@ const styles = StyleSheet.create({
     borderColor: "rgba(243, 213, 138, 0.5)",
   },
 });
+
+// Practice notices stay readable for a while, then step aside.
+function useTransientNotice() {
+  const { notice } = useProgression();
+  const [hidden, setHidden] = useState(0);
+  useEffect(() => {
+    if (!notice) return;
+    const handle = setTimeout(() => setHidden(notice.key), 7000);
+    return () => clearTimeout(handle);
+  }, [notice]);
+  const text = useNoticeText(notice);
+  return notice && notice.key !== hidden ? text : null;
+}
+
+// Whether this practice can earn XP right now (D-050), as a quiet line.
+export function EarningNote() {
+  const { t } = useApp();
+  const { status } = useProgression();
+  const transient = useTransientNotice();
+  const text =
+    transient ??
+    (status === "off"
+      ? t("deviceOnly")
+      : status === "offline"
+        ? t("earnOnline")
+        : null);
+  return text ? <SanctumNote text={text} /> : null;
+}

@@ -286,7 +286,7 @@ describe("prayer checklist and full Sadhana", () => {
   test("needs every step, pays once and completes the day with the other tasks", async () => {
     const player = await guest();
     await rejects(
-      player.call("completePrayerChecklist", { itemIds: ["gratitude"] }),
+      player.call("completePrayerChecklist", { itemIds: ["pushp"] }),
       "invalid-argument",
       "CHECKLIST_INCOMPLETE",
     );
@@ -301,14 +301,14 @@ describe("prayer checklist and full Sadhana", () => {
     const today = bhaktiDayAt(new Date(), "Asia/Kolkata");
     const prayer = await player.call("completePrayerChecklist", {
       bhaktiDay: today,
-      itemIds: ["gratitude", "intention", "reflection"],
+      itemIds: ["pushp", "dhoop", "deep", "naivedya", "aarti", "pranam"],
     });
     assert.equal(prayer.fullSadhana, true);
     assert.ok(
       prayer.rewards.some((r) => r.type === "FULL_SADHANA" && r.xp === 20),
     );
     const again = await player.call("completePrayerChecklist", {
-      itemIds: ["gratitude", "intention", "reflection"],
+      itemIds: ["pushp", "dhoop", "deep", "naivedya", "aarti", "pranam"],
     });
     assert.equal(again.status, "ALREADY_DONE");
     assert.equal(again.totalXp, prayer.totalXp);
