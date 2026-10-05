@@ -82,20 +82,19 @@ export async function searchUsers(actor: Actor, data: unknown) {
     const page = await db()
       .collection("users")
       .where("displayName", ">=", query)
-      .where("displayName", "<", `${query}`)
+      .where("displayName", "<", `${query}\uf8ff`)
       .orderBy("displayName")
       .limit(input.pageSize)
       .get();
     return { items: await rows(page.docs.map((doc) => doc.id)), next: null };
   }
   if (input.filter === "flagged") {
-    const page = await db()
+    let flagged = db()
       .collection("userStats")
       .where("flags.suspicious", "==", true)
-      .orderBy(FieldPath.documentId())
-      .startAfter(input.after ?? "")
-      .limit(input.pageSize)
-      .get();
+      .orderBy(FieldPath.documentId());
+    if (input.after) flagged = flagged.startAfter(input.after);
+    const page = await flagged.limit(input.pageSize).get();
     const uids = page.docs.map((doc) => doc.id);
     return {
       items: await rows(uids),
