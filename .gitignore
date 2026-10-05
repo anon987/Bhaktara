@@ -73,3 +73,6 @@ GoogleService-Info.plist
 
 # Admin CMS functions bundle
 functions/lib/
+
+# Local Expo module build output
+modules/*/android/build/
