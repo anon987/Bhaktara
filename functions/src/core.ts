@@ -63,7 +63,8 @@ export function parse<T>(schema: z.ZodType<T>, data: unknown): T {
 
 export type AuditEntry = {
   action: string;
-  entity: "content" | "banner" | "adminRole" | "media";
+  entity:
+    "content" | "banner" | "adminRole" | "media" | "homeLayout" | "homeFeed";
   entityId: string;
   beforeSummary: Record<string, unknown> | null;
   afterSummary: Record<string, unknown> | null;

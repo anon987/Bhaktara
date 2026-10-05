@@ -112,6 +112,9 @@ test("staff reads follow the role table; everyone else is denied", async () => {
     );
     await expect(contentStaff, getDoc(doc(db, "contentPrivate", ids.draft)));
     await expect(contentAdmin, getDoc(doc(db, "banners", ids.banner)));
+    assert.equal(can(role, "home.read"), contentAdmin);
+    await expect(contentAdmin, getDoc(doc(db, "homeLayout", "en")));
+    await assertFails(getDocs(query(collection(db, "homeLayout"), limit(2))));
     await expect(
       contentAdmin,
       getDocs(
@@ -154,6 +157,9 @@ test("no role can write CMS collections directly", async () => {
       setDoc(doc(db, "banners", "new-banner"), { isActive: true }),
     );
     await assertFails(deleteDoc(doc(db, "banners", ids.banner)));
+    await assertFails(setDoc(doc(db, "homeLayout", "en"), { sections: [] }));
+    await assertFails(setDoc(doc(db, "homeFeeds", "en"), { sections: [] }));
+    await assertFails(setDoc(doc(db, "jobState", "buildHomeFeed"), {}));
     await assertFails(setDoc(doc(db, "auditLogs", "forged"), { action: "x" }));
     await assertFails(deleteDoc(doc(db, "auditLogs", ids.audit)));
   }

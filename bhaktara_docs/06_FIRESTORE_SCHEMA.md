@@ -380,5 +380,24 @@ sections[] { id, type, title {hi,en}?, order, visible, ...type fields }         
 - Banners are stored beside `sections`, never as an orderable section, so they always render first (D-030). The client re-checks each banner's `startAt`/`endAt` because a feed can be up to 15 minutes old.
 - Both the titles in `{hi,en}` and the per-language doc are kept: the doc decides order and visibility for that language (doc 09 §6), and titles render in the app language.
 - Clients sort by `order`, drop `visible == false`, empty rails and duplicate IDs, and skip any entry they cannot parse. This includes unknown or not-yet-built types (CHALLENGES, LEAGUE, FESTIVALS), so the CMS can add types without breaking older apps.
-- The builder (`buildHomeFeedSections` in `src/domain/home.ts`, shared by fixtures and the seed until the `buildHomeFeed` function exists) leaves out hidden sections and BANNERS, and denormalizes rail cards from published content in popularity order. `sort: NEW` and FESTIVALS resolution are not implemented yet.
-- No composite index is needed (single-doc get).
+- The builder (`buildHomeFeedSections` in `src/domain/home.ts`, shared by the `buildHomeFeed` function, fixtures and the seed) leaves out hidden sections, BANNERS and duplicate IDs, sorts by `order`, and denormalizes rail cards from published content. FESTIVALS resolution is not implemented yet (the section passes through and current apps skip it).
+- No composite index is needed for the app (single-doc get).
+
+## Implementation checkpoint — 2026-10-05 (Home feed builder)
+
+```text
+homeLayout/{language}        [admin]   sections[] (strict Zod: homeLayoutSectionsSchema in src/domain/home.ts),
+                                       revision (int, +1 per save), updatedAt, updatedBy (uid)
+  section   { id (slug), type, title {hi,en}?, order (int ≥ 0), visible }       // ≤ 30, unique ids, ≤ 1 BANNERS
+  RAIL      title {hi,en} (both required), limit 1..20 (default 10),
+            source { collectionId?, contentType?, sort? POPULAR | NEW }
+  SHORTCUTS items[] ≤ 12 { label {hi,en}, iconKey, target (internal routes only) }
+  QUOTE     text {hi,en}, attribution {hi,en}?
+jobState/buildHomeFeed       [server]  dirty, dirtyAt, dirtyReason, claimId, claimedAt, claimReason,
+                                       builtAt, builtClaimId, nextChangeAt, lastReads
+```
+
+- Rail sources: content-wide rails default to POPULAR (`popularityScore` desc, then document ID asc); `NEW` is `publishedAt` desc, then ID asc, and leaves out items without `publishedAt`. A collection rail keeps the collection's editorial order unless `sort` is set; `contentType` narrows either kind. Collections must have `isPublished == true`; at most the first 200 `itemIds` are used.
+- Banners in the feed are active, for that language (all languages when `languages` is absent), inside their `startAt`/`endAt` window at build time, by `priority` desc then ID, at most 10.
+- New composite indexes for the NEW pools: `content (status, publishedAt desc)` and `content (status, type, publishedAt desc)`. The POPULAR pools reuse the existing catalog indexes.
+- The seed also writes `homeLayout/{hi,en}` (revision 1), the published `collections/aarti-sangrah`, and fixed `publishedAt` values, so a server rebuild of the seeded sources reproduces the seeded feeds exactly.

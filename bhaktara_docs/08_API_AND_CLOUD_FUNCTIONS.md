@@ -116,3 +116,25 @@ Never return stack traces or internal messages to clients.
 - Rewarded ads unlock a **save to device** or **one special Mandir offering**. Both are client-side actions, with no XP and no server state.
 - AdMob server-side verification (SSV) is not required in V1, because no server-authoritative value is granted.
 - If a rewarded ad ever grants XP or an entitlement, SSV becomes mandatory first.
+
+## Implementation checkpoint — 2026-10-05 (Home feed builder)
+
+Implemented in `functions/src/home.ts` and run in the local emulators only (the dev project is on Spark).
+
+**Rebuild trigger: dirty flag + scheduled check.** This is the cheapest design that stays correct:
+- `onContentWrite`, `onBannerWrite`, `onCollectionWrite` and `onHomeLayoutWrite` (Firestore triggers, retried) mark `jobState/buildHomeFeed.dirty` only when a write can change a feed: published content entering or leaving PUBLISHED or changing a card or ranking field, active banners, published collections, and layout sections. The trigger reads the flag and writes only if it is not already set, so a burst of writes (an import, the nightly popularity update) costs one write to the hot document.
+- `buildHomeFeed` runs **every 5 minutes** instead of rebuilding every 15. An idle run reads only the state document. It rebuilds when the flag is set, when a banner window opens or closes (`nextChangeAt`), when an earlier build never finished, or when the feed is more than 24 hours old (a guard against a missed trigger). The longest delay for a content change is therefore 5 minutes.
+- A build first claims the flag (`dirty=false` and a new `claimId`), then reads its sources. A change committed after the claim marks the flag again for the next run. The feed write is a transaction that checks the claim, so a slower, older build never overwrites a newer one. If the build fails, the flag is set again.
+- Builds are deterministic and idempotent. A feed whose content has not changed is not rewritten, and its `generatedAt` stays. The feed is validated with the app's `homeFeedDocumentSchema` before it is written.
+- Reads are bounded. Each build reads two layouts, at most 100 active banners, one query per distinct (content type, sort) pool with at most 20 documents, and the referenced collections. A collection rail without a sort reads its items in rail-sized chunks; one with a sort reads all of them, up to 200.
+
+**Home manager callables (doc 09 §6).** These need SUPER_ADMIN or CONTENT_ADMIN (`home.read` / `home.write`). Inputs are validated with the Zod schemas in `src/domain/cms.ts` and `src/domain/home.ts`.
+
+| Callable | Input | Result |
+|---|---|---|
+| `getHomeLayout` | `{ language }` | `{ language, revision, sections, valid, issues[], updatedAt, updatedBy, feed: { generatedAt, sections, banners } \| null, builder: { dirty, builtAt, nextChangeAt } }` |
+| `updateHomeLayout` | `{ language, sections, expectedRevision }` | Replaces the language's layout (order, visibility, titles, rail source and limit, shortcuts). `expectedRevision` must match the stored revision (0 when there is no layout yet); otherwise it fails with `failed-precondition` and `{ reason: "REVISION_MISMATCH", revision }`. Writes a `home.layout.update` audit entry in the same transaction, then rebuilds at once. Returns `{ language, revision, changed, rebuild }`. `rebuild` is null when nothing changed, or `{ status: "QUEUED" }` if the immediate build failed and the scheduler will retry. |
+| `previewHomeFeed` | `{ language, sections }` | Builds an unsaved layout for the live preview without writing anything. Returns `{ language, banners (ISO dates), sections, reads }`. |
+| `rebuildHomeFeed` | `{}` | Forces a rebuild of both languages and writes a `home.feed.rebuild` audit entry. Returns `{ status: BUILT \| SUPERSEDED, reason, reads, nextChangeAt, languages: { hi, en: { status: WRITTEN \| UNCHANGED \| SKIPPED, reason?, sections, banners } } }`. |
+
+When a stored layout is missing or invalid, that language is skipped and its previous feed is kept. Deferred: FESTIVALS resolution, and regenerating `searchTokens` in `onContentWrite` (today the content callables and the importer generate them).

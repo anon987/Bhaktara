@@ -94,6 +94,11 @@ service cloud.firestore {
       allow get: if contentAdmin();
       allow list: if contentAdmin() && bounded(100);
     }
+    // Home manager source layouts (one per language); writes go through
+    // updateHomeLayout so each one is validated, audited and rebuilt.
+    match /homeLayout/{language} {
+      allow get: if contentAdmin() && language in ['hi', 'en'];
+    }
     match /auditLogs/{id} {
       allow get: if contentAdmin();
       allow list: if contentAdmin() && bounded(100);
