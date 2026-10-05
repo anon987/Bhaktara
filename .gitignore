@@ -67,3 +67,6 @@ media-out/
 # Per-environment Firebase native config (fetch with npm run firebase:android-config)
 google-services.json
 GoogleService-Info.plist
+
+# Admin CMS functions bundle
+functions/lib/

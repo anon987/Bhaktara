@@ -72,7 +72,13 @@
     "seed:dev": "tsx scripts/emulator/seed.ts --project dev",
     "content:import": "tsx --env-file-if-exists=.env.r2 scripts/content/import.ts",
     "media:publish": "tsx --env-file-if-exists=.env.r2 scripts/media/publish.ts",
-    "test:emulators": "firebase emulators:exec --project demo-bhaktara --only auth,firestore \"tsx --test --test-concurrency=1 emulator-tests/*.test.ts\""
+    "test:emulators": "firebase emulators:exec --project demo-bhaktara --only auth,firestore \"tsx --test --test-concurrency=1 emulator-tests/*.test.ts\"",
+    "functions:install": "npm --prefix functions ci",
+    "functions:build": "npm --prefix functions run build",
+    "functions:typecheck": "npm --prefix functions run typecheck",
+    "test:functions": "npm run functions:build && npm --prefix functions test && firebase emulators:exec --project demo-bhaktara --only auth,firestore,functions \"tsx --test --test-concurrency=1 functions/test/*.test.ts\"",
+    "emulators:cms": "npm run functions:build && firebase emulators:start --project demo-bhaktara --only auth,firestore,functions",
+    "admin:grant-role": "tsx scripts/admin/grant-role.ts"
   },
   "private": true
 }

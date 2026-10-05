@@ -1,45 +1,23 @@
 import { z } from "zod";
-import { contentTypes, ContentType } from "../../src/domain/models";
+import { contentTypes } from "../../src/domain/models";
 import { Media } from "../../src/domain/media";
-import { buildSearchTokens } from "../../src/domain/search";
+import { contentSearchTokens, SearchDeity } from "../../src/domain/search";
+import {
+  checkItems,
+  checklistState as typedChecklistState,
+  sacredTypes,
+} from "../../src/domain/checklist";
 
 // Seed/import manifest (doc 18 §3, doc 09 §4). One row per content item.
 // List columns use "|" between values; checklist columns are check_<item>.
-
-// Doc 12 §5 pre-publish checklist. Thumbnails exist for every type, so the
-// visual checks apply to all items.
-export const checklist = {
-  all: [
-    "titleChecked",
-    "taxonomyChecked",
-    "thumbnailReadable",
-    "aiRecorded",
-    "savePolicySet",
-    "iconographyCorrect",
-    "noDistortions",
-    "respectfulFraming",
-  ],
-  sacredAudio: [
-    "sourceTextStored",
-    "listenThroughText",
-    "sanskritChecked",
-    "noAudioArtifacts",
-  ],
-  bhajan: ["listenThrough", "noUnintendedLyrics"],
-  ringtone: ["cleanStartEnd", "loudEnough"],
-} as const;
-export type CheckItem = (typeof checklist)[keyof typeof checklist][number];
-const allCheckItems = new Set<string>(Object.values(checklist).flat());
-const sacredTypes: ContentType[] = ["AARTI", "MANTRA", "CHALISA"];
-
-export function applicableChecks(type: ContentType): CheckItem[] {
-  return [
-    ...checklist.all,
-    ...(sacredTypes.includes(type) ? checklist.sacredAudio : []),
-    ...(type === "BHAJAN" ? checklist.bhajan : []),
-    ...(type === "RINGTONE" ? checklist.ringtone : []),
-  ];
-}
+// The doc 12 §5 checklist lives in src/domain/checklist.ts so the importer,
+// the CMS Cloud Functions and the admin app enforce the same items.
+export {
+  applicableChecks,
+  checklist,
+  type CheckItem,
+} from "../../src/domain/checklist";
+const allCheckItems = new Set<string>(checkItems);
 
 const columns = new Set([
   "importKey",
@@ -235,18 +213,10 @@ export function parseRow(record: Record<string, unknown>) {
       };
 }
 
-export function checklistState(row: ManifestRow) {
-  const items = applicableChecks(row.type);
-  const values = Object.fromEntries(
-    items.map((item) => [item, row.checks[item] === true]),
-  ) as Record<CheckItem, boolean>;
-  return { values, missing: items.filter((item) => !values[item]) };
-}
+export const checklistState = (row: ManifestRow) =>
+  typedChecklistState(row.type, row.checks);
 
-export type DeityInfo = {
-  name: { hi: string; en: string };
-  aliases: string[];
-};
+export type DeityInfo = SearchDeity;
 export type ExistingContent = {
   status: string;
   popularityScore?: number;
@@ -277,10 +247,6 @@ export function buildDocuments(input: {
     status = existing.status;
   } else if (missing.length) status = "DRAFT";
   else status = input.publishReady ? "PUBLISHED" : "READY";
-  const deityTerms = row.deityIds.flatMap((id) => {
-    const deity = deities.get(id);
-    return deity ? [deity.name.en, deity.name.hi, ...deity.aliases] : [id];
-  });
   const content = stripUndefined({
     type: row.type,
     status,
@@ -291,15 +257,16 @@ export function buildDocuments(input: {
     deityIds: row.deityIds,
     categoryIds: row.categoryIds,
     tags: row.tags,
-    // Doc 22 B1 assigns this to a publish trigger; the importer generates it
-    // with the same shared normalization until that function exists.
-    searchTokens: buildSearchTokens([
-      row.title_en,
-      row.title_hi,
-      ...row.tags,
-      ...deityTerms,
-      ...row.categoryIds,
-    ]),
+    // Doc 22 B1: the CMS functions use the same builder on every write.
+    searchTokens: contentSearchTokens(
+      {
+        title: { hi: row.title_hi, en: row.title_en },
+        tags: row.tags,
+        deityIds: row.deityIds,
+        categoryIds: row.categoryIds,
+      },
+      deities,
+    ),
     media,
     durationSeconds:
       media.stream?.durationSeconds ??

@@ -64,6 +64,34 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if signedIn() && bounded(30);
     }
+    // ---- Admin CMS reads (doc 09 §15). Roles come only from the `role` custom
+    // claim set by setAdminRole or scripts/admin/grant-role.ts; guests never
+    // qualify. Reads only: every CMS write goes through Cloud Functions, which
+    // also write the audit log. Keep in sync with `permissions` in
+    // src/domain/cms.ts. Rules combine with OR, so these blocks only widen
+    // access for staff and leave the public rules above unchanged.
+    function hasRole(roles) {
+      return signedIn() && request.auth.token.get('role', '') in roles;
+    }
+    function contentStaff() { return hasRole(['SUPER_ADMIN', 'CONTENT_ADMIN', 'EDITOR']); }
+    function contentAdmin() { return hasRole(['SUPER_ADMIN', 'CONTENT_ADMIN']); }
+    match /content/{id} {
+      allow get: if contentStaff();
+      allow list: if contentStaff() && bounded(100);
+    }
+    match /contentPrivate/{id} {
+      allow get: if contentStaff();
+      allow list: if contentStaff() && bounded(100);
+    }
+    match /banners/{id} {
+      allow get: if contentAdmin();
+      allow list: if contentAdmin() && bounded(100);
+    }
+    match /auditLogs/{id} {
+      allow get: if contentAdmin();
+      allow list: if contentAdmin() && bounded(100);
+    }
+
     // CMS, private provenance, ledgers, merges and unimplemented collections
     // are denied to client SDKs. Trusted server code uses the Admin SDK.
     match /{document=**} { allow read, write: if false; }
