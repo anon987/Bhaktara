@@ -15,7 +15,10 @@
           "title": "Repository setup",
           "status": "done",
           "notes": "Private GitHub repo anon987/Bhaktara with main/develop branches.",
-          "evidence": ["README.md", "bhaktara_docs/19_GIT_AND_BRANCHING.md"]
+          "evidence": [
+            "README.md",
+            "bhaktara_docs/19_GIT_AND_BRANCHING.md"
+          ]
         },
         {
           "id": "m0-rn-ts",
@@ -33,7 +36,9 @@
           "title": "Keep the ios/ project",
           "status": "done",
           "notes": "Generated ios/ project kept in the repo; never built (iOS phase, D-009).",
-          "evidence": ["ios/Podfile"]
+          "evidence": [
+            "ios/Podfile"
+          ]
         },
         {
           "id": "m0-platform-services",
@@ -61,14 +66,19 @@
           "title": "Theme and design tokens",
           "status": "done",
           "notes": "Tokens authored from the written design system (doc 04), not from a Stitch export (see m0-design-export).",
-          "evidence": ["src/theme/tokens.ts", "docs/design/DESIGN.md"]
+          "evidence": [
+            "src/theme/tokens.ts",
+            "docs/design/DESIGN.md"
+          ]
         },
         {
           "id": "m0-i18n",
           "title": "Hindi/English i18n framework",
           "status": "done",
           "notes": "Typed hi/en string table; onboarding asks for language only (D-029).",
-          "evidence": ["src/i18n/strings.ts"]
+          "evidence": [
+            "src/i18n/strings.ts"
+          ]
         },
         {
           "id": "m0-fb-emulator",
@@ -123,14 +133,18 @@
           "title": "Google sign-in with guest link/merge (D-017, D-020)",
           "status": "not_started",
           "notes": "Google provider is enabled on bhaktara-dev, but the app's sign-in button reports unavailable. Must land before live leagues.",
-          "evidence": ["src/services/integrations.ts"]
+          "evidence": [
+            "src/services/integrations.ts"
+          ]
         },
         {
           "id": "m0-auth-profile",
           "title": "Server-owned user profile provisioning",
           "status": "not_started",
           "notes": "Rules deny client profile creation, so a Cloud Function must create profiles. Can be built against emulators; cloud deploy needs Blaze.",
-          "blockedBy": ["blaze-plan"]
+          "blockedBy": [
+            "blaze-plan"
+          ]
         },
         {
           "id": "m0-analytics",
@@ -149,7 +163,10 @@
           "title": "Crashlytics",
           "status": "done",
           "notes": "React Native Firebase Crashlytics with JS handlers installed at startup; collection disabled until the privacy policy ships.",
-          "evidence": ["src/services/crashReporting/index.native.ts", "f28e9da"]
+          "evidence": [
+            "src/services/crashReporting/index.native.ts",
+            "f28e9da"
+          ]
         },
         {
           "id": "m0-remote-config",
@@ -187,7 +204,9 @@
           "title": "CI",
           "status": "done",
           "notes": "GitHub Actions: typecheck, lint, Jest, Android export, plus a Firebase emulator job (Java 21, ffmpeg).",
-          "evidence": [".github/workflows/ci.yml"]
+          "evidence": [
+            ".github/workflows/ci.yml"
+          ]
         },
         {
           "id": "m0-mcp-stitch",
@@ -206,7 +225,9 @@
           "title": "MCP: Cloudflare server",
           "status": "done",
           "notes": "Cloudflare Claude Code plugin (skills + MCP) installed at user scope.",
-          "evidence": ["docs/PROGRESS.md"]
+          "evidence": [
+            "docs/PROGRESS.md"
+          ]
         },
         {
           "id": "m0-mcp-json",
@@ -219,7 +240,10 @@
           "title": "R2 dev bucket (bhaktara-media-dev)",
           "status": "done",
           "notes": "APAC location hint; public reads via the rate-limited r2.dev URL (D-047); public writes return 401.",
-          "evidence": ["docs/MEDIA_R2.md", "67f6e13"]
+          "evidence": [
+            "docs/MEDIA_R2.md",
+            "67f6e13"
+          ]
         },
         {
           "id": "m0-r2-token",
@@ -232,29 +256,39 @@
           "title": "R2 staging and prod buckets",
           "status": "blocked",
           "notes": "Not created; they need media-staging/media domains on a Bhaktara-owned zone.",
-          "blockedBy": ["domain-purchase"]
+          "blockedBy": [
+            "domain-purchase"
+          ]
         },
         {
           "id": "m0-r2-cors",
           "title": "R2 CORS",
           "status": "done",
           "notes": "Public GET/HEAD with Range for audio/video seeking; applied to the dev bucket.",
-          "evidence": ["infra/r2/cors.json"]
+          "evidence": [
+            "infra/r2/cors.json"
+          ]
         },
         {
           "id": "m0-r2-domain",
           "title": "R2 custom domain (`media.<domain>`)",
           "status": "blocked",
           "notes": "Required before the first public release because builds embed the media base URL (D-047).",
-          "blockedBy": ["domain-purchase"]
+          "blockedBy": [
+            "domain-purchase"
+          ]
         },
         {
           "id": "m0-r2-cache",
           "title": "R2 CDN cache rules",
           "status": "blocked",
           "notes": "Objects are uploaded with immutable Cache-Control, but r2.dev is not CDN-cached; cache rules need the custom domain.",
-          "evidence": ["scripts/media/publish.ts"],
-          "blockedBy": ["domain-purchase"]
+          "evidence": [
+            "scripts/media/publish.ts"
+          ],
+          "blockedBy": [
+            "domain-purchase"
+          ]
         },
         {
           "id": "m0-r2-lifecycle",
@@ -267,8 +301,12 @@
           "title": "Export Stitch DESIGN.md → theme tokens",
           "status": "not_started",
           "notes": "docs/design/DESIGN.md was written from the Markdown specs because no Stitch export existed.",
-          "evidence": ["docs/design/DESIGN.md"],
-          "blockedBy": ["m0-mcp-stitch"]
+          "evidence": [
+            "docs/design/DESIGN.md"
+          ],
+          "blockedBy": [
+            "m0-mcp-stitch"
+          ]
         }
       ]
     },
@@ -282,8 +320,11 @@
           "id": "m1-home",
           "title": "App: Home with CMS-driven sections",
           "status": "in_progress",
-          "notes": "Parallel stream. Today Home reads a bounded catalog plus Firestore banners (carousel first, D-030); CMS-managed section config is being added.",
-          "evidence": ["src/features/home/HomeScreen.tsx"]
+          "notes": "Home renders the precomputed homeFeeds/{language} doc (doc 06 §3) with banners first. Pending: buildHomeFeed server job, rules deploy, CHALLENGES/LEAGUE/FESTIVALS sections.",
+          "evidence": [
+            "src/domain/home.ts",
+            "src/features/home/HomeScreen.tsx"
+          ]
         },
         {
           "id": "m1-explore",
@@ -301,20 +342,29 @@
           "title": "App: content detail",
           "status": "done",
           "notes": "Direct Firestore lookup by ID with R2 image keys and placeholder-art fallback. Its play/save/set/share actions are tracked as separate items.",
-          "evidence": ["src/features/content/ContentScreen.tsx"]
+          "evidence": [
+            "src/features/content/ContentScreen.tsx"
+          ]
         },
         {
           "id": "m1-audio-player",
           "title": "App: audio player (background playback, lock-screen controls)",
           "status": "in_progress",
-          "notes": "Parallel stream: global expo-audio player. The committed player is a silent UI preview.",
-          "evidence": ["src/features/player/PlayerScreen.tsx"]
+          "notes": "Global expo-audio player with background playback, lock-screen controls, seek, error/retry. Merged to develop; needs the combined native build and an on-device test.",
+          "evidence": [
+            "src/features/player/PlayerProvider.tsx",
+            "tests/player.test.tsx"
+          ]
         },
         {
           "id": "m1-status-video",
           "title": "App: status video player",
           "status": "in_progress",
-          "notes": "Parallel stream. Free WhatsApp share (D-041) still needs a native share implementation."
+          "notes": "Poster-first, tap-to-play expo-video player. Merged to develop; needs the combined native build and an on-device test.",
+          "evidence": [
+            "src/features/content/StatusVideo.tsx",
+            "tests/status-video.test.tsx"
+          ]
         },
         {
           "id": "m1-search",
@@ -339,40 +389,58 @@
         {
           "id": "m1-wallpaper-save",
           "title": "App: save wallpaper",
-          "status": "not_started",
-          "notes": "Queued stream. Platform stub reports unavailable. Rewarded-ad gate (D-038) lands in M4."
+          "status": "in_progress",
+          "notes": "MediaStore save via local Expo module. Merged to develop; needs the combined native build and an on-device test.",
+          "evidence": [
+            "modules/bhaktara-media",
+            "src/features/content/SaveActions.tsx"
+          ]
         },
         {
           "id": "m1-wallpaper-set",
           "title": "App: set wallpaper",
-          "status": "not_started",
-          "notes": "Queued stream. Android-only capability behind the platform interface."
+          "status": "in_progress",
+          "notes": "WallpaperManager home/lock/both. Merged to develop; needs the combined native build and an on-device test.",
+          "evidence": [
+            "modules/bhaktara-media"
+          ]
         },
         {
           "id": "m1-ringtone-save",
           "title": "App: save ringtone",
-          "status": "not_started",
-          "notes": "Queued stream. Platform stub reports unavailable."
+          "status": "in_progress",
+          "notes": "MediaStore Ringtones save. Merged to develop; needs the combined native build and an on-device test.",
+          "evidence": [
+            "modules/bhaktara-media"
+          ]
         },
         {
           "id": "m1-ringtone-set",
           "title": "App: set ringtone",
-          "status": "not_started",
-          "notes": "Queued stream. Needs the Android WRITE_SETTINGS flow."
+          "status": "in_progress",
+          "notes": "RingtoneManager with WRITE_SETTINGS flow. Merged to develop; needs the combined native build and an on-device test.",
+          "evidence": [
+            "modules/bhaktara-media"
+          ]
         },
         {
           "id": "m1-admin-auth",
           "title": "Admin: auth and roles",
-          "status": "not_started",
-          "notes": "Queued stream (Cloud Functions + admin web). Emulator-only until the Blaze plan is enabled.",
-          "blockedBy": ["blaze-plan"]
+          "status": "in_progress",
+          "notes": "Role custom claims, role checks in every callable, grant-role script (emulator). Admin web UI not built; deploying Functions needs Blaze.",
+          "evidence": [
+            "src/domain/cms.ts",
+            "scripts/admin/grant-role.ts"
+          ]
         },
         {
           "id": "m1-admin-crud",
           "title": "Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036)",
-          "status": "not_started",
-          "notes": "Queued stream. Publishing should also generate searchTokens server-side (D-032).",
-          "blockedBy": ["blaze-plan"]
+          "status": "in_progress",
+          "notes": "createContent/updateContent/transitionContentStatus with D-036 workflow and checklist gating, tested in emulators. No admin web UI yet.",
+          "evidence": [
+            "functions/src/content.ts"
+          ]
         },
         {
           "id": "m1-media-images",
@@ -390,35 +458,45 @@
           "title": "Media pipeline: audio normalization",
           "status": "in_progress",
           "notes": "CLI loudness normalization to about -16 LUFS. Admin upload UI not started.",
-          "evidence": ["scripts/media/process.ts"]
+          "evidence": [
+            "scripts/media/process.ts"
+          ]
         },
         {
           "id": "m1-media-video",
           "title": "Media pipeline: video renditions",
           "status": "in_progress",
           "notes": "CLI 720p 9:16 renditions. Admin upload UI not started.",
-          "evidence": ["scripts/media/process.ts"]
+          "evidence": [
+            "scripts/media/process.ts"
+          ]
         },
         {
           "id": "m1-admin-banners",
           "title": "Admin: banner manager",
-          "status": "not_started",
-          "notes": "Queued stream. Banners have INTERNAL targets only (D-015).",
-          "blockedBy": ["blaze-plan"]
+          "status": "in_progress",
+          "notes": "Banner create/update/delete callables (emulator-tested). No admin web UI yet.",
+          "evidence": [
+            "functions/src/banners.ts"
+          ]
         },
         {
           "id": "m1-admin-home-sections",
           "title": "Admin: home section manager",
           "status": "not_started",
           "notes": "Queued stream. Pairs with the in-progress CMS-driven Home.",
-          "blockedBy": ["blaze-plan"]
+          "blockedBy": [
+            "blaze-plan"
+          ]
         },
         {
           "id": "m1-admin-audit",
           "title": "Admin: audit log",
-          "status": "not_started",
-          "notes": "Queued stream.",
-          "blockedBy": ["blaze-plan"]
+          "status": "in_progress",
+          "notes": "Every admin mutation writes an audit entry in the same transaction. Read-only viewer UI not built.",
+          "evidence": [
+            "functions/src/content.ts"
+          ]
         },
         {
           "id": "m1-seed-tooling",
@@ -461,7 +539,9 @@
           "title": "Seed: 200+ wallpapers across 14+ deities",
           "status": "not_started",
           "notes": "Deity coverage depends on the final taxonomy.",
-          "blockedBy": ["p-11"]
+          "blockedBy": [
+            "p-11"
+          ]
         },
         {
           "id": "m1-seed-ringtones",
@@ -480,7 +560,9 @@
           "title": "Seed: 20+ deity profiles",
           "status": "blocked",
           "notes": "5 provisional fixture deities only.",
-          "blockedBy": ["p-11"]
+          "blockedBy": [
+            "p-11"
+          ]
         }
       ]
     },
@@ -495,35 +577,45 @@
           "title": "Sadhana: daily plan",
           "status": "in_progress",
           "notes": "Local Today task list with a 04:00 day boundary (D-024); not server-backed.",
-          "evidence": ["src/features/sadhana/SadhanaScreen.tsx"]
+          "evidence": [
+            "src/features/sadhana/SadhanaScreen.tsx"
+          ]
         },
         {
           "id": "m2-jaap",
           "title": "Sadhana: jaap",
           "status": "in_progress",
           "notes": "Persistent local 108-bead counter; server practice sessions pending. Open question: leftover beads from a previous day count toward today.",
-          "evidence": ["src/features/sadhana/PracticeScreens.tsx"]
+          "evidence": [
+            "src/features/sadhana/PracticeScreens.tsx"
+          ]
         },
         {
           "id": "m2-meditation",
           "title": "Sadhana: meditation timer",
           "status": "in_progress",
           "notes": "Wall-clock local timer survives backgrounding; not anti-cheat evidence until server sessions exist.",
-          "evidence": ["src/features/sadhana/PracticeScreens.tsx"]
+          "evidence": [
+            "src/features/sadhana/PracticeScreens.tsx"
+          ]
         },
         {
           "id": "m2-prayer",
           "title": "Sadhana: prayer checklist",
           "status": "in_progress",
           "notes": "Local checklist only.",
-          "evidence": ["src/features/sadhana/PracticeScreens.tsx"]
+          "evidence": [
+            "src/features/sadhana/PracticeScreens.tsx"
+          ]
         },
         {
           "id": "m2-history",
           "title": "Sadhana: history",
           "status": "in_progress",
           "notes": "Local history sorted by date; no server record.",
-          "evidence": ["src/features/sadhana/SadhanaScreen.tsx"]
+          "evidence": [
+            "src/features/sadhana/SadhanaScreen.tsx"
+          ]
         },
         {
           "id": "m2-xp",
@@ -572,22 +664,30 @@
           "title": "Idempotent Cloud Functions for practice sessions and rewards",
           "status": "not_started",
           "notes": "ProgressionService contract exists in the client. Emulator-testable; cloud deploy needs Blaze.",
-          "evidence": ["src/repositories/contracts.ts"],
-          "blockedBy": ["blaze-plan"]
+          "evidence": [
+            "src/repositories/contracts.ts"
+          ],
+          "blockedBy": [
+            "blaze-plan"
+          ]
         },
         {
           "id": "m2-admin-challenges",
           "title": "Admin: challenge manager",
           "status": "not_started",
           "notes": "Builds on the M1 admin core.",
-          "blockedBy": ["m1-admin-auth"]
+          "blockedBy": [
+            "m1-admin-auth"
+          ]
         },
         {
           "id": "m2-admin-badges",
           "title": "Admin: badge manager",
           "status": "not_started",
           "notes": "Builds on the M1 admin core.",
-          "blockedBy": ["m1-admin-auth"]
+          "blockedBy": [
+            "m1-admin-auth"
+          ]
         },
         {
           "id": "m2-seed-challenges",
@@ -608,7 +708,9 @@
           "title": "Weekly leagues (live from day 1, D-022)",
           "status": "not_started",
           "notes": "Guest league preview UI only; rules already block anonymous league reads (D-019).",
-          "blockedBy": ["m0-auth-google"]
+          "blockedBy": [
+            "m0-auth-google"
+          ]
         },
         {
           "id": "m3-promotion",
@@ -627,7 +729,9 @@
           "title": "Virtual Mandir (simple, D-007)",
           "status": "in_progress",
           "notes": "Local preview: first-visit deity choice and visual diya/flower offerings. Bell sound and aarti audio not implemented.",
-          "evidence": ["src/features/mandir/MandirScreen.tsx"]
+          "evidence": [
+            "src/features/mandir/MandirScreen.tsx"
+          ]
         },
         {
           "id": "m3-festivals",
@@ -670,28 +774,37 @@
           "title": "Admin: festival manager",
           "status": "not_started",
           "notes": "",
-          "blockedBy": ["m1-admin-auth"]
+          "blockedBy": [
+            "m1-admin-auth"
+          ]
         },
         {
           "id": "m3-admin-mandir",
           "title": "Admin: Mandir deity config",
           "status": "not_started",
           "notes": "",
-          "blockedBy": ["m1-admin-auth", "p-11"]
+          "blockedBy": [
+            "m1-admin-auth",
+            "p-11"
+          ]
         },
         {
           "id": "m3-admin-notifications",
           "title": "Admin: notification manager",
           "status": "not_started",
           "notes": "",
-          "blockedBy": ["m1-admin-auth"]
+          "blockedBy": [
+            "m1-admin-auth"
+          ]
         },
         {
           "id": "m3-seed",
           "title": "Seed: festivals (12 months), Mandir art, free and 10–20 special offerings",
           "status": "not_started",
           "notes": "Doc 18 targets.",
-          "blockedBy": ["p-11"]
+          "blockedBy": [
+            "p-11"
+          ]
         }
       ]
     },
@@ -706,7 +819,9 @@
           "title": "AdMob native placements",
           "status": "not_started",
           "notes": "Placement exclusion zones are encoded (no ads near jaap/Mandir controls); no ad SDK yet.",
-          "evidence": ["src/services/integrations.ts"]
+          "evidence": [
+            "src/services/integrations.ts"
+          ]
         },
         {
           "id": "m4-admob-banner",
@@ -731,21 +846,27 @@
           "title": "Admin: ad controls",
           "status": "not_started",
           "notes": "",
-          "blockedBy": ["m1-admin-auth"]
+          "blockedBy": [
+            "m1-admin-auth"
+          ]
         },
         {
           "id": "m4-kill-switch",
           "title": "Remote Config ad kill switch",
           "status": "in_progress",
           "notes": "Ad switch defaults (off) exist in the app; nothing consumes them until ads ship.",
-          "evidence": ["src/services/remoteConfig/defaults.ts"]
+          "evidence": [
+            "src/services/remoteConfig/defaults.ts"
+          ]
         },
         {
           "id": "m4-rules-review",
           "title": "Security rules review",
           "status": "in_progress",
           "notes": "Deny-by-default rules deployed to dev; a formal pre-launch review has not happened.",
-          "evidence": ["firestore.rules"]
+          "evidence": [
+            "firestore.rules"
+          ]
         },
         {
           "id": "m4-emulator-tests",
@@ -774,7 +895,9 @@
           "title": "Offline and weak-network states",
           "status": "in_progress",
           "notes": "Loading/error/empty/offline UI states exist (developer-simulated); native Firestore offline cache via RNF. No real network detection or sync queue.",
-          "evidence": ["src/components/ui.tsx"]
+          "evidence": [
+            "src/components/ui.tsx"
+          ]
         },
         {
           "id": "m4-privacy-policy",
@@ -787,7 +910,9 @@
           "title": "Enable Analytics/Crashlytics collection with consent flow (D-048)",
           "status": "not_started",
           "notes": "Config change in firebase.json plus rebuild; in-app privacy text must change at the same time.",
-          "blockedBy": ["m4-privacy-policy"]
+          "blockedBy": [
+            "m4-privacy-policy"
+          ]
         },
         {
           "id": "m4-account-deletion",
@@ -800,7 +925,9 @@
           "title": "Play Data Safety form",
           "status": "not_started",
           "notes": "",
-          "blockedBy": ["m4-privacy-policy"]
+          "blockedBy": [
+            "m4-privacy-policy"
+          ]
         },
         {
           "id": "m4-release-signing",
@@ -813,7 +940,9 @@
           "title": "Play Console closed testing track",
           "status": "not_started",
           "notes": "Including any tester requirements for the developer account.",
-          "blockedBy": ["play-console"]
+          "blockedBy": [
+            "play-console"
+          ]
         }
       ]
     },
@@ -828,21 +957,28 @@
           "title": "Staged rollout on Play Store",
           "status": "not_started",
           "notes": "Requires the production media domain (D-047).",
-          "blockedBy": ["domain-purchase", "play-console"]
+          "blockedBy": [
+            "domain-purchase",
+            "play-console"
+          ]
         },
         {
           "id": "m5-thresholds",
           "title": "Set crash-free and D1 retention thresholds",
           "status": "not_started",
           "notes": "To be set in the analytics round.",
-          "blockedBy": ["p-12"]
+          "blockedBy": [
+            "p-12"
+          ]
         },
         {
           "id": "m5-paid-acquisition",
           "title": "Paid acquisition after thresholds are verified at small spend",
           "status": "not_started",
           "notes": "",
-          "blockedBy": ["m5-thresholds"]
+          "blockedBy": [
+            "m5-thresholds"
+          ]
         }
       ]
     },
@@ -883,7 +1019,9 @@
           "title": "iOS platform services (ringtone and wallpaper fallbacks)",
           "status": "deferred",
           "notes": "iOS stubs already implement the shared interfaces.",
-          "evidence": ["src/services/platform/index.ios.ts"]
+          "evidence": [
+            "src/services/platform/index.ios.ts"
+          ]
         },
         {
           "id": "ios-apns",

@@ -78,6 +78,7 @@ test("renders banners first, then CMS sections in the configured order", async (
   fireEvent.press(screen.getAllByLabelText("Durga aarti")[0]);
   expect(navigation.navigate).toHaveBeenLastCalledWith("Content", {
     contentId: "aarti-durga",
+    source: "home_rail",
   });
 });
 
