@@ -1,0 +1,313 @@
+# 🪷 Bhaktara milestone tracker
+
+> **Last generated:** 2026-10-05 (from the `updated` field) · **Source of truth:** [docs/progress/roadmap.json](progress/roadmap.json) · **Roadmap:** [bhaktara_docs/16_RELEASE_ROADMAP.md](../bhaktara_docs/16_RELEASE_ROADMAP.md)
+>
+> Generated file — do not edit by hand. See the footer to update it.
+
+## Overall progress (V1: M0–M5)
+
+**`████░░░░░░░░░░░░░░░░` 21%** — 23 of 110 V1 items done, 18 in progress.
+
+| Status         |   Items |
+| -------------- | ------: |
+| ✅ Done        |      23 |
+| 🔄 In progress |      18 |
+| ⏳ Not started |      65 |
+| ⛔ Blocked     |       4 |
+| 💤 Deferred    |       0 |
+| **Total**      | **110** |
+
+Completion % = done ÷ (total − deferred). In-progress items count as not done.
+
+### By milestone
+
+| Milestone                                            | Progress              |  ✅ |  🔄 |  ⏳ |  ⛔ |  💤 | Total |
+| ---------------------------------------------------- | --------------------- | --: | --: | --: | --: | --: | ----: |
+| **M0** Foundation                                    | `██████░░░░` 59%      |  19 |   1 |   9 |   3 |   0 |    32 |
+| **M1** Content core + CMS core                       | `█░░░░░░░░░` 14%      |   4 |   7 |  16 |   1 |   0 |    28 |
+| **M2** Habit layer                                   | `░░░░░░░░░░` 0%       |   0 |   5 |  11 |   0 |   0 |    16 |
+| **M3** Competition, Mandir, utilities, notifications | `░░░░░░░░░░` 0%       |   0 |   1 |  13 |   0 |   0 |    14 |
+| **M4** Monetization + hardening                      | `░░░░░░░░░░` 0%       |   0 |   4 |  13 |   0 |   0 |    17 |
+| **M5** V1 public launch                              | `░░░░░░░░░░` 0%       |   0 |   0 |   3 |   0 |   0 |     3 |
+| V1.x Post-launch increment _(post-V1)_               | `··········` deferred |   0 |   0 |   0 |   0 |   1 |     1 |
+| iOS iOS phase _(post-V1)_                            | `··········` deferred |   0 |   0 |   0 |   0 |   7 |     7 |
+
+**Legend:** ✅ Done · 🔄 In progress · ⏳ Not started · ⛔ Blocked · 💤 Deferred
+
+## 🎯 Next up
+
+**In progress**
+
+- 🔄 **M0** · MCP: Firebase server (`m0-mcp-firebase`)
+- 🔄 **M1** · App: Home with CMS-driven sections (`m1-home`)
+- 🔄 **M1** · App: audio player (background playback, lock-screen controls) (`m1-audio-player`)
+- 🔄 **M1** · App: status video player (`m1-status-video`)
+- 🔄 **M1** · App: favorites (`m1-favorites`)
+- 🔄 **M1** · Media pipeline: image variants (`m1-media-images`)
+- 🔄 **M1** · Media pipeline: audio normalization (`m1-media-audio`)
+- 🔄 **M1** · Media pipeline: video renditions (`m1-media-video`)
+- 🔄 **M2** · Sadhana: daily plan (`m2-daily-plan`)
+- 🔄 **M2** · Sadhana: jaap (`m2-jaap`)
+- 🔄 **M2** · Sadhana: meditation timer (`m2-meditation`)
+- 🔄 **M2** · Sadhana: prayer checklist (`m2-prayer`)
+- 🔄 **M2** · Sadhana: history (`m2-history`)
+- 🔄 **M3** · Virtual Mandir (simple, D-007) (`m3-mandir`)
+- 🔄 **M4** · Remote Config ad kill switch (`m4-kill-switch`)
+- 🔄 **M4** · Security rules review (`m4-rules-review`)
+- 🔄 **M4** · Security rules emulator tests (`m4-emulator-tests`)
+- 🔄 **M4** · Offline and weak-network states (`m4-offline`)
+
+**Next not-started items with no open blockers** (first 6 in roadmap order)
+
+- ⏳ **M0** · Firebase staging project (bhaktara-staging) (`m0-fb-staging`)
+- ⏳ **M0** · Firebase prod project (bhaktara-prod) (`m0-fb-prod`)
+- ⏳ **M0** · Google sign-in with guest link/merge (D-017, D-020) (`m0-auth-google`)
+- ⏳ **M0** · MCP: Stitch server (`m0-mcp-stitch`)
+- ⏳ **M0** · Project .mcp.json with environment-variable secrets (`m0-mcp-json`)
+- ⏳ **M0** · R2 upload API token (dev bucket only) (`m0-r2-token`)
+
+## ⛔ Blocked / decisions needed
+
+### Enable the Firebase Blaze plan on bhaktara-dev
+
+- **Type:** Billing · **Reference:** [docs/FIREBASE_DEVELOPMENT.md](FIREBASE_DEVELOPMENT.md)
+- The dev project is on Spark, which cannot deploy Cloud Functions. Admin CMS, profile provisioning and reward functions stay emulator-only until billing is enabled.
+- **Blocks:** ⏳ Server-owned user profile provisioning (`m0-auth-profile`); ⏳ Admin: auth and roles (`m1-admin-auth`); ⏳ Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036) (`m1-admin-crud`); ⏳ Admin: banner manager (`m1-admin-banners`); ⏳ Admin: home section manager (`m1-admin-home-sections`); ⏳ Admin: audit log (`m1-admin-audit`); ⏳ Idempotent Cloud Functions for practice sessions and rewards (`m2-functions`)
+
+### Buy a Bhaktara domain
+
+- **Type:** Purchase · **Reference:** [docs/MEDIA_R2.md](MEDIA_R2.md)
+- Needed for R2 custom domains (media-dev/media-staging/media), CDN cache rules and the staging/prod buckets. Required before the first public release (D-047).
+- **Blocks:** ⛔ R2 staging and prod buckets (`m0-r2-staging-prod`); ⛔ R2 custom domain (`media.<domain>`) (`m0-r2-domain`); ⛔ R2 CDN cache rules (`m0-r2-cache`); ⏳ Staged rollout on Play Store (`m5-rollout`)
+
+### P-11: canonical V1 deity list
+
+- **Type:** Decision · **Reference:** [bhaktara_docs/00_DECISION_LOG.md](../bhaktara_docs/00_DECISION_LOG.md)
+- Confirm the final deity taxonomy in doc 18 §4, including whether Sai Baba is included. Blocks deity seeding, wallpaper coverage and Mandir config.
+- **Blocks:** ⏳ Seed: 200+ wallpapers across 14+ deities (`m1-seed-wallpapers`); ⛔ Seed: 20+ deity profiles (`m1-seed-deities`); ⏳ Admin: Mandir deity config (`m3-admin-mandir`); ⏳ Seed: festivals (12 months), Mandir art, free and 10–20 special offerings (`m3-seed`)
+
+### P-12: primary KPI (north-star metric)
+
+- **Type:** Decision · **Reference:** [bhaktara_docs/00_DECISION_LOG.md](../bhaktara_docs/00_DECISION_LOG.md)
+- Candidate: % of DAU with a qualifying streak activity. Needed to set launch thresholds.
+- **Blocks:** ⏳ Set crash-free and D1 retention thresholds (`m5-thresholds`)
+
+### Google Play developer account readiness
+
+- **Type:** External
+- Confirm the developer account and any closed-testing tester requirements that apply to it before M4 closed testing.
+- **Blocks:** ⏳ Play Console closed testing track (`m4-closed-testing`); ⏳ Staged rollout on Play Store (`m5-rollout`)
+
+### Waiting on other roadmap items
+
+- ⏳ Export Stitch DESIGN.md → theme tokens (`m0-design-export`) ← MCP: Stitch server (`m0-mcp-stitch`)
+- ⏳ Admin: challenge manager (`m2-admin-challenges`) ← Admin: auth and roles (`m1-admin-auth`)
+- ⏳ Admin: badge manager (`m2-admin-badges`) ← Admin: auth and roles (`m1-admin-auth`)
+- ⏳ Weekly leagues (live from day 1, D-022) (`m3-leagues`) ← Google sign-in with guest link/merge (D-017, D-020) (`m0-auth-google`)
+- ⏳ Admin: festival manager (`m3-admin-festivals`) ← Admin: auth and roles (`m1-admin-auth`)
+- ⏳ Admin: Mandir deity config (`m3-admin-mandir`) ← Admin: auth and roles (`m1-admin-auth`)
+- ⏳ Admin: notification manager (`m3-admin-notifications`) ← Admin: auth and roles (`m1-admin-auth`)
+- ⏳ Admin: ad controls (`m4-admin-ads`) ← Admin: auth and roles (`m1-admin-auth`)
+- ⏳ Enable Analytics/Crashlytics collection with consent flow (D-048) (`m4-telemetry-consent`) ← Privacy policy (`m4-privacy-policy`)
+- ⏳ Play Data Safety form (`m4-data-safety`) ← Privacy policy (`m4-privacy-policy`)
+- ⏳ Paid acquisition after thresholds are verified at small spend (`m5-paid-acquisition`) ← Set crash-free and D1 retention thresholds (`m5-thresholds`)
+
+## M0 — Foundation
+
+`████████████░░░░░░░░` 59% · 19/32 done
+
+_Repository, app shell, Firebase/R2 environments, telemetry services, CI and tooling._
+
+| Status | Item                                                                   | Notes                                                                                                                                                                                                  | Evidence                                                                                                                                                                                                   |
+| ------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | Repository setup (`m0-repo`)                                           | Private GitHub repo anon987/Bhaktara with main/develop branches.                                                                                                                                       | [README.md](../README.md), [bhaktara_docs/19_GIT_AND_BRANCHING.md](../bhaktara_docs/19_GIT_AND_BRANCHING.md)                                                                                               |
+| ✅     | React Native + strict TypeScript, Android-first (`m0-rn-ts`)           | Expo SDK 57 dev client, RN 0.86, strict tsconfig; ARM64 debug build verified on Samsung SM_E076B.                                                                                                      | [tsconfig.json](../tsconfig.json), [package.json](../package.json), [docs/ANDROID_DEVICE.md](ANDROID_DEVICE.md)                                                                                            |
+| ✅     | Keep the ios/ project (`m0-ios-project`)                               | Generated ios/ project kept in the repo; never built (iOS phase, D-009).                                                                                                                               | [ios/Podfile](../ios/Podfile)                                                                                                                                                                              |
+| ✅     | Platform service interfaces (doc 05) (`m0-platform-services`)          | Wallpaper, ringtone, media-save, share and notification contracts with Android/iOS stubs that report unavailable. Native implementations land with the M1 save/set items.                              | [src/services/platform/contracts.ts](../src/services/platform/contracts.ts), [src/services/platform/stub.ts](../src/services/platform/stub.ts)                                                             |
+| ✅     | Navigation shell (`m0-navigation`)                                     | Five tabs (D-028) with typed routes, banner target whitelist and animated tab bar.                                                                                                                     | [src/app/navigation/AppNavigator.tsx](../src/app/navigation/AppNavigator.tsx), [src/app/navigation/TabBar.tsx](../src/app/navigation/TabBar.tsx), `66a5482`                                                |
+| ✅     | Theme and design tokens (`m0-theme`)                                   | Tokens authored from the written design system (doc 04), not from a Stitch export (see m0-design-export).                                                                                              | [src/theme/tokens.ts](../src/theme/tokens.ts), [docs/design/DESIGN.md](design/DESIGN.md)                                                                                                                   |
+| ✅     | Hindi/English i18n framework (`m0-i18n`)                               | Typed hi/en string table; onboarding asks for language only (D-029).                                                                                                                                   | [src/i18n/strings.ts](../src/i18n/strings.ts)                                                                                                                                                              |
+| ✅     | Firebase local emulator environment (demo-bhaktara) (`m0-fb-emulator`) | Auth + Firestore emulators, guarded seed script, emulator test suite in CI.                                                                                                                            | [docs/FIREBASE_DEVELOPMENT.md](FIREBASE_DEVELOPMENT.md), [scripts/emulator/seed.ts](../scripts/emulator/seed.ts), `d0e082c`                                                                                |
+| ✅     | Firebase dev project (bhaktara-dev) (`m0-fb-dev`)                      | Spark plan. Firestore asia-south1 with delete protection; rules and 8 composite indexes deployed; placeholder catalog seeded (13 items, 5 deities, 2 banners).                                         | [.firebaserc](../.firebaserc), [firestore.rules](../firestore.rules), [firestore.indexes.json](../firestore.indexes.json), [docs/FIREBASE_DEVELOPMENT.md](FIREBASE_DEVELOPMENT.md), `156eac4`, `5e72c74`   |
+| ⏳     | Firebase staging project (bhaktara-staging) (`m0-fb-staging`)          | Not created. Client config already accepts the project ID.                                                                                                                                             |                                                                                                                                                                                                            |
+| ⏳     | Firebase prod project (bhaktara-prod) (`m0-fb-prod`)                   | Not created. Release signing fingerprints are also needed (see m4-release-signing).                                                                                                                    |                                                                                                                                                                                                            |
+| ✅     | Anonymous guest auth (D-016) (`m0-auth-anon`)                          | Persistent anonymous sessions in emulator, cloud and native (React Native Firebase) modes; native session restore verified on device against bhaktara-dev.                                             | [src/services/firebase/client.native.ts](../src/services/firebase/client.native.ts), [src/services/firebase/client.ts](../src/services/firebase/client.ts), [docs/PROGRESS.md](PROGRESS.md)                |
+| ⏳     | Google sign-in with guest link/merge (D-017, D-020) (`m0-auth-google`) | Google provider is enabled on bhaktara-dev, but the app's sign-in button reports unavailable. Must land before live leagues.                                                                           | [src/services/integrations.ts](../src/services/integrations.ts)                                                                                                                                            |
+| ⏳     | Server-owned user profile provisioning (`m0-auth-profile`)             | Rules deny client profile creation, so a Cloud Function must create profiles. Can be built against emulators; cloud deploy needs Blaze. **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev |                                                                                                                                                                                                            |
+| ✅     | Analytics service (`m0-analytics`)                                     | React Native Firebase Analytics behind a typed service (D-048). Collection disabled in firebase.json until the privacy policy ships; only part of the doc 13 event list is defined.                    | [src/services/analytics/index.native.ts](../src/services/analytics/index.native.ts), [src/services/analytics/events.ts](../src/services/analytics/events.ts), [firebase.json](../firebase.json), `f28e9da` |
+| ✅     | Crashlytics (`m0-crashlytics`)                                         | React Native Firebase Crashlytics with JS handlers installed at startup; collection disabled until the privacy policy ships.                                                                           | [src/services/crashReporting/index.native.ts](../src/services/crashReporting/index.native.ts), `f28e9da`                                                                                                   |
+| ✅     | Remote Config (`m0-remote-config`)                                     | In-app defaults for the doc 11 ad switches (off) and a validated media_base_url override; fetched once per launch.                                                                                     | [src/services/remoteConfig/defaults.ts](../src/services/remoteConfig/defaults.ts), [src/services/remoteConfig/index.native.ts](../src/services/remoteConfig/index.native.ts)                               |
+| ✅     | App Check (monitor mode) (`m0-app-check`)                              | App Check API enabled on bhaktara-dev; debug provider in debug builds with the phone's debug token registered. Play Integrity for release is still unregistered.                                       | [src/services/firebase/appCheck.ts](../src/services/firebase/appCheck.ts), [docs/FIREBASE_DEVELOPMENT.md](FIREBASE_DEVELOPMENT.md)                                                                         |
+| ✅     | Core components (`m0-core-components`)                                 | Shared UI kit, content cards, dialogs, devotional placeholder art, catalog state notices.                                                                                                              | [src/components/ui.tsx](../src/components/ui.tsx), [src/components/ContentCard.tsx](../src/components/ContentCard.tsx), [src/components/Dialog.tsx](../src/components/Dialog.tsx)                          |
+| ✅     | CI (`m0-ci`)                                                           | GitHub Actions: typecheck, lint, Jest, Android export, plus a Firebase emulator job (Java 21, ffmpeg).                                                                                                 | [.github/workflows/ci.yml](../.github/workflows/ci.yml)                                                                                                                                                    |
+| ⏳     | MCP: Stitch server (`m0-mcp-stitch`)                                   | No Stitch project or designs are linked to the repo (doc 23 §3).                                                                                                                                       |                                                                                                                                                                                                            |
+| 🔄     | MCP: Firebase server (`m0-mcp-firebase`)                               | Firebase plugin configured at user scope in Claude Code; project operations so far ran through the Firebase CLI. Not recorded in project docs.                                                         |                                                                                                                                                                                                            |
+| ✅     | MCP: Cloudflare server (`m0-mcp-cloudflare`)                           | Cloudflare Claude Code plugin (skills + MCP) installed at user scope.                                                                                                                                  | [docs/PROGRESS.md](PROGRESS.md)                                                                                                                                                                            |
+| ⏳     | Project .mcp.json with environment-variable secrets (`m0-mcp-json`)    | No .mcp.json in the repo; servers are configured at user scope instead. Decide whether a project file is still wanted.                                                                                 |                                                                                                                                                                                                            |
+| ✅     | R2 dev bucket (bhaktara-media-dev) (`m0-r2-dev`)                       | APAC location hint; public reads via the rate-limited r2.dev URL (D-047); public writes return 401.                                                                                                    | [docs/MEDIA_R2.md](MEDIA_R2.md), `67f6e13`                                                                                                                                                                 |
+| ⏳     | R2 upload API token (dev bucket only) (`m0-r2-token`)                  | MEDIA_R2.md records no API token yet; media:publish and content:import need it for real uploads.                                                                                                       |                                                                                                                                                                                                            |
+| ⛔     | R2 staging and prod buckets (`m0-r2-staging-prod`)                     | Not created; they need media-staging/media domains on a Bhaktara-owned zone. **Blocked by:** Buy a Bhaktara domain                                                                                     |                                                                                                                                                                                                            |
+| ✅     | R2 CORS (`m0-r2-cors`)                                                 | Public GET/HEAD with Range for audio/video seeking; applied to the dev bucket.                                                                                                                         | [infra/r2/cors.json](../infra/r2/cors.json)                                                                                                                                                                |
+| ⛔     | R2 custom domain (`media.<domain>`) (`m0-r2-domain`)                   | Required before the first public release because builds embed the media base URL (D-047). **Blocked by:** Buy a Bhaktara domain                                                                        |                                                                                                                                                                                                            |
+| ⛔     | R2 CDN cache rules (`m0-r2-cache`)                                     | Objects are uploaded with immutable Cache-Control, but r2.dev is not CDN-cached; cache rules need the custom domain. **Blocked by:** Buy a Bhaktara domain                                             | [scripts/media/publish.ts](../scripts/media/publish.ts)                                                                                                                                                    |
+| ⏳     | R2 lifecycle rules (`m0-r2-lifecycle`)                                 | No lifecycle rules configured.                                                                                                                                                                         |                                                                                                                                                                                                            |
+| ⏳     | Export Stitch DESIGN.md → theme tokens (`m0-design-export`)            | docs/design/DESIGN.md was written from the Markdown specs because no Stitch export existed. **Blocked by:** MCP: Stitch server (`m0-mcp-stitch`)                                                       | [docs/design/DESIGN.md](design/DESIGN.md)                                                                                                                                                                  |
+
+## M1 — Content core + CMS core
+
+`███░░░░░░░░░░░░░░░░░` 14% · 4/28 done
+
+_Real content browsing, playback and saves in the app; admin CMS for content, media, banners and Home sections; launch catalog seeded._
+
+| Status | Item                                                                              | Notes                                                                                                                                                      | Evidence                                                                                                                                                     |
+| ------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🔄     | App: Home with CMS-driven sections (`m1-home`)                                    | Parallel stream. Today Home reads a bounded catalog plus Firestore banners (carousel first, D-030); CMS-managed section config is being added.             | [src/features/home/HomeScreen.tsx](../src/features/home/HomeScreen.tsx)                                                                                      |
+| ✅     | App: Explore (`m1-explore`)                                                       | Virtualized list with category/deity filters and cursor pagination over Firestore; verified on device against bhaktara-dev.                                | [src/features/explore/ExploreScreen.tsx](../src/features/explore/ExploreScreen.tsx), [tests/explore.test.tsx](../tests/explore.test.tsx), `b5f754a`          |
+| ✅     | App: content detail (`m1-content-detail`)                                         | Direct Firestore lookup by ID with R2 image keys and placeholder-art fallback. Its play/save/set/share actions are tracked as separate items.              | [src/features/content/ContentScreen.tsx](../src/features/content/ContentScreen.tsx)                                                                          |
+| 🔄     | App: audio player (background playback, lock-screen controls) (`m1-audio-player`) | Parallel stream: global expo-audio player. The committed player is a silent UI preview.                                                                    | [src/features/player/PlayerScreen.tsx](../src/features/player/PlayerScreen.tsx)                                                                              |
+| 🔄     | App: status video player (`m1-status-video`)                                      | Parallel stream. Free WhatsApp share (D-041) still needs a native share implementation.                                                                    |                                                                                                                                                              |
+| ✅     | App: search (Firestore searchTokens, D-032/D-035) (`m1-search`)                   | Normalized prefix tokens with Hindi transliteration variants; tokens are generated by the seed/import scripts until a publish function exists.             | [src/domain/search.ts](../src/domain/search.ts), [emulator-tests/firebase.test.ts](../emulator-tests/firebase.test.ts)                                       |
+| 🔄     | App: favorites (`m1-favorites`)                                                   | Device-local favorites with paginated resolution; Firestore favorites rules exist and are tested, but nothing syncs to the account yet.                    | [src/app/providers/AppProvider.tsx](../src/app/providers/AppProvider.tsx), [src/features/profile/FavoriteList.tsx](../src/features/profile/FavoriteList.tsx) |
+| ⏳     | App: save wallpaper (`m1-wallpaper-save`)                                         | Queued stream. Platform stub reports unavailable. Rewarded-ad gate (D-038) lands in M4.                                                                    |                                                                                                                                                              |
+| ⏳     | App: set wallpaper (`m1-wallpaper-set`)                                           | Queued stream. Android-only capability behind the platform interface.                                                                                      |                                                                                                                                                              |
+| ⏳     | App: save ringtone (`m1-ringtone-save`)                                           | Queued stream. Platform stub reports unavailable.                                                                                                          |                                                                                                                                                              |
+| ⏳     | App: set ringtone (`m1-ringtone-set`)                                             | Queued stream. Needs the Android WRITE_SETTINGS flow.                                                                                                      |                                                                                                                                                              |
+| ⏳     | Admin: auth and roles (`m1-admin-auth`)                                           | Queued stream (Cloud Functions + admin web). Emulator-only until the Blaze plan is enabled. **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev |                                                                                                                                                              |
+| ⏳     | Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036) (`m1-admin-crud`)       | Queued stream. Publishing should also generate searchTokens server-side (D-032). **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev            |                                                                                                                                                              |
+| 🔄     | Media pipeline: image variants (`m1-media-images`)                                | CLI pipeline (media:publish) renders variants, strips EXIF and uploads content-addressed objects. Admin upload UI not started.                             | [scripts/media/process.ts](../scripts/media/process.ts), [docs/MEDIA_R2.md](MEDIA_R2.md), `4f966e3`                                                          |
+| 🔄     | Media pipeline: audio normalization (`m1-media-audio`)                            | CLI loudness normalization to about -16 LUFS. Admin upload UI not started.                                                                                 | [scripts/media/process.ts](../scripts/media/process.ts)                                                                                                      |
+| 🔄     | Media pipeline: video renditions (`m1-media-video`)                               | CLI 720p 9:16 renditions. Admin upload UI not started.                                                                                                     | [scripts/media/process.ts](../scripts/media/process.ts)                                                                                                      |
+| ⏳     | Admin: banner manager (`m1-admin-banners`)                                        | Queued stream. Banners have INTERNAL targets only (D-015). **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev                                  |                                                                                                                                                              |
+| ⏳     | Admin: home section manager (`m1-admin-home-sections`)                            | Queued stream. Pairs with the in-progress CMS-driven Home. **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev                                  |                                                                                                                                                              |
+| ⏳     | Admin: audit log (`m1-admin-audit`)                                               | Queued stream. **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev                                                                              |                                                                                                                                                              |
+| ✅     | Seed: import tooling (`m1-seed-tooling`)                                          | Manifest-driven content:import (validation, doc 12 §5 checklist, R2 publish, idempotent upserts) plus seed:emulators/seed:dev.                             | [scripts/content/import.ts](../scripts/content/import.ts), [docs/CONTENT_IMPORT.md](CONTENT_IMPORT.md), `46bbd5a`, `5e72c74`                                 |
+| ⏳     | Seed: 100+ bhajans (`m1-seed-bhajan`)                                             | Only synthetic placeholder records exist.                                                                                                                  |                                                                                                                                                              |
+| ⏳     | Seed: 30+ aartis (`m1-seed-aarti`)                                                | Needs source text (doc 12 §3).                                                                                                                             |                                                                                                                                                              |
+| ⏳     | Seed: 50+ mantras (`m1-seed-mantra`)                                              | Needs source text.                                                                                                                                         |                                                                                                                                                              |
+| ⏳     | Seed: 30+ chalisas (`m1-seed-chalisa`)                                            | Needs source text.                                                                                                                                         |                                                                                                                                                              |
+| ⏳     | Seed: 200+ wallpapers across 14+ deities (`m1-seed-wallpapers`)                   | Deity coverage depends on the final taxonomy. **Blocked by:** P-11: canonical V1 deity list                                                                |                                                                                                                                                              |
+| ⏳     | Seed: 100+ ringtones (`m1-seed-ringtones`)                                        | 20–30 s clips.                                                                                                                                             |                                                                                                                                                              |
+| ⏳     | Seed: 100+ status videos (`m1-seed-status`)                                       | 15–30 s, 9:16.                                                                                                                                             |                                                                                                                                                              |
+| ⛔     | Seed: 20+ deity profiles (`m1-seed-deities`)                                      | 5 provisional fixture deities only. **Blocked by:** P-11: canonical V1 deity list                                                                          |                                                                                                                                                              |
+
+## M2 — Habit layer
+
+`░░░░░░░░░░░░░░░░░░░░` 0% · 0/16 done
+
+_Sadhana tools with server-authoritative XP, streaks, challenges and badges._
+
+| Status | Item                                                                          | Notes                                                                                                                                                         | Evidence                                                                                |
+| ------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 🔄     | Sadhana: daily plan (`m2-daily-plan`)                                         | Local Today task list with a 04:00 day boundary (D-024); not server-backed.                                                                                   | [src/features/sadhana/SadhanaScreen.tsx](../src/features/sadhana/SadhanaScreen.tsx)     |
+| 🔄     | Sadhana: jaap (`m2-jaap`)                                                     | Persistent local 108-bead counter; server practice sessions pending. Open question: leftover beads from a previous day count toward today.                    | [src/features/sadhana/PracticeScreens.tsx](../src/features/sadhana/PracticeScreens.tsx) |
+| 🔄     | Sadhana: meditation timer (`m2-meditation`)                                   | Wall-clock local timer survives backgrounding; not anti-cheat evidence until server sessions exist.                                                           | [src/features/sadhana/PracticeScreens.tsx](../src/features/sadhana/PracticeScreens.tsx) |
+| 🔄     | Sadhana: prayer checklist (`m2-prayer`)                                       | Local checklist only.                                                                                                                                         | [src/features/sadhana/PracticeScreens.tsx](../src/features/sadhana/PracticeScreens.tsx) |
+| 🔄     | Sadhana: history (`m2-history`)                                               | Local history sorted by date; no server record.                                                                                                               | [src/features/sadhana/SadhanaScreen.tsx](../src/features/sadhana/SadhanaScreen.tsx)     |
+| ⏳     | XP (single currency, D-023) (`m2-xp`)                                         | UI shows non-authoritative sample values only.                                                                                                                |                                                                                         |
+| ⏳     | Levels and ranks (D-027) (`m2-levels`)                                        | Sample rank display only.                                                                                                                                     |                                                                                         |
+| ⏳     | Streak (server-authoritative, D-024/D-026) (`m2-streak`)                      | Rules already reject direct client progression writes.                                                                                                        |                                                                                         |
+| ⏳     | Daily challenges (`m2-daily-challenges`)                                      | Challenges tab is a preview.                                                                                                                                  |                                                                                         |
+| ⏳     | Weekly challenges (`m2-weekly-challenges`)                                    | Challenges tab is a preview.                                                                                                                                  |                                                                                         |
+| ⏳     | Badges (`m2-badges`)                                                          | Sample badges in Profile only.                                                                                                                                |                                                                                         |
+| ⏳     | Reward ledger (`m2-ledger`)                                                   | Server-side only; no generic award-XP client endpoint.                                                                                                        |                                                                                         |
+| ⏳     | Idempotent Cloud Functions for practice sessions and rewards (`m2-functions`) | ProgressionService contract exists in the client. Emulator-testable; cloud deploy needs Blaze. **Blocked by:** Enable the Firebase Blaze plan on bhaktara-dev | [src/repositories/contracts.ts](../src/repositories/contracts.ts)                       |
+| ⏳     | Admin: challenge manager (`m2-admin-challenges`)                              | Builds on the M1 admin core. **Blocked by:** Admin: auth and roles (`m1-admin-auth`)                                                                          |                                                                                         |
+| ⏳     | Admin: badge manager (`m2-admin-badges`)                                      | Builds on the M1 admin core. **Blocked by:** Admin: auth and roles (`m1-admin-auth`)                                                                          |                                                                                         |
+| ⏳     | Seed: 8 weeks of challenges and the full V1 badge set (`m2-seed-challenges`)  | Doc 18 targets.                                                                                                                                               |                                                                                         |
+
+## M3 — Competition, Mandir, utilities, notifications
+
+`░░░░░░░░░░░░░░░░░░░░` 0% · 0/14 done
+
+_Weekly leagues, Virtual Mandir, festival list and FCM notifications._
+
+| Status | Item                                                                                  | Notes                                                                                                                                                                    | Evidence                                                                        |
+| ------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| ⏳     | Weekly leagues (live from day 1, D-022) (`m3-leagues`)                                | Guest league preview UI only; rules already block anonymous league reads (D-019). **Blocked by:** Google sign-in with guest link/merge (D-017, D-020) (`m0-auth-google`) |                                                                                 |
+| ⏳     | League promotion/relegation (`m3-promotion`)                                          | Cohort sizing for a small user base is in doc 10.                                                                                                                        |                                                                                 |
+| ⏳     | Editable league display name with profanity filter (D-042) (`m3-display-name`)        | Default is first name + last initial from Google.                                                                                                                        |                                                                                 |
+| 🔄     | Virtual Mandir (simple, D-007) (`m3-mandir`)                                          | Local preview: first-visit deity choice and visual diya/flower offerings. Bell sound and aarti audio not implemented.                                                    | [src/features/mandir/MandirScreen.tsx](../src/features/mandir/MandirScreen.tsx) |
+| ⏳     | Festival list and detail (manual dates, D-034) (`m3-festivals`)                       | No festival screen yet.                                                                                                                                                  |                                                                                 |
+| ⏳     | FCM setup and device registration (`m3-fcm-setup`)                                    | Notification permission stub only. Cap: 2 pushes per day (D-043).                                                                                                        |                                                                                 |
+| ⏳     | Notification: daily reminder (`m3-push-daily`)                                        |                                                                                                                                                                          |                                                                                 |
+| ⏳     | Notification: new content (`m3-push-content`)                                         |                                                                                                                                                                          |                                                                                 |
+| ⏳     | Notification: festival (`m3-push-festival`)                                           |                                                                                                                                                                          |                                                                                 |
+| ⏳     | Notification: league ending (`m3-push-league`)                                        |                                                                                                                                                                          |                                                                                 |
+| ⏳     | Admin: festival manager (`m3-admin-festivals`)                                        | **Blocked by:** Admin: auth and roles (`m1-admin-auth`)                                                                                                                  |                                                                                 |
+| ⏳     | Admin: Mandir deity config (`m3-admin-mandir`)                                        | **Blocked by:** Admin: auth and roles (`m1-admin-auth`), P-11: canonical V1 deity list                                                                                   |                                                                                 |
+| ⏳     | Admin: notification manager (`m3-admin-notifications`)                                | **Blocked by:** Admin: auth and roles (`m1-admin-auth`)                                                                                                                  |                                                                                 |
+| ⏳     | Seed: festivals (12 months), Mandir art, free and 10–20 special offerings (`m3-seed`) | Doc 18 targets. **Blocked by:** P-11: canonical V1 deity list                                                                                                            |                                                                                 |
+
+## M4 — Monetization + hardening
+
+`░░░░░░░░░░░░░░░░░░░░` 0% · 0/17 done
+
+_Ads, security and App Check enforcement, performance, privacy compliance and closed testing._
+
+| Status | Item                                                                                       | Notes                                                                                                                                               | Evidence                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| ⏳     | AdMob native placements (`m4-admob-native`)                                                | Placement exclusion zones are encoded (no ads near jaap/Mandir controls); no ad SDK yet.                                                            | [src/services/integrations.ts](../src/services/integrations.ts)                                                                |
+| ⏳     | AdMob banner placements (`m4-admob-banner`)                                                |                                                                                                                                                     |                                                                                                                                |
+| ⏳     | Rewarded ads for saves and special offerings (D-038, D-040, D-041) (`m4-rewarded`)         | UI copy discloses the future ad; WhatsApp share stays free.                                                                                         |                                                                                                                                |
+| ⏳     | Meta Audience Network via AdMob mediation (D-044) (`m4-mediation`)                         |                                                                                                                                                     |                                                                                                                                |
+| ⏳     | Admin: ad controls (`m4-admin-ads`)                                                        | **Blocked by:** Admin: auth and roles (`m1-admin-auth`)                                                                                             |                                                                                                                                |
+| 🔄     | Remote Config ad kill switch (`m4-kill-switch`)                                            | Ad switch defaults (off) exist in the app; nothing consumes them until ads ship.                                                                    | [src/services/remoteConfig/defaults.ts](../src/services/remoteConfig/defaults.ts)                                              |
+| 🔄     | Security rules review (`m4-rules-review`)                                                  | Deny-by-default rules deployed to dev; a formal pre-launch review has not happened.                                                                 | [firestore.rules](../firestore.rules)                                                                                          |
+| 🔄     | Security rules emulator tests (`m4-emulator-tests`)                                        | 6 rules/adapter scenarios plus import tests run in CI; coverage grows with each new collection.                                                     | [emulator-tests/firebase.test.ts](../emulator-tests/firebase.test.ts), [docs/verification/RESULTS.md](verification/RESULTS.md) |
+| ⏳     | App Check enforcement (`m4-app-check-enforce`)                                             | Monitor mode only. Play Integrity must be registered first; do not enforce before M4.                                                               |                                                                                                                                |
+| ⏳     | Performance pass on low/mid-range Android (`m4-performance`)                               |                                                                                                                                                     |                                                                                                                                |
+| 🔄     | Offline and weak-network states (`m4-offline`)                                             | Loading/error/empty/offline UI states exist (developer-simulated); native Firestore offline cache via RNF. No real network detection or sync queue. | [src/components/ui.tsx](../src/components/ui.tsx)                                                                              |
+| ⏳     | Privacy policy (`m4-privacy-policy`)                                                       | Gates enabling Analytics/Crashlytics collection.                                                                                                    |                                                                                                                                |
+| ⏳     | Enable Analytics/Crashlytics collection with consent flow (D-048) (`m4-telemetry-consent`) | Config change in firebase.json plus rebuild; in-app privacy text must change at the same time. **Blocked by:** Privacy policy (`m4-privacy-policy`) |                                                                                                                                |
+| ⏳     | Account deletion (`m4-account-deletion`)                                                   |                                                                                                                                                     |                                                                                                                                |
+| ⏳     | Play Data Safety form (`m4-data-safety`)                                                   | **Blocked by:** Privacy policy (`m4-privacy-policy`)                                                                                                |                                                                                                                                |
+| ⏳     | Release signing key and fingerprints registered (`m4-release-signing`)                     | Only the shared debug keystore's SHA-1/SHA-256 are registered.                                                                                      |                                                                                                                                |
+| ⏳     | Play Console closed testing track (`m4-closed-testing`)                                    | Including any tester requirements for the developer account. **Blocked by:** Google Play developer account readiness                                |                                                                                                                                |
+
+## M5 — V1 public launch
+
+`░░░░░░░░░░░░░░░░░░░░` 0% · 0/3 done
+
+_Staged Play Store rollout, then paid acquisition once quality is proven._
+
+| Status | Item                                                                                  | Notes                                                                                                                        | Evidence |
+| ------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
+| ⏳     | Staged rollout on Play Store (`m5-rollout`)                                           | Requires the production media domain (D-047). **Blocked by:** Buy a Bhaktara domain, Google Play developer account readiness |          |
+| ⏳     | Set crash-free and D1 retention thresholds (`m5-thresholds`)                          | To be set in the analytics round. **Blocked by:** P-12: primary KPI (north-star metric)                                      |          |
+| ⏳     | Paid acquisition after thresholds are verified at small spend (`m5-paid-acquisition`) | **Blocked by:** Set crash-free and D1 retention thresholds (`m5-thresholds`)                                                 |          |
+
+## V1.x — Post-launch increment _(post-V1)_
+
+`····················` deferred · 0/0 done · 1 deferred
+
+_Small follow-ups after V1._
+
+| Status | Item                                          | Notes            | Evidence |
+| ------ | --------------------------------------------- | ---------------- | -------- |
+| 💤     | Name ringtones (D-008) (`v1x-name-ringtones`) | Moved out of V1. |          |
+
+## iOS — iOS phase _(post-V1)_
+
+`····················` deferred · 0/0 done · 7 deferred
+
+_Starts after the Android app shows traction and revenue (D-009)._
+
+| Status | Item                                                                               | Notes                                              | Evidence                                                                    |
+| ------ | ---------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
+| 💤     | First iOS build (`ios-build`)                                                      | The ios/ project exists but has never been built.  |                                                                             |
+| 💤     | Sign in with Apple (`ios-apple-signin`)                                            |                                                    |                                                                             |
+| 💤     | iOS platform services (ringtone and wallpaper fallbacks) (`ios-platform-services`) | iOS stubs already implement the shared interfaces. | [src/services/platform/index.ios.ts](../src/services/platform/index.ios.ts) |
+| 💤     | APNs (`ios-apns`)                                                                  |                                                    |                                                                             |
+| 💤     | App Tracking Transparency (`ios-att`)                                              |                                                    |                                                                             |
+| 💤     | iOS test matrix (`ios-test-matrix`)                                                |                                                    |                                                                             |
+| 💤     | App Store review preparation (`ios-app-review`)                                    |                                                    |                                                                             |
+
+---
+
+## How to update this file
+
+1. Edit [docs/progress/roadmap.json](progress/roadmap.json): change an item's `status`, `notes`, `evidence` (repo paths or commit hashes) or `blockedBy` (blocker or item ids), and set `updated` to today's date.
+2. Run `npm run progress` to regenerate this file.
+3. Commit both files. CI runs `npm run progress:check`, which fails when this file is out of date or the data is invalid (unknown ids, missing evidence paths).
+
+Only mark an item ✅ when code or docs in the repository prove it. UI previews with mock data stay 🔄 or ⏳.
