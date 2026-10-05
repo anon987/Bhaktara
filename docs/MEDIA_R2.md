@@ -12,6 +12,7 @@ Implements doc 22 Part A (D-031) with the guardrails in doc 23. Public media liv
 | Variant choice | Lists use `thumb`; Content detail uses `mobile` → `poster` → `thumb` (doc 22 §A5) | |
 | Renditions + upload | `npm run media:publish` (`scripts/media/`) | ffmpeg processing, SHA-256 content addressing, immutable cache headers |
 | Bucket CORS | `infra/r2/cors.json` | Public GET/HEAD with `Range` for audio/video seeking |
+| Admin uploads | `requestUploadUrl` (presigned `staging/` PUT) → `processMedia` → Cloud Run `services/media-processor` | Same renditions as `media:publish`; see [MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md) |
 
 Doc 06 reserves `appConfig/app.mediaBaseUrl` for a runtime override; that is not wired yet, so the CDN base is a build-time value. Because data holds only keys, changing the domain later needs a rebuild, not a data migration.
 
@@ -87,7 +88,7 @@ npm run media:publish -- --type deity --id hanuman --image hanuman.png
 
 Add `--dry-run` to process locally into `media-out/` (Git-ignored) without uploading. Every rendition is stripped of EXIF/GPS and encoder metadata. Objects are uploaded with `Cache-Control: public, max-age=31536000, immutable`; a changed file gets a new key, so caches never need purging. Re-running with unchanged input skips existing objects.
 
-The command prints the `media` object (keys plus `bytes`, `mime`, dimensions, duration, bitrate) for the Firestore content document (doc 06). Writing that document is a separate step: the CMS and seed importer are not built yet.
+The command prints the `media` object (keys plus `bytes`, `mime`, dimensions, duration, bitrate) for the Firestore content document (doc 06). Writing that document is a separate step (`content:import`, or the CMS upload flow in [MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md), which runs the same pipeline on Cloud Run).
 
 Limitations: silence trimming is not automated; review audio before publishing. Image EXIF orientation is not applied, so export masters upright. Audio playback and native save/set (expo-audio, MediaStore) belong to the native milestone and need a development-build rebuild.
 

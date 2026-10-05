@@ -74,5 +74,8 @@ GoogleService-Info.plist
 # Admin CMS functions bundle
 functions/lib/
 
+# Media processor bundle (Cloud Run)
+services/media-processor/dist/
+
 # Local Expo module build output
 modules/*/android/build/

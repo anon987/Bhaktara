@@ -1,22 +1,14 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { MediaVariantName } from "../../src/domain/media";
+import { MediaType, mediaTypes } from "../../src/domain/mediaProcessing";
 
 // Media processor shared by single uploads and bulk seeding (doc 22 §A4).
 // Renditions follow doc 12 §6 / doc 22 §A3. All outputs drop source metadata
 // (EXIF, GPS, encoder tags) so nothing private leaks to the public CDN.
-export const mediaTypes = [
-  "bhajan",
-  "aarti",
-  "mantra",
-  "chalisa",
-  "ringtone",
-  "wallpaper",
-  "status",
-  "banner",
-  "deity",
-] as const;
-export type MediaType = (typeof mediaTypes)[number];
+// Types live in the shared domain so the processMedia callable can use them.
+export { mediaTypes };
+export type { MediaType };
 export type Inputs = { audio?: string; image?: string; video?: string };
 export type Rendition = {
   variant: MediaVariantName;
@@ -29,21 +21,40 @@ export type Probe = {
   height?: number;
   durationSeconds?: number;
   bitrate?: number;
+  hasAudio: boolean;
+  hasVideo: boolean;
+  still: boolean;
 };
+
+// The input breaks a production rule (doc 12 §6). The message is safe to show
+// to the operator; any other error is an internal processing failure.
+export class MediaValidationError extends Error {
+  override name = "MediaValidationError";
+}
+
+// No single ffmpeg/ffprobe run may outlive this (a hostile or corrupt input
+// must not pin a processor instance).
+const RUN_TIMEOUT_MS = 15 * 60 * 1000;
 
 function run(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: RUN_TIMEOUT_MS,
+      killSignal: "SIGKILL",
+    });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => (stdout += chunk));
     child.stderr.on("data", (chunk) => (stderr += chunk));
     child.on("error", reject);
-    child.on("close", (code) =>
+    child.on("close", (code, signal) =>
       code === 0
         ? resolve(stdout)
         : reject(
-            new Error(`${command} failed (${code}): ${stderr.slice(-800)}`),
+            new Error(
+              `${command} failed (${code ?? signal}): ${stderr.slice(-800)}`,
+            ),
           ),
     );
   });
@@ -69,6 +80,9 @@ export async function probe(path: string): Promise<Probe> {
   const duration = Number(data.format.duration);
   const bitrate = Number(data.format.bit_rate);
   return {
+    hasAudio: data.streams.some((stream) => stream.codec_type === "audio"),
+    hasVideo: !!visual,
+    still,
     width: visual?.width,
     height: visual?.height,
     durationSeconds:
@@ -114,7 +128,7 @@ async function webp(
 const loudnorm = "loudnorm=I=-16:TP=-1.5:LRA=11";
 
 function need<T>(value: T | undefined, message: string): T {
-  if (!value) throw new Error(message);
+  if (!value) throw new MediaValidationError(message);
   return value;
 }
 
@@ -170,7 +184,7 @@ export async function processMedia(
       );
       const { durationSeconds = 0 } = await probe(audio);
       if (durationSeconds < 20 || durationSeconds > 30)
-        throw new Error(
+        throw new MediaValidationError(
           `Ringtones must be 20–30 s (doc 12 §6); got ${durationSeconds} s`,
         );
       await ffmpeg([
@@ -196,7 +210,7 @@ export async function processMedia(
       const image = need(inputs.image, "wallpaper needs --image");
       const { width = 0, height = 0 } = await probe(image);
       if (width < 1080 || height < 2400)
-        throw new Error(
+        throw new MediaValidationError(
           `Wallpaper masters must be at least 1080×2400; got ${width}×${height}`,
         );
       if (width < 1440 || height < 3200)
@@ -221,7 +235,7 @@ export async function processMedia(
       const video = need(inputs.video, "status needs --video");
       const { durationSeconds = 0, width = 0, height = 0 } = await probe(video);
       if (durationSeconds < 15 || durationSeconds > 30)
-        throw new Error(
+        throw new MediaValidationError(
           `Status videos must be 15–30 s (doc 12 §6); got ${durationSeconds} s`,
         );
       if (width && height && Math.abs(width / height - 9 / 16) > 0.02)

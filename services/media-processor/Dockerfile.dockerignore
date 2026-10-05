@@ -1,0 +1,9 @@
+# Build context is the repository root. Allow-list only what the image needs,
+# so .env files, credentials and node_modules can never enter the context.
+*
+!services/media-processor/package.json
+!services/media-processor/package-lock.json
+!services/media-processor/build.mjs
+!services/media-processor/src/**
+!scripts/media/**
+!src/domain/**
