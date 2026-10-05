@@ -350,8 +350,8 @@
         {
           "id": "m1-audio-player",
           "title": "App: audio player (background playback, lock-screen controls)",
-          "status": "in_progress",
-          "notes": "Global expo-audio player with background playback, lock-screen controls, seek, error/retry. Merged to develop; needs the combined native build and an on-device test.",
+          "status": "done",
+          "notes": "Verified on Samsung SM_E076B on 2026-10-05: streamed from R2, background media service and media session active, lock-screen/media-button controls routed to Bhaktara.",
           "evidence": [
             "src/features/player/PlayerProvider.tsx",
             "tests/player.test.tsx"
@@ -360,11 +360,10 @@
         {
           "id": "m1-status-video",
           "title": "App: status video player",
-          "status": "in_progress",
-          "notes": "Poster-first, tap-to-play expo-video player. Merged to develop; needs the combined native build and an on-device test.",
+          "status": "done",
+          "notes": "Verified on Samsung SM_E076B on 2026-10-05: tap-to-play status video; saved video720 byte-identical to R2.",
           "evidence": [
-            "src/features/content/StatusVideo.tsx",
-            "tests/status-video.test.tsx"
+            "src/features/content/StatusVideo.tsx"
           ]
         },
         {
@@ -392,7 +391,7 @@
           "id": "m1-wallpaper-save",
           "title": "App: save wallpaper",
           "status": "in_progress",
-          "notes": "MediaStore save via local Expo module. Merged to develop; needs the combined native build and an on-device test.",
+          "notes": "Implemented (MediaStore Pictures/Bhaktara). Set-wallpaper verified on device; the Save action itself not yet confirmed on device.",
           "evidence": [
             "modules/bhaktara-media",
             "src/features/content/SaveActions.tsx"
@@ -401,8 +400,8 @@
         {
           "id": "m1-wallpaper-set",
           "title": "App: set wallpaper",
-          "status": "in_progress",
-          "notes": "WallpaperManager home/lock/both. Merged to develop; needs the combined native build and an on-device test.",
+          "status": "done",
+          "notes": "Verified on Samsung SM_E076B on 2026-10-05: WallpaperManager records com.bhaktara.app as the last setter.",
           "evidence": [
             "modules/bhaktara-media"
           ]
@@ -410,8 +409,8 @@
         {
           "id": "m1-ringtone-save",
           "title": "App: save ringtone",
-          "status": "in_progress",
-          "notes": "MediaStore Ringtones save. Merged to develop; needs the combined native build and an on-device test.",
+          "status": "done",
+          "notes": "Verified on Samsung SM_E076B on 2026-10-05: saved to Ringtones/Bhaktara via MediaStore.",
           "evidence": [
             "modules/bhaktara-media"
           ]
@@ -419,8 +418,8 @@
         {
           "id": "m1-ringtone-set",
           "title": "App: set ringtone",
-          "status": "in_progress",
-          "notes": "RingtoneManager with WRITE_SETTINGS flow. Merged to develop; needs the combined native build and an on-device test.",
+          "status": "done",
+          "notes": "Verified on Samsung SM_E076B on 2026-10-05: Modify-system-settings flow granted, ringtone set (owner confirmed).",
           "evidence": [
             "modules/bhaktara-media"
           ]
