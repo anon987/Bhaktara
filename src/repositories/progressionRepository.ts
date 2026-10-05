@@ -1,5 +1,6 @@
 import type { Firestore } from "firebase/firestore";
 import {
+  addDays,
   badgeSchema,
   bhaktiDayAt,
   challengePeriodKey,
@@ -182,7 +183,14 @@ export function createProgressionRepository(
         api.getDocsFromServer(
           api.query(
             api.collection(db, "users", id, "days"),
-            api.orderBy(api.documentId(), "desc"),
+            // Ascending ID range: served by the built-in index (a descending
+            // order on the document ID needs a composite index).
+            api.where(
+              api.documentId(),
+              ">=",
+              addDays(bhaktiDayAt(now, timezone), -41),
+            ),
+            api.orderBy(api.documentId()),
             api.limit(42),
           ),
         ),
@@ -209,10 +217,9 @@ export function createProgressionRepository(
         defaultSadhanaConfig;
       const stats = record(statsSnap.data());
       const bhaktiDay = bhaktiDayAt(now, timezone);
-      const days = daysSnap.docs.map((snap) => ({
-        day: snap.id,
-        record: toPracticeDay(snap.data()),
-      }));
+      const days = daysSnap.docs
+        .map((snap) => ({ day: snap.id, record: toPracticeDay(snap.data()) }))
+        .reverse();
       const live = challengeSnap.docs.flatMap((snap) => {
         const parsed = challengeSchema.safeParse(snap.data());
         const startAt = toDate(snap.get("startAt"));

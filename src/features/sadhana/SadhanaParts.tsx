@@ -172,7 +172,14 @@ export function TodayLamps({
                 <Txt
                   bold
                   size={14}
-                  style={{ color: done ? colors.white : colors.primary }}
+                  textBreakStrategy="simple"
+                  style={{
+                    color: done ? colors.white : colors.primary,
+                    textAlign: "center",
+                    // Full width: Android under-measures bold Devanagari and
+                    // drops the last word when the text sizes itself.
+                    width: "100%",
+                  }}
                 >
                   {done ? `${t("taskDone")} ✓` : t("taskBegin")}
                 </Txt>
@@ -383,6 +390,7 @@ const styles = StyleSheet.create({
   lamp: {
     flex: 1,
     alignItems: "center",
+    paddingHorizontal: 4,
     gap: 4,
     paddingVertical: 12,
     borderRadius: 22,
@@ -390,7 +398,10 @@ const styles = StyleSheet.create({
   },
   pill: {
     minHeight: 34,
-    paddingHorizontal: 12,
+    alignSelf: "stretch",
+    marginHorizontal: 6,
+    alignItems: "center",
+    paddingHorizontal: 4,
     borderRadius: 17,
     justifyContent: "center",
     borderWidth: 1,
