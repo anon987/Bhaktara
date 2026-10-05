@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Banner, Content, contentTypes, localizedSchema } from "./models";
-import { mediaVariantSchema } from "./media";
+import { MediaVariant, mediaVariantSchema } from "./media";
 
 // CMS-driven Home (doc 03 §3, doc 06 §3, doc 09 §6).
 //
@@ -152,9 +152,126 @@ export type HomeFeed = {
   sections: HomeSection[];
 };
 
-// ---- Feed builder (shared by fixtures, the seed and, later, buildHomeFeed) ----
+// ---- Layout documents (`homeLayout/{language}`, doc 06 §3, doc 09 §6) ----
+//
+// Strict schemas for what the CMS may store. The Home manager callables
+// validate with them before writing, and buildHomeFeed re-validates the stored
+// document before building, so a layout written out of band (console, script)
+// never produces a feed the app would half-drop.
 
-// A `homeLayout/{language}` section as the CMS stores it (doc 06 §3).
+export const homeRailSorts = ["POPULAR", "NEW"] as const;
+export type HomeRailSort = (typeof homeRailSorts)[number];
+export const homeRailDefaultLimit = 10;
+
+const layoutId = z
+  .string()
+  .regex(
+    /^[a-z0-9][a-z0-9_-]{0,99}$/,
+    "must be a lowercase id (a-z, 0-9, _ or -)",
+  );
+const layoutText = (max: number) =>
+  z
+    .object({
+      hi: z.string().trim().max(max),
+      en: z.string().trim().max(max),
+    })
+    .strict();
+const requiredText = (max: number) =>
+  layoutText(max).refine(
+    (value) => value.hi !== "" && value.en !== "",
+    "both languages are required",
+  );
+const layoutBase = {
+  id: layoutId,
+  title: layoutText(80).optional(),
+  order: z.number().int().min(0).max(1_000_000),
+  visible: z.boolean(),
+};
+const plainSection = <T extends HomeSectionType>(type: T) =>
+  z.object({ ...layoutBase, type: z.literal(type) }).strict();
+
+export const homeShortcutInputSchema = z
+  .object({
+    label: requiredText(30),
+    iconKey: z.string().regex(/^[a-z0-9_-]{1,40}$/, "use a known icon key"),
+    target: homeTargetSchema,
+  })
+  .strict();
+// Rail source (doc 06 §3): a collection (editorial order) or all published
+// content, optionally narrowed to one type and sorted by popularity (the
+// default for content-wide rails) or newest first.
+export const homeRailSourceInputSchema = z
+  .object({
+    collectionId: layoutId.optional(),
+    contentType: z.enum(contentTypes).optional(),
+    sort: z.enum(homeRailSorts).optional(),
+  })
+  .strict();
+
+export const homeLayoutSectionSchema = z.discriminatedUnion("type", [
+  plainSection("BANNERS"),
+  plainSection("PROGRESS"),
+  plainSection("SADHANA"),
+  plainSection("CHALLENGES"),
+  plainSection("LEAGUE"),
+  plainSection("FESTIVALS"),
+  z
+    .object({
+      ...layoutBase,
+      type: z.literal("SHORTCUTS"),
+      items: z.array(homeShortcutInputSchema).max(homeLimits.shortcuts),
+    })
+    .strict(),
+  z
+    .object({
+      ...layoutBase,
+      type: z.literal("RAIL"),
+      title: requiredText(80),
+      source: homeRailSourceInputSchema.optional(),
+      limit: z.number().int().min(1).max(homeLimits.railItems).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...layoutBase,
+      type: z.literal("QUOTE"),
+      text: requiredText(300),
+      attribution: layoutText(120).optional(),
+    })
+    .strict(),
+]);
+export const homeLayoutSectionsSchema = z
+  .array(homeLayoutSectionSchema)
+  .max(homeLimits.sections)
+  .superRefine((sections, context) => {
+    const seen = new Set<string>();
+    sections.forEach((section, index) => {
+      if (seen.has(section.id))
+        context.addIssue({
+          code: "custom",
+          path: [index, "id"],
+          message: `duplicate section id ${section.id}`,
+        });
+      seen.add(section.id);
+    });
+    if (sections.filter((section) => section.type === "BANNERS").length > 1)
+      context.addIssue({
+        code: "custom",
+        path: [],
+        message: "only one BANNERS section is allowed",
+      });
+  });
+export type HomeLayoutSectionInput = z.input<typeof homeLayoutSectionSchema>;
+// The stored document. `revision`, `updatedAt` and `updatedBy` are written by
+// the callable beside `sections` and are not part of the validated layout.
+export const homeLayoutDocumentSchema = z.object({
+  sections: homeLayoutSectionsSchema,
+});
+
+// ---- Feed builder (shared by the buildHomeFeed function, fixtures and seed) ----
+
+// A `homeLayout/{language}` section as the builder reads it. Looser than
+// homeLayoutSectionSchema so typed fixtures can be written inline.
 export type HomeLayoutSection = {
   id: string;
   type: HomeSectionType;
@@ -169,39 +286,178 @@ export type HomeLayoutSection = {
 };
 export type HomeCollection = { id: string; itemIds: string[] };
 
-export const toHomeCard = (item: Content): HomeCard => ({
+// What a rail needs from a published content item: card fields plus the two
+// ranking fields (`publishedAt` in epoch milliseconds).
+export type HomeCardSource = Pick<
+  Content,
+  "id" | "type" | "title" | "durationSeconds"
+> & {
+  media: { thumb: MediaVariant };
+  popularityScore?: number;
+  publishedAt?: number;
+};
+export const homeCardSourceSchema = z.object({
+  id: z.string().min(1).max(200),
+  type: z.enum(contentTypes),
+  title: localizedSchema,
+  media: z.object({ thumb: mediaVariantSchema }),
+  durationSeconds: z.number().positive().optional(),
+  popularityScore: z.number().finite().optional(),
+  publishedAt: z.number().finite().optional(),
+});
+
+export const toHomeCard = (item: HomeCardSource): HomeCard => ({
   id: item.id,
   type: item.type,
-  title: item.title,
+  title: { hi: item.title.hi, en: item.title.en },
   media: { thumb: item.media.thumb },
   ...(item.durationSeconds ? { durationSeconds: item.durationSeconds } : {}),
 });
 
-// Resolves a layout into feed sections. `content` must already be published
-// and in popularity order. Hidden sections and BANNERS are left out; rails
-// carry denormalized cards so the client needs no further reads.
+export const homeRailLimit = (section: Pick<HomeLayoutSection, "limit">) =>
+  Math.min(
+    Math.max(Math.trunc(section.limit ?? homeRailDefaultLimit), 1),
+    homeLimits.railItems,
+  );
+
+// Ties break by document ID ascending, like the explicit
+// orderBy(documentId()) of the server pool queries and the app's catalog.
+const byId = (a: { id: string }, b: { id: string }) =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+// Items without a score (fixtures) keep their input order.
+const byPopularity = (items: HomeCardSource[]) =>
+  [...items].sort(
+    (a, b) =>
+      (b.popularityScore ?? 0) - (a.popularityScore ?? 0) ||
+      (a.popularityScore !== undefined && b.popularityScore !== undefined
+        ? byId(a, b)
+        : 0),
+  );
+// Items never published have no `publishedAt`; a Firestore orderBy leaves
+// them out too.
+const byNewest = (items: HomeCardSource[]) =>
+  items
+    .filter((item) => item.publishedAt !== undefined)
+    .sort((a, b) => b.publishedAt! - a.publishedAt! || byId(a, b));
+
+// The cards of one rail. Collections keep their editorial order unless a sort
+// is set; content-wide rails default to POPULAR. A content type narrows both.
+export function resolveRailItems(
+  section: Pick<HomeLayoutSection, "source" | "limit">,
+  content: HomeCardSource[],
+  collections: HomeCollection[] = [],
+): HomeCardSource[] {
+  const source = section.source ?? {};
+  let pool = content;
+  if (source.collectionId) {
+    const items = new Map(content.map((item) => [item.id, item]));
+    const itemIds =
+      collections.find((value) => value.id === source.collectionId)?.itemIds ??
+      [];
+    pool = [...new Set(itemIds)].flatMap((id) => items.get(id) ?? []);
+  }
+  if (source.contentType)
+    pool = pool.filter((item) => item.type === source.contentType);
+  if (source.sort === "NEW") pool = byNewest(pool);
+  else if (source.sort === "POPULAR" || !source.collectionId)
+    pool = byPopularity(pool);
+  return pool.slice(0, homeRailLimit(section));
+}
+
+// Resolves a layout into feed sections, in `order` (ties keep layout order).
+// `content` holds published items only. When it is a partial set (the
+// function reads bounded pools) it must contain each rail's top items.
+// Hidden sections, BANNERS and
+// duplicate IDs are left out; rails carry card-level fields only, so the
+// client needs no further reads. Other types pass through unchanged
+// (FESTIVALS is not resolved yet; the app skips types it cannot draw).
 export function buildHomeFeedSections(
   layout: HomeLayoutSection[],
-  content: Content[],
+  content: HomeCardSource[],
   collections: HomeCollection[] = [],
 ): Record<string, unknown>[] {
-  const byId = new Map(content.map((item) => [item.id, item]));
+  const seen = new Set<string>();
   return layout
-    .filter((section) => section.visible && section.type !== "BANNERS")
-    .map((section) => {
-      const { limit, ...rest } = section;
+    .map((section, index) => ({ section, index }))
+    .filter(({ section }) => {
+      if (!section.visible || section.type === "BANNERS") return false;
+      if (seen.has(section.id)) return false;
+      seen.add(section.id);
+      return true;
+    })
+    .sort((a, b) => a.section.order - b.section.order || a.index - b.index)
+    .map(({ section }) => {
+      const { limit: _limit, ...rest } = section;
       if (section.type !== "RAIL") return { ...rest };
-      const size = Math.min(Math.max(limit ?? 10, 1), homeLimits.railItems);
-      const collection = section.source?.collectionId
-        ? collections.find((value) => value.id === section.source?.collectionId)
-        : undefined;
-      const pool = section.source?.collectionId
-        ? (collection?.itemIds ?? []).flatMap((id) => byId.get(id) ?? [])
-        : content.filter(
-            (item) =>
-              !section.source?.contentType ||
-              item.type === section.source.contentType,
-          );
-      return { ...rest, items: pool.slice(0, size).map(toHomeCard) };
+      return {
+        ...rest,
+        items: resolveRailItems(section, content, collections).map(toHomeCard),
+      };
     });
+}
+
+// ---- Banners (doc 06 §3, D-030): resolved copies stored beside the sections.
+
+type Instant = { toMillis(): number };
+export type HomeBannerSource<T extends Instant> = {
+  id: string;
+  title: { hi: string; en: string };
+  subtitle: { hi: string; en: string };
+  ctaText: { hi: string; en: string };
+  image: { mobile: MediaVariant; thumb?: MediaVariant };
+  target: unknown;
+  priority: number;
+  startAt: T;
+  endAt: T;
+  isActive: boolean;
+  languages?: readonly string[];
+};
+
+// Active banners for one language whose window contains `now`, by priority
+// (ties by id), at most homeLimits.banners. Expired, future, inactive and
+// other-language banners are dropped. Banners without `languages` show in both.
+export function resolveHomeBanners<T extends Instant>(
+  banners: HomeBannerSource<T>[],
+  language: HomeLanguage,
+  now: number,
+) {
+  return banners
+    .filter(
+      (banner) =>
+        banner.isActive === true &&
+        banner.startAt.toMillis() <= now &&
+        now < banner.endAt.toMillis() &&
+        (banner.languages ?? homeLanguages).includes(language),
+    )
+    .sort(
+      (a, b) =>
+        b.priority - a.priority || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    )
+    .slice(0, homeLimits.banners)
+    .map((banner) => ({
+      id: banner.id,
+      title: banner.title,
+      subtitle: banner.subtitle,
+      ctaText: banner.ctaText,
+      image: {
+        mobile: banner.image.mobile,
+        ...(banner.image.thumb ? { thumb: banner.image.thumb } : {}),
+      },
+      target: banner.target,
+      startAt: banner.startAt,
+      endAt: banner.endAt,
+    }));
+}
+
+// The next instant an active banner starts or ends, so the scheduled build
+// refreshes the feed when its banner set changes.
+export function nextHomeBannerChange<T extends Instant>(
+  banners: HomeBannerSource<T>[],
+  now: number,
+): number | null {
+  const upcoming = banners
+    .filter((banner) => banner.isActive === true)
+    .flatMap((banner) => [banner.startAt.toMillis(), banner.endAt.toMillis()])
+    .filter((at) => at > now);
+  return upcoming.length ? Math.min(...upcoming) : null;
 }

@@ -11,7 +11,14 @@ import {
   bannerDocumentSchema,
   homeFeedDocumentSchema,
 } from "../../src/repositories/firestoreSchemas";
-import { buildHomeFeedSections, homeLanguages } from "../../src/domain/home";
+import {
+  buildHomeFeedSections,
+  HomeBannerSource,
+  HomeCardSource,
+  homeLanguages,
+  homeLayoutSectionsSchema,
+  resolveHomeBanners,
+} from "../../src/domain/home";
 import { buildSearchTokens } from "../../src/domain/search";
 import {
   describeTarget,
@@ -20,12 +27,14 @@ import {
   withFirestore,
 } from "../firebase/target";
 
-// Validated placeholder catalog: deities, banners, sample content and the
-// precomputed Home feeds. These are synthetic development records, never
-// reviewed launch content.
+// Validated placeholder catalog: deities, banners, sample content, the Home
+// layouts and collections, and the precomputed Home feeds. These are
+// synthetic development records, never reviewed launch content.
+const seedEpoch = Date.UTC(2026, 8, 1);
 export async function seed(target: FirestoreTarget) {
   await withFirestore(target, async (db) => {
     const batch = db.batch();
+    const cards: HomeCardSource[] = [];
     for (const [index, item] of fixtures.content.entries()) {
       const { id, ...content } = item;
       const value = JSON.parse(
@@ -42,8 +51,44 @@ export async function seed(target: FirestoreTarget) {
         }),
       );
       publishedContentSchema.parse({ ...value, id });
-      batch.set(db.collection("content").doc(id), value);
+      // Fixed, distinct publish times so `sort: NEW` rails are deterministic.
+      const publishedAt = seedEpoch - index * 3600000;
+      batch.set(db.collection("content").doc(id), {
+        ...value,
+        publishedAt: Timestamp.fromMillis(publishedAt),
+      });
+      cards.push({
+        ...item,
+        popularityScore: value.popularityScore,
+        publishedAt,
+      });
     }
+    // Published editorial collections referenced by the fixture layouts.
+    for (const [index, collection] of homeCollections.entries()) {
+      const rail = homeLayouts.en.find(
+        (section) => section.source?.collectionId === collection.id,
+      );
+      const cover = fixtures.content.find(
+        (item) => item.id === collection.itemIds[0],
+      );
+      batch.set(db.collection("collections").doc(collection.id), {
+        title: rail?.title ?? { en: collection.id, hi: collection.id },
+        description: { en: "Placeholder collection", hi: "उदाहरण संग्रह" },
+        cover: { thumb: cover?.media.thumb ?? { key: "placeholder/om" } },
+        itemIds: collection.itemIds,
+        isFeatured: false,
+        isPublished: true,
+        sortOrder: index,
+      });
+    }
+    // The CMS source layouts (admin-only), validated like the Home manager.
+    for (const language of homeLanguages)
+      batch.set(db.collection("homeLayout").doc(language), {
+        sections: homeLayoutSectionsSchema.parse(homeLayouts[language]),
+        revision: 1,
+        updatedAt: Timestamp.now(),
+        updatedBy: "seed",
+      });
     for (const [index, deity] of fixtures.deities.entries()) {
       const value = {
         name: deity.name,
@@ -58,7 +103,7 @@ export async function seed(target: FirestoreTarget) {
       deityDocumentSchema.parse(value);
       batch.set(db.collection("deities").doc(deity.id), value);
     }
-    const homeBanners = [];
+    const homeBanners: HomeBannerSource<Timestamp>[] = [];
     for (const [index, banner] of fixtures.banners.entries()) {
       const value = {
         title: banner.title,
@@ -74,29 +119,19 @@ export async function seed(target: FirestoreTarget) {
       };
       bannerDocumentSchema.parse(value);
       batch.set(db.collection("banners").doc(banner.id), value);
-      const {
-        priority: _priority,
-        isActive: _active,
-        languages,
-        ...resolved
-      } = value;
-      homeBanners.push({ languages, value: { id: banner.id, ...resolved } });
+      homeBanners.push({ id: banner.id, ...value });
     }
-    // Stand-in for the server `buildHomeFeed` job (doc 08): one resolved
-    // homeFeeds/{language} doc per language, built from the fixture layouts.
+    // Same pure builder as the `buildHomeFeed` function (doc 08), so a
+    // rebuild of the seeded sources reproduces these feeds exactly
+    // (functions/test/home.test.ts checks it).
+    const now = Date.now();
     for (const language of homeLanguages) {
       const sections = JSON.parse(
         JSON.stringify(
-          buildHomeFeedSections(
-            homeLayouts[language],
-            fixtures.content,
-            homeCollections,
-          ),
+          buildHomeFeedSections(homeLayouts[language], cards, homeCollections),
         ),
       );
-      const banners = homeBanners
-        .filter((banner) => banner.languages.includes(language))
-        .map((banner) => banner.value);
+      const banners = resolveHomeBanners(homeBanners, language, now);
       const value = {
         language,
         isPublished: true,

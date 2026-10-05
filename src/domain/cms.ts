@@ -11,6 +11,7 @@ import {
   checklistState,
   sacredTypes,
 } from "./checklist";
+import { homeLanguages, homeLayoutSectionsSchema } from "./home";
 
 // Admin CMS domain rules (doc 09), shared by the Cloud Functions that enforce
 // them and the admin web app that explains them. Pure: no Firebase imports.
@@ -37,6 +38,8 @@ export const permissions = {
   "content.publish": ["SUPER_ADMIN", "CONTENT_ADMIN"],
   "banner.read": ["SUPER_ADMIN", "CONTENT_ADMIN"],
   "banner.write": ["SUPER_ADMIN", "CONTENT_ADMIN"],
+  "home.read": ["SUPER_ADMIN", "CONTENT_ADMIN"],
+  "home.write": ["SUPER_ADMIN", "CONTENT_ADMIN"],
   "audit.read": ["SUPER_ADMIN", "CONTENT_ADMIN"],
   "role.write": ["SUPER_ADMIN"],
 } as const satisfies Record<string, readonly AdminRole[]>;
@@ -286,6 +289,26 @@ export const updateBannerSchema = z
 export const deleteBannerSchema = z
   .object({ id: z.string().min(1).max(128) })
   .strict();
+
+// ---- Home manager (doc 09 §6). Each language has its own layout document;
+// `expectedRevision` is the revision the editor loaded (0 when none exists),
+// so two open editors cannot silently overwrite each other.
+const homeLanguage = z.enum(homeLanguages);
+export const getHomeLayoutSchema = z
+  .object({ language: homeLanguage })
+  .strict();
+export const updateHomeLayoutSchema = z
+  .object({
+    language: homeLanguage,
+    sections: homeLayoutSectionsSchema,
+    expectedRevision: z.number().int().min(0),
+  })
+  .strict();
+export type UpdateHomeLayoutInput = z.input<typeof updateHomeLayoutSchema>;
+export const previewHomeFeedSchema = z
+  .object({ language: homeLanguage, sections: homeLayoutSectionsSchema })
+  .strict();
+export const rebuildHomeFeedSchema = z.object({}).strict().nullish();
 
 // ---- Admin roles and uploads.
 export const setAdminRoleSchema = z
