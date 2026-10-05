@@ -9,11 +9,24 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+            admin/package-lock.json
+            services/media-processor/package-lock.json
       - run: npm ci
+      # Root lint and typecheck cover functions/, admin/ and the media
+      # processor, so their own dependencies must be installed too.
+      - run: npm run functions:install
+      - run: npm run admin:install
+      - run: npm run processor:install
       - run: npm run typecheck
+      - run: npm run functions:typecheck
+      - run: npm run processor:typecheck
       - run: npm run lint
       - run: npm run progress:check
       - run: npm test
+      - run: npm run admin:check
       - run: npm run export:android
   firebase-emulators:
     runs-on: ubuntu-latest
@@ -23,11 +36,19 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+            services/media-processor/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-      # The content import test renders media with ffmpeg.
+      # The content import and media processor tests render media with ffmpeg.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npm ci
+      - run: npm run functions:install
+      - run: npm run processor:install
       - run: npm run test:emulators
+      - run: npm run test:functions
+      - run: npm run test:processor
