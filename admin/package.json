@@ -1,0 +1,33 @@
+{
+  "name": "bhaktara-admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bhaktara Admin CMS web app (doc 09): Firebase Auth, staff Firestore reads and the CMS callables.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^24.19.1",
+    "@types/react": "~19.2.2",
+    "@types/react-dom": "~19.2.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.1.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}
