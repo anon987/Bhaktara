@@ -41,6 +41,9 @@ describe("local practice (never authoritative progression)", () => {
     expect(localPracticeDay(new Date(2026, 0, 1, 3, 59))).toBe("2025-12-31");
     expect(localPracticeDay(new Date(2026, 0, 1, 4, 0))).toBe("2026-01-01");
     expect(formatTime(305)).toBe("5:05");
+    expect(formatTime(25.1)).toBe("0:25");
+    expect(formatTime(59.6)).toBe("1:00");
+    expect(formatTime(-1)).toBe("0:00");
   });
 });
 describe("V1 boundaries", () => {

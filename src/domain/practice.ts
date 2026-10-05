@@ -29,6 +29,8 @@ export function localPracticeDay(now = new Date()): string {
   date.setHours(date.getHours() - 4);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
+// Whole seconds only: media durations are measured fractionally (e.g. 25.1 s).
 export function formatTime(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  const whole = Math.max(0, Math.round(seconds));
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
