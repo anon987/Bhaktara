@@ -1,31 +1,49 @@
 # Bhaktara progress and handoff
 
-Last updated: **2026-10-04**.
+Last updated: **2026-10-05**.
 
 ## Current checkpoint
 
-The UI foundation runs in the browser and on an Android phone. It uses fixture content and local-only practice state by default, with an opt-in Firebase emulator backend for development. Production M0 and V1 are not complete. Git is connected to the private repository [anon987/Bhaktara](https://github.com/anon987/Bhaktara); the current Firebase checkpoint is committed as `d0e082c` on `feature/firebase-foundation`, pushed to `origin`, with a clean working tree.
+Bhaktara is an Android-first Expo app (SDK 57, RN 0.86) on the cloud `bhaktara-dev` Firebase project (React Native Firebase, D-048) with media on Cloudflare R2 (`bhaktara-media-dev`, r2.dev URL, D-047). M0 is mostly done; M1 app features are built and verified on a Samsung SM_E076B: catalog, search, detail, background audio with lock-screen controls, status video, wallpaper set, ringtone save and the guided set-ringtone flow. The CMS backend (Cloud Functions, admin web app, Cloud Run media processor) is code-complete and emulator-verified but cannot be deployed on the Spark plan.
 
-## Completed in this work session
+Live milestone status is in [MILESTONES.md](MILESTONES.md), generated from `docs/progress/roadmap.json` (`npm run progress`; CI runs `progress:check`).
 
-- Reviewed the implementation, roadmap, existing checks, and native build evidence.
+Branches: `main` (production), `develop` (integration), `feature/*` merged into `develop`. GitHub: [anon987/Bhaktara](https://github.com/anon987/Bhaktara).
+
+## Start here (next session)
+
+1. **Decide the open blockers** (they gate most remaining M1 items):
+   - `blaze-plan`: enable billing on `bhaktara-dev` to deploy Functions and Cloud Run (admin auth/CRUD, banners, Home manager, audit, media pipeline).
+   - `p-11`: the canonical deity list (blocks deity and wallpaper seeding).
+   - Launch content: real bhajans, aartis, mantras, chalisas, ringtones and status videos via `npm run content:import -- --project dev` ([CONTENT_IMPORT.md](CONTENT_IMPORT.md)).
+2. **Finish open M1 app items**: confirm "Save wallpaper" on the device (Pictures/Bhaktara), and spot-check favorites sync and the CMS-driven Home.
+3. **Start M2 (habit layer)** without waiting for Blaze: server-authoritative practice sessions, XP, streaks and challenges are emulator-testable (`npm run test:emulators`, `npm run test:functions`).
+
+Working rules for this repository:
+- Run at most two background agents at once and never a Gradle build alongside two busy agents (the workstation crashed under more).
+- Never print or commit `.env.r2`, `.env.local`, `google-services.json` or App Check debug tokens.
+- Dev is the default target; staging/prod, DNS, token creation and cache purges need explicit confirmation (doc 23).
+- Native changes need a rebuild ([ANDROID_DEVICE.md](ANDROID_DEVICE.md), about 9 minutes incremental); JS changes reload through Metro.
+- Bhaktara is used by elderly people: large type, Hindi first, plain words and guided flows for anything that leaves the app.
+
+## Guided ringtone permission (2026-10-05)
+
+Android grants "Modify system settings" (needed to set a ringtone) only on its own Settings screen, never in an in-app dialog (D-049). "Set as ringtone" therefore:
+
+1. Shows a large-type Hindi/English sheet with three numbered steps and an animated switch (`SystemPermissionSheet`, `GuideSwitch`).
+2. On "Continue", shrinks Bhaktara into a picture-in-picture window that shows "स्विच चालू करें / Turn ON the switch" over the Settings screen (`SettingsGuideOverlay`; the `plugins/withPictureInPicture` config plugin sets `supportsPictureInPicture`).
+3. Watches the permission natively (`AppOpsManager.startWatchingMode` plus a 500 ms poll; JS timers pause in picture-in-picture), then brings Bhaktara back to full screen and sets the sound.
+4. Falls back to opening the screen and continuing when the user returns, if picture-in-picture is unavailable or switched off.
+
+Verified on Samsung SM_E076B on 2026-10-05: guide shown, permission granted, ringtone set to `Ringtones/Bhaktara/bhaktara-test-ringtone-bell-file…mp3`. Keep `supportsPictureInPicture` unset in the expo-video plugin options: `false` there deletes the manifest attribute.
+
+## Earlier: storage hardening (2026-10-04)
+
 - Fixed startup persistence so failed reads cannot overwrite saved progress with defaults, including when the app backgrounds before hydration.
 - Added a Hindi/English retry screen that preserves stored data on read or validation failure.
-- Restricted TypeScript inputs to app entry points, source, and tests, resolving a compiler stack overflow caused by generated JavaScript bundles.
-- Added three storage recovery tests and a browser recovery scenario; fixed ambiguous Mandir feedback selectors in the smoke script.
-- Passed typechecking, lint (two existing test-setup warnings), all 24 tests, Android/web exports, and six browser smoke flows.
-- Built the ARM64 debug APK, installed it on Samsung SM_E076B, and verified app startup and visible navigation. Left Metro running at the end of the device session.
-- Reconciled status documentation and saved reproducible device build/install/launch instructions.
-- Established the private GitHub repository and initial source-control checkpoint. A scan of trackable text files found no common credential patterns; no files exceeded 10 MiB. The bundled Android debug keystore is a development-only artifact, not a release signing key.
-
-## Implementation files changed
-
-| Area | Files |
-| --- | --- |
-| Safe storage hydration and retry | `src/app/providers/AppProvider.tsx`, `App.tsx`, `src/i18n/strings.ts` |
-| Compiler scope | `tsconfig.json` |
-| Regression checks | `tests/storage-recovery.test.tsx`, `scripts/smoke.mjs` |
-| Documentation | `README.md`, `docs/IMPLEMENTATION.md`, `docs/verification/RESULTS.md`, `docs/ANDROID_DEVICE.md`, this file, `bhaktara_docs/16_RELEASE_ROADMAP.md` |
+- Restricted TypeScript inputs to app entry points, source and tests, resolving a compiler stack overflow caused by generated JavaScript bundles.
+- Added storage recovery tests and a browser recovery scenario.
+- Established the private GitHub repository. A scan of trackable text files found no common credential patterns. The bundled Android debug keystore is a development-only artifact, not a release signing key.
 
 ## Firebase foundation checkpoint
 
@@ -60,7 +78,7 @@ The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CD
 
 ## Content import
 
-`npm run content:import` reads a CSV/JSON manifest plus assets, validates each row and its doc 12 §5 checklist, publishes media to R2, and upserts `content` and `contentPrivate` in the Firestore emulator. It is idempotent by `importKey` and reports failures per row. Covered by unit tests and an emulator integration test; CI installs ffmpeg for it. Real Firebase projects are not supported yet. See [CONTENT_IMPORT.md](CONTENT_IMPORT.md).
+`npm run content:import` reads a CSV/JSON manifest plus assets, validates each row and its doc 12 §5 checklist, publishes media to R2, and upserts `content` and `contentPrivate` in the Firestore emulator. It is idempotent by `importKey` and reports failures per row. Covered by unit tests and an emulator integration test; CI installs ffmpeg for it. `--project dev` writes to `bhaktara-dev` with Application Default Credentials; staging/prod need `--confirm-project`. See [CONTENT_IMPORT.md](CONTENT_IMPORT.md).
 
 ## Firebase dev project
 
@@ -68,7 +86,7 @@ The R2 media layer from doc 22 Part A is built: shared key/variant schemas, a CD
 
 ## Save, set and share (Android)
 
-Wallpapers, ringtones and status videos can be saved to the gallery or ringtones (MediaStore), set as the home/lock wallpaper (WallpaperManager) or as the ringtone, notification or alarm sound (RingtoneManager), through the local Expo module `modules/bhaktara-media`. Status videos share through the system share sheet (`expo-sharing`) from a temporary cache copy. Downloads show progress and land in the app cache first. "Set as ringtone" explains and then opens the "Modify system settings" screen; Android 9 and older ask for storage permission. Saves pass a rewarded gate that is free while Remote Config keeps rewarded ads off; with no ad SDK before M4, an enabled gate falls back to no-fill and still saves. Placeholder items without CDN media show the actions as unavailable. Not yet verified on a device or in a native build.
+Wallpapers, ringtones and status videos can be saved to the gallery or ringtones (MediaStore), set as the home/lock wallpaper (WallpaperManager) or as the ringtone, notification or alarm sound (RingtoneManager), through the local Expo module `modules/bhaktara-media`. Status videos share through the system share sheet (`expo-sharing`) from a temporary cache copy. Downloads show progress and land in the app cache first. "Set as ringtone" first shows a large-type, step-by-step explainer with an animated switch (Android only grants "Modify system settings" on its own screen, never in an in-app dialog). It then shrinks Bhaktara into a picture-in-picture guide ("Turn ON the switch") over that screen, watches the permission natively and returns to full screen by itself to finish setting the sound. Without picture-in-picture it opens the screen and continues when the user comes back; Android 9 and older ask for storage permission. Saves pass a rewarded gate that is free while Remote Config keeps rewarded ads off; with no ad SDK before M4, an enabled gate falls back to no-fill and still saves. Placeholder items without CDN media show the actions as unavailable. Verified on Samsung SM_E076B on 2026-10-05 (wallpaper set, ringtone save and set, status video save); "Save wallpaper" is still to be confirmed. The ringtone permission flow is described above.
 
 ## Native Firebase (D-048)
 
@@ -83,14 +101,13 @@ Verified on 2026-10-05:
 - The stale Expo placeholder launcher icons were replaced by the branded lotus icons generated from `app.json`. The `android-icon-*` and `splash-icon` assets are unused Expo placeholders.
 
 
-1. Reconnect the Android phone and run the new emulator mode using [Firebase development setup](FIREBASE_DEVELOPMENT.md). Verify native anonymous-session persistence, catalog errors/retry, search/pagination, favorites, and unchanged local practice tools.
-2. Confirm the real development Firebase project and configuration. Add server profile provisioning and a development App Check strategy before cloud integration.
-3. Implement account-aware preference/favorite sync and server-authoritative practice sessions with security/idempotency tests, followed by reviewed R2 media and real background audio. Google link/merge precedes live leagues.
-
 ## Remaining limitations and decisions
 
-Cloud authentication and Google linking, real playback, bell audio, notifications, ads, server XP/streaks/rewards, live challenges/leagues, CMS, and production services are not connected. Sample progression is explicitly non-authoritative. No external services were provisioned or deployed.
-
-The final deity taxonomy (P-11) and primary KPI (P-12) remain undecided. Google account link/merge must precede live leagues. Keep client-local practice separate from server-authoritative rewards.
+- Cloud Functions and Cloud Run are not deployed (Spark plan), so the admin CMS, banners, Home manager, audit log and server media processing run only in the emulators.
+- No launch content: the catalog holds synthetic test items only.
+- Server XP, streaks, rewards, challenges, leagues, Mandir bell audio, notifications and ads are not built (M2–M4). Sample progression in the UI is non-authoritative.
+- Media is served from the rate-limited r2.dev address; a Bhaktara domain is needed before release (D-047).
+- Analytics and Crashlytics collection is disabled until the privacy policy and consent flow ship (M4).
+- Open decisions: P-11 (deity list) and P-12 (north-star KPI). Google account link/merge must precede live leagues.
 
 See [verification results](verification/RESULTS.md) for exact evidence and known warnings, and [implementation decisions](IMPLEMENTATION.md) for architecture and mock boundaries. Historical logs may show earlier failures superseded by the latest results.

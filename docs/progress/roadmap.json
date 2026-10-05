@@ -419,9 +419,12 @@
           "id": "m1-ringtone-set",
           "title": "App: set ringtone",
           "status": "done",
-          "notes": "Verified on Samsung SM_E076B on 2026-10-05: Modify-system-settings flow granted, ringtone set (owner confirmed).",
+          "notes": "Verified on Samsung SM_E076B on 2026-10-05: guided flow (large-type explainer, picture-in-picture \"turn on the switch\" guide over Modify system settings, automatic return) granted the permission and set the ringtone (D-049).",
           "evidence": [
-            "modules/bhaktara-media"
+            "modules/bhaktara-media",
+            "src/features/content/SystemPermissionSheet.tsx",
+            "src/features/content/SettingsGuideOverlay.tsx",
+            "plugins/withPictureInPicture.js"
           ]
         },
         {

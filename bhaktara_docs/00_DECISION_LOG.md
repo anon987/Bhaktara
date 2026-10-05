@@ -118,6 +118,10 @@ Format: ID · Decision · Date · Affects
 
 - **D-048 · Native Firebase SDK.** Android/iOS use React Native Firebase for Auth, Firestore, Analytics, Crashlytics, Remote Config and App Check (native offline cache, App Check on every request). The web preview and Node emulator tests keep the Firebase JavaScript SDK. The Firestore repository receives the SDK's modular API, so its query logic is shared and tested in both. Analytics and Crashlytics collection stays disabled in `firebase.json` until the privacy policy and consent flow ship (M4). · Affects: 05, 07, 13, 15
 
+## Round 12 — Elder-friendly system permissions (2026-10-05)
+
+- **D-049 · Guided ringtone permission.** Setting a ringtone needs Android's "Modify system settings" special access, which is granted only on the system Settings screen and never by an in-app dialog. Bhaktara first explains the step in large type with an animated switch, then shrinks into a picture-in-picture guide ("Turn ON the switch") over that screen, watches the permission natively and returns to full screen by itself to set the sound. Without picture-in-picture it opens the screen and continues on return. Picture-in-picture is used only for this guide; status videos never enter it. · Affects: 03, 05, 15
+
 ## Pending / resolved items
 
 - ~~P-01~~ Resolved by D-022.

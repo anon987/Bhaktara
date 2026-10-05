@@ -231,10 +231,33 @@ export const strings = {
     "Allow Bhaktara to set ringtones",
     "भक्तारा को रिंगटोन लगाने दें",
   ],
-  systemPermissionText: [
-    "To change your ringtone, your phone asks you to turn on “Modify system settings” for Bhaktara. Turn it on on the next screen, then come back. Bhaktara only changes the sound you choose.",
-    "रिंगटोन बदलने के लिए आपका फ़ोन भक्तारा के लिए “सिस्टम सेटिंग बदलें” चालू करने को कहता है। अगली स्क्रीन पर इसे चालू करें और वापस आएँ। भक्तारा केवल वही ध्वनि बदलेगा जो आप चुनेंगे।",
+  permissionStepOpen: [
+    "Your phone's settings screen will open.",
+    "आपके फ़ोन की सेटिंग वाली स्क्रीन खुलेगी।",
   ],
+  permissionStepSwitch: [
+    "Turn ON the switch next to Bhaktara.",
+    "भक्तारा के आगे वाला स्विच चालू करें।",
+  ],
+  permissionStepAutoReturn: [
+    "Bhaktara will come back by itself and set your ringtone.",
+    "भक्तारा अपने आप वापस आकर आपकी रिंगटोन लगा देगा।",
+  ],
+  permissionStepBack: [
+    "Then press Back to return to Bhaktara.",
+    "फिर भक्तारा पर लौटने के लिए बैक दबाएँ।",
+  ],
+  permissionReassure: [
+    "Bhaktara only changes the sound you choose.",
+    "भक्तारा केवल वही ध्वनि बदलेगा जो आप चुनेंगे।",
+  ],
+  notNow: ["Not now", "अभी नहीं"],
+  guideTurnOn: ["Turn ON the switch", "स्विच चालू करें"],
+  guideAutoReturn: [
+    "Bhaktara will come back by itself",
+    "भक्तारा अपने आप लौट आएगा",
+  ],
+  switchOn: ["ON", "चालू"],
   systemPermissionDenied: [
     "Ringtone permission is off. Turn on “Modify system settings” for Bhaktara in Settings, then try again.",
     "रिंगटोन की अनुमति बंद है। सेटिंग्स में भक्तारा के लिए “सिस्टम सेटिंग बदलें” चालू करें, फिर प्रयास करें।",

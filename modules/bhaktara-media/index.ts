@@ -20,6 +20,20 @@ export interface BhaktaraMediaModule {
   canWriteSettings(): boolean;
   /** Opens the system settings screen; resolves on return with the new state. */
   requestWriteSettingsAsync(): Promise<boolean>;
+  /** Picture-in-picture is supported and not switched off for Bhaktara. */
+  canUsePictureInPicture(): boolean;
+  /**
+   * Shrinks Bhaktara into a picture-in-picture guide and opens the "Modify
+   * system settings" screen. Resolves false (opening nothing) if PiP is unavailable.
+   */
+  openWriteSettingsWithGuideAsync(): Promise<boolean>;
+  /**
+   * Waits natively until "Modify system settings" is on, then brings Bhaktara
+   * back to full screen. Resolves false if stopped or after 10 minutes.
+   */
+  waitForWriteSettingsAsync(): Promise<boolean>;
+  /** Ends a pending waitForWriteSettingsAsync with false. */
+  stopWaitingForWriteSettings(): void;
   /** Saves into Pictures, Movies or Ringtones /Bhaktara. Resolves with a content:// URI. */
   saveToLibraryAsync(
     fileUri: string,
