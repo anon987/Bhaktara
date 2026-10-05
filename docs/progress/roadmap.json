@@ -428,65 +428,88 @@
         {
           "id": "m1-admin-auth",
           "title": "Admin: auth and roles",
-          "status": "in_progress",
-          "notes": "Role custom claims, role checks in every callable, grant-role script (emulator). Admin web UI not built; deploying Functions needs Blaze.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: role claims + checks in every callable, grant-role script, admin web sign-in and role gate. Deploy (Functions, Hosting) needs Blaze.",
           "evidence": [
             "src/domain/cms.ts",
-            "scripts/admin/grant-role.ts"
+            "admin/",
+            "docs/ADMIN_CMS.md"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
           "id": "m1-admin-crud",
           "title": "Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036)",
-          "status": "in_progress",
-          "notes": "createContent/updateContent/transitionContentStatus with D-036 workflow and checklist gating, tested in emulators. No admin web UI yet.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: content callables with D-036 workflow + checklist gating, admin web list/editor/transitions. Deploy needs Blaze.",
           "evidence": [
-            "functions/src/content.ts"
+            "functions/src/content.ts",
+            "admin/"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
           "id": "m1-media-images",
           "title": "Media pipeline: image variants",
-          "status": "in_progress",
-          "notes": "CLI pipeline (media:publish) renders variants, strips EXIF and uploads content-addressed objects. Admin upload UI not started.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: image variants via CLI importer and the Cloud Run processMedia service (presigned staging upload → renditions → final keys). Cloud Run deploy needs Blaze.",
           "evidence": [
             "scripts/media/process.ts",
-            "docs/MEDIA_R2.md",
-            "4f966e3"
+            "services/media-processor/",
+            "docs/MEDIA_PROCESSOR.md"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
           "id": "m1-media-audio",
           "title": "Media pipeline: audio normalization",
-          "status": "in_progress",
-          "notes": "CLI loudness normalization to about -16 LUFS. Admin upload UI not started.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: loudness-normalized AAC/MP3 via CLI importer and processMedia. Cloud Run deploy needs Blaze.",
           "evidence": [
-            "scripts/media/process.ts"
+            "scripts/media/process.ts",
+            "services/media-processor/"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
           "id": "m1-media-video",
           "title": "Media pipeline: video renditions",
-          "status": "in_progress",
-          "notes": "CLI 720p 9:16 renditions. Admin upload UI not started.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: 720p H.264 + poster via CLI importer and processMedia. Cloud Run deploy needs Blaze.",
           "evidence": [
-            "scripts/media/process.ts"
+            "scripts/media/process.ts",
+            "services/media-processor/"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
           "id": "m1-admin-banners",
           "title": "Admin: banner manager",
-          "status": "in_progress",
-          "notes": "Banner create/update/delete callables (emulator-tested). No admin web UI yet.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: banner callables + admin web banner manager. Deploy needs Blaze.",
           "evidence": [
-            "functions/src/banners.ts"
+            "functions/src/banners.ts",
+            "admin/"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
           "id": "m1-admin-home-sections",
           "title": "Admin: home section manager",
-          "status": "in_progress",
-          "notes": "Home manager callables (getHomeLayout, updateHomeLayout with revision check + audit, previewHomeFeed, rebuildHomeFeed) emulator-tested. Admin web UI in progress.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: Home manager callables (layout, preview, rebuild); admin web screen for it still to add. Deploy needs Blaze.",
           "blockedBy": [
             "blaze-plan"
           ],
@@ -497,10 +520,14 @@
         {
           "id": "m1-admin-audit",
           "title": "Admin: audit log",
-          "status": "in_progress",
-          "notes": "Every admin mutation writes an audit entry in the same transaction. Read-only viewer UI not built.",
+          "status": "blocked",
+          "notes": "Code complete and emulator-verified: audit entry per mutation in the same transaction + admin web audit viewer. Deploy needs Blaze.",
           "evidence": [
-            "functions/src/content.ts"
+            "functions/src/content.ts",
+            "admin/"
+          ],
+          "blockedBy": [
+            "blaze-plan"
           ]
         },
         {
