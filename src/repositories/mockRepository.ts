@@ -1,6 +1,7 @@
 import { contentSchema } from "../domain/models";
 import { ContentQuery, ContentRepository } from "./contracts";
-import { fixtures } from "./fixtures";
+import { fixtures, homeCollections, homeLayouts } from "./fixtures";
+import { buildHomeFeedSections, parseHomeSections } from "../domain/home";
 import { searchWords } from "../domain/search";
 // Same normalization as the Firestore publisher/query path, so fixture and
 // emulator modes agree on punctuation, nukta and transliteration variants.
@@ -23,6 +24,19 @@ export const mockContentRepository: ContentRepository = {
   async getCatalog() {
     fixtures.content.forEach((item) => contentSchema.parse(item));
     return fixtures;
+  },
+  async getHome(language) {
+    return {
+      language,
+      banners: fixtures.banners,
+      sections: parseHomeSections(
+        buildHomeFeedSections(
+          homeLayouts[language],
+          fixtures.content,
+          homeCollections,
+        ),
+      ),
+    };
   },
   async search(query) {
     const items = filterContent(query);

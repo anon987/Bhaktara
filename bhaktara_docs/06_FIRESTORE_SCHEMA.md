@@ -360,3 +360,25 @@ adminUid, action, entity, entityId, beforeSummary, afterSummary, createdAt
 ## Implementation checkpoint — 2026-10-04
 
 The emulator catalog adapter validates and reads the documented `content`, `deities`, and `banners` fields; it adds no collections or stored fields. Content IDs come from document IDs. Search uses `status == PUBLISHED`, superseding the stale isPublished example in doc 22. Test seeding upserts synthetic catalog records only; no production data is written. Remaining schema collections are not yet fully integrated into the app.
+
+## Implementation checkpoint — 2026-10-05 (Home sections)
+
+The app reads Home from one `homeFeeds/{language}` get (`hi` | `en`); `homeLayout/{language}` stays the admin-only CMS source and is not read by clients. Choices where §3 is silent, chosen for the cheapest client read:
+
+```text
+homeFeeds/{language}
+language, isPublished (true = readable), schemaVersion (1), generatedAt
+banners[]  { id, title, subtitle, ctaText {hi,en}, image { mobile }, target, startAt, endAt }   // ≤ 10, resolved from banners/{id}
+sections[] { id, type, title {hi,en}?, order, visible, ...type fields }                        // ≤ 30
+  RAIL      source { collectionId? | contentType? | sort? }, items[] ≤ 20 of
+            { id, type, title {hi,en}, media { thumb }, durationSeconds? }  // card-level fields only
+  SHORTCUTS items[] ≤ 12 { label {hi,en}, iconKey, target { route: explore{params.category?} | mandir | sadhana } }
+  QUOTE     text {hi,en}, attribution {hi,en}?
+  PROGRESS, SADHANA  no extra fields (per-user widgets read their own data)
+```
+
+- Banners are stored beside `sections`, never as an orderable section, so they always render first (D-030). The client re-checks each banner's `startAt`/`endAt` because a feed can be up to 15 minutes old.
+- Both the titles in `{hi,en}` and the per-language doc are kept: the doc decides order and visibility for that language (doc 09 §6), and titles render in the app language.
+- Clients sort by `order`, drop `visible == false`, empty rails and duplicate IDs, and skip any entry they cannot parse. This includes unknown or not-yet-built types (CHALLENGES, LEAGUE, FESTIVALS), so the CMS can add types without breaking older apps.
+- The builder (`buildHomeFeedSections` in `src/domain/home.ts`, shared by fixtures and the seed until the `buildHomeFeed` function exists) leaves out hidden sections and BANNERS, and denormalizes rail cards from published content in popularity order. `sort: NEW` and FESTIVALS resolution are not implemented yet.
+- No composite index is needed (single-doc get).

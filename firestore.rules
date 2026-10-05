@@ -20,6 +20,13 @@ service cloud.firestore {
       allow get: if authenticated() && resource.data.isActive == true;
       allow list: if authenticated() && resource.data.isActive == true && bounded(10);
     }
+    // Precomputed Home feed (doc 06 §3): one server-written doc per language.
+    // Single-doc gets only; a missing doc reads as absent so the app can show
+    // its empty state. The CMS source (homeLayout) stays admin-only.
+    match /homeFeeds/{language} {
+      allow get: if authenticated() && language in ['hi', 'en']
+        && (resource == null || resource.data.isPublished == true);
+    }
     match /users/{uid} {
       allow get: if owner(uid);
       // Server creates the profile. Clients may only update these preferences.

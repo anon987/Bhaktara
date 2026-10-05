@@ -5,16 +5,32 @@ import { searchWords } from "../domain/search";
 import {
   bannerDocumentSchema,
   deityDocumentSchema,
+  homeFeedDocumentSchema,
   publishedContentSchema,
 } from "./firestoreSchemas";
+import { homeLanguages, orderHomeSections } from "../domain/home";
 import { SessionService } from "../services/auth/session";
-import { contentSchema } from "../domain/models";
+import { Banner, contentSchema } from "../domain/models";
 import { FirestoreApi } from "./firestoreApi";
 
 const cursorSchema = z.object({
   score: z.number().finite(),
   id: z.string().min(1),
   fingerprint: z.string(),
+});
+type StoredBanner = z.infer<typeof bannerDocumentSchema>;
+const isLive = (value: Pick<StoredBanner, "startAt" | "endAt">, now: number) =>
+  Number(value.startAt.toMillis()) <= now &&
+  Number(value.endAt.toMillis()) > now;
+const toBanner = (
+  value: Omit<StoredBanner, "priority" | "isActive"> & { id: string },
+): Banner => ({
+  id: value.id,
+  title: value.title,
+  subtitle: value.subtitle,
+  cta: value.ctaText,
+  artKey: value.image.mobile.key,
+  target: value.target,
 });
 export function createFirestoreRepository(
   db: Firestore,
@@ -109,6 +125,22 @@ export function createFirestoreRepository(
             : undefined,
       };
     },
+    async getHome(language) {
+      const id = z.enum(homeLanguages).parse(language);
+      await session.ensureSession();
+      const result = await getDocFromServer(doc(db, "homeFeeds", id));
+      if (!result.exists()) return null;
+      const value = homeFeedDocumentSchema.parse(result.data());
+      if (value.language !== id) throw new Error("Home feed language mismatch");
+      const now = Date.now();
+      return {
+        language: id,
+        banners: value.banners
+          .filter((banner) => isLive(banner, now))
+          .map(toBanner),
+        sections: orderHomeSections(value.sections),
+      };
+    },
     async getCatalog() {
       await session.ensureSession();
       const [page, deities, banners] = await Promise.all([
@@ -145,19 +177,8 @@ export function createFirestoreRepository(
             id: item.id,
             ...bannerDocumentSchema.parse(item.data()),
           }))
-          .filter(
-            (value) =>
-              Number(value.startAt.toMillis()) <= Date.now() &&
-              Number(value.endAt.toMillis()) > Date.now(),
-          )
-          .map((value) => ({
-            id: value.id,
-            title: value.title,
-            subtitle: value.subtitle,
-            cta: value.ctaText,
-            artKey: value.image.mobile.key,
-            target: value.target,
-          })),
+          .filter((value) => isLive(value, Date.now()))
+          .map(toBanner),
         challenges: [],
         sampleStats: { totalXp: 0, level: 1, currentStreak: 0 },
       };

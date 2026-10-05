@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { contentSchema, localizedSchema } from "../domain/models";
 import { mediaVariantSchema as variant } from "../domain/media";
+import { homeLanguages, homeLimits, homeSectionsSchema } from "../domain/home";
 
 export const publishedContentSchema = contentSchema.extend({
   id: z.string().min(1),
@@ -36,4 +37,26 @@ export const bannerDocumentSchema = z.object({
   isActive: z.literal(true),
   startAt: timestamp,
   endAt: timestamp,
+});
+// homeFeeds/{language}: written by the server (buildHomeFeed / seed), read by
+// the app in one get. Banners are resolved copies of `banners/{id}`; the
+// client still checks their window because a feed may be up to 15 min old.
+export const homeFeedBannerSchema = bannerDocumentSchema
+  .omit({ priority: true, isActive: true })
+  .extend({ id: z.string().min(1).max(100) });
+export const homeFeedDocumentSchema = z.object({
+  language: z.enum(homeLanguages),
+  isPublished: z.literal(true),
+  schemaVersion: z.number().int().positive(),
+  generatedAt: timestamp,
+  banners: z
+    .array(z.unknown())
+    .max(homeLimits.banners)
+    .transform((values) =>
+      values.flatMap((value) => {
+        const result = homeFeedBannerSchema.safeParse(value);
+        return result.success ? [result.data] : [];
+      }),
+    ),
+  sections: homeSectionsSchema,
 });

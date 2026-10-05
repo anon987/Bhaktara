@@ -1,11 +1,17 @@
 import { parseArgs } from "node:util";
 import { Timestamp } from "firebase-admin/firestore";
-import { fixtures } from "../../src/repositories/fixtures";
+import {
+  fixtures,
+  homeCollections,
+  homeLayouts,
+} from "../../src/repositories/fixtures";
 import {
   publishedContentSchema,
   deityDocumentSchema,
   bannerDocumentSchema,
+  homeFeedDocumentSchema,
 } from "../../src/repositories/firestoreSchemas";
+import { buildHomeFeedSections, homeLanguages } from "../../src/domain/home";
 import { buildSearchTokens } from "../../src/domain/search";
 import {
   describeTarget,
@@ -14,8 +20,9 @@ import {
   withFirestore,
 } from "../firebase/target";
 
-// Validated placeholder catalog: deities, banners and sample content. These
-// are synthetic development records, never reviewed launch content.
+// Validated placeholder catalog: deities, banners, sample content and the
+// precomputed Home feeds. These are synthetic development records, never
+// reviewed launch content.
 export async function seed(target: FirestoreTarget) {
   await withFirestore(target, async (db) => {
     const batch = db.batch();
@@ -51,6 +58,7 @@ export async function seed(target: FirestoreTarget) {
       deityDocumentSchema.parse(value);
       batch.set(db.collection("deities").doc(deity.id), value);
     }
+    const homeBanners = [];
     for (const [index, banner] of fixtures.banners.entries()) {
       const value = {
         title: banner.title,
@@ -66,6 +74,44 @@ export async function seed(target: FirestoreTarget) {
       };
       bannerDocumentSchema.parse(value);
       batch.set(db.collection("banners").doc(banner.id), value);
+      const {
+        priority: _priority,
+        isActive: _active,
+        languages,
+        ...resolved
+      } = value;
+      homeBanners.push({ languages, value: { id: banner.id, ...resolved } });
+    }
+    // Stand-in for the server `buildHomeFeed` job (doc 08): one resolved
+    // homeFeeds/{language} doc per language, built from the fixture layouts.
+    for (const language of homeLanguages) {
+      const sections = JSON.parse(
+        JSON.stringify(
+          buildHomeFeedSections(
+            homeLayouts[language],
+            fixtures.content,
+            homeCollections,
+          ),
+        ),
+      );
+      const banners = homeBanners
+        .filter((banner) => banner.languages.includes(language))
+        .map((banner) => banner.value);
+      const value = {
+        language,
+        isPublished: true,
+        schemaVersion: 1,
+        generatedAt: Timestamp.now(),
+        banners,
+        sections,
+      };
+      const parsed = homeFeedDocumentSchema.parse(value);
+      if (
+        parsed.sections.length !== sections.length ||
+        parsed.banners.length !== banners.length
+      )
+        throw new Error(`Invalid home feed fixture for ${language}`);
+      batch.set(db.collection("homeFeeds").doc(language), value);
     }
     // Emulator only: a private draft lets the rules tests prove drafts stay hidden.
     if (target.kind === "emulator")

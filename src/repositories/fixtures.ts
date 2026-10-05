@@ -1,4 +1,10 @@
 import { Catalog, Content, ContentType } from "../domain/models";
+import {
+  HomeCollection,
+  HomeLanguage,
+  HomeLayoutSection,
+  HomeShortcut,
+} from "../domain/home";
 const entry = (
   id: string,
   type: ContentType,
@@ -187,4 +193,127 @@ export const fixtures: Catalog = {
     },
   ],
   sampleStats: { totalXp: 1250, level: 6, currentStreak: 7 },
+};
+
+// Synthetic Home configuration (doc 06 §3 `homeLayout/{language}`). The order
+// differs per language to exercise the CMS per-language ordering.
+export const homeCollections: HomeCollection[] = [
+  {
+    id: "aarti-sangrah",
+    itemIds: [
+      "aarti-1",
+      "aarti-krishna",
+      "aarti-ganesha",
+      "aarti-hanuman",
+      "aarti-durga",
+    ],
+  },
+];
+const shortcut = (
+  iconKey: string,
+  en: string,
+  hi: string,
+  target: HomeShortcut["target"],
+): HomeShortcut => ({ label: { en, hi }, iconKey, target });
+const shortcuts: HomeShortcut[] = [
+  shortcut("bhajan", "Bhajan", "भजन", {
+    route: "explore",
+    params: { category: "BHAJAN" },
+  }),
+  shortcut("aarti", "Aarti", "आरती", {
+    route: "explore",
+    params: { category: "AARTI" },
+  }),
+  shortcut("mantra", "Mantra", "मंत्र", {
+    route: "explore",
+    params: { category: "MANTRA" },
+  }),
+  shortcut("chalisa", "Chalisa", "चालीसा", {
+    route: "explore",
+    params: { category: "CHALISA" },
+  }),
+  shortcut("wallpaper", "Wallpapers", "वॉलपेपर", {
+    route: "explore",
+    params: { category: "WALLPAPER" },
+  }),
+  shortcut("ringtone", "Ringtones", "रिंगटोन", {
+    route: "explore",
+    params: { category: "RINGTONE" },
+  }),
+  shortcut("status", "Status", "स्टेटस", {
+    route: "explore",
+    params: { category: "STATUS" },
+  }),
+  shortcut("mandir", "Mandir", "मंदिर", { route: "mandir" }),
+];
+const sections = {
+  progress: { id: "progress", type: "PROGRESS", visible: true },
+  shortcuts: {
+    id: "shortcuts",
+    type: "SHORTCUTS",
+    title: { en: "Your daily companions", hi: "आपकी दैनिक भक्ति" },
+    items: shortcuts,
+    visible: true,
+  },
+  sadhana: {
+    id: "sadhana",
+    type: "SADHANA",
+    title: { en: "Today’s Sadhana", hi: "आज की साधना" },
+    visible: true,
+  },
+  trending: {
+    id: "trending",
+    type: "RAIL",
+    title: { en: "A moment of devotion", hi: "भक्ति के कुछ पल" },
+    source: { sort: "POPULAR" },
+    limit: 6,
+    visible: true,
+  },
+  aarti: {
+    id: "aarti-sangrah",
+    type: "RAIL",
+    title: { en: "Aarti collection", hi: "आरती संग्रह" },
+    source: { collectionId: "aarti-sangrah" },
+    limit: 6,
+    visible: true,
+  },
+  bhajans: {
+    id: "bhajans",
+    type: "RAIL",
+    title: { en: "Bhajans", hi: "भजन" },
+    source: { contentType: "BHAJAN", sort: "POPULAR" },
+    limit: 6,
+    visible: false,
+  },
+  quote: {
+    id: "quote",
+    type: "QUOTE",
+    text: {
+      en: "Where there is devotion, there is peace.",
+      hi: "जहाँ भक्ति है, वहाँ शांति है।",
+    },
+    visible: true,
+  },
+} satisfies Record<string, Omit<HomeLayoutSection, "order">>;
+const ordered = (...items: Omit<HomeLayoutSection, "order">[]) =>
+  items.map((item, index) => ({ ...item, order: (index + 1) * 10 }));
+export const homeLayouts: Record<HomeLanguage, HomeLayoutSection[]> = {
+  en: ordered(
+    sections.progress,
+    sections.shortcuts,
+    sections.sadhana,
+    sections.trending,
+    sections.aarti,
+    sections.bhajans,
+    sections.quote,
+  ),
+  hi: ordered(
+    sections.sadhana,
+    sections.shortcuts,
+    sections.aarti,
+    sections.trending,
+    sections.progress,
+    sections.bhajans,
+    sections.quote,
+  ),
 };
