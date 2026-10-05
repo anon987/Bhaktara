@@ -14,7 +14,7 @@ Branches: `main` (production), `develop` (integration), `feature/*` merged into 
 
 1. **Ask the operator how the new practice screens feel on the phone** (jaap mala, dhyan lamp, prayer thali, blessing sheet) and adjust. A meditation was credited on the phone on 2026-10-06 (30 XP, streak 1); jaap with a real minute-long mala, prayer, history and airplane mode still need a hands-on check.
 2. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`, then `npm run seed:progression:dev`.
-3. **Admin CMS live check:** the admin web is live at https://bhaktara-dev.web.app (2026-10-06). Grant the operator a role (see [ADMIN_CMS.md](ADMIN_CMS.md)), then verify content CRUD, banners, the Home manager and the audit log against the deployed functions.
+3. **Admin CMS live check:** the admin web is live at https://bhaktara-dev.web.app (2026-10-06). The operator account holds SUPER_ADMIN (see [ADMIN_CMS.md](ADMIN_CMS.md)); verify content CRUD, banners, the Home manager and the audit log against the deployed functions.
 4. **Media pipeline (needs confirmation, billed/token):** create the R2 upload token (`m0-r2-token`), store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, deploy the Cloud Run processor and set `MEDIA_PROCESSOR_URL`.
 5. Still open from M1: `p-11` (deity list), real launch content, "Save wallpaper" on device.
 
