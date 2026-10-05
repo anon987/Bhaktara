@@ -23,6 +23,8 @@ import {
   resolveBannerTarget,
 } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
+import { useStats } from "../sadhana/SadhanaParts";
+import { rankNames } from "../../domain/progression";
 import {
   Card,
   DataBoundary,
@@ -147,7 +149,8 @@ function HomeSectionView({
   section: HomeSection;
   navigation: Navigation;
 }) {
-  const { catalog, local, t } = useApp();
+  const { local, t } = useApp();
+  const stats = useStats();
   const language = local.language;
   switch (section.type) {
     case "PROGRESS":
@@ -157,18 +160,18 @@ function HomeSectionView({
             {[
               {
                 icon: Flame,
-                value: `${catalog?.sampleStats.currentStreak}`,
+                value: `${stats.currentStreak}`,
                 label: t("streak"),
               },
               {
                 icon: Sparkles,
-                value: `${catalog?.sampleStats.totalXp}`,
-                label: "XP",
+                value: `${stats.totalXp}`,
+                label: t("points"),
               },
               {
                 icon: Flower2,
-                value: t("rank"),
-                label: `${t("level")} ${catalog?.sampleStats.level}`,
+                value: stats.real ? rankNames[stats.rank][language] : t("rank"),
+                label: `${t("level")} ${stats.level}`,
               },
             ].map((stat) => (
               <View
@@ -185,9 +188,11 @@ function HomeSectionView({
               </View>
             ))}
           </Row>
-          <Txt size={10} muted style={{ textAlign: "center" }}>
-            {t("sample")}
-          </Txt>
+          {!stats.real && (
+            <Txt size={10} muted style={{ textAlign: "center" }}>
+              {t("sample")}
+            </Txt>
+          )}
         </Card>
       );
     case "SHORTCUTS":

@@ -17,6 +17,7 @@ import {
 import { localPracticeDay, remainingAt } from "../../domain/practice";
 import { Backend, getBackend } from "../../services/backend";
 import { ContentQuery, ContentRepository } from "../../repositories/contracts";
+import { ProgressionRepository } from "../../repositories/progressionRepository";
 import { Language, StringKey, translate } from "../../i18n/strings";
 import { analytics } from "../../services/analytics";
 import { remoteConfig } from "../../services/remoteConfig";
@@ -59,6 +60,9 @@ type AppContextValue = {
   // Re-reads the account list into the cache (throttled unless forced).
   refreshFavorites: (options?: { force?: boolean }) => Promise<void>;
   completeTask: (task: "jaap" | "meditation" | "prayer", at?: Date) => void;
+  // Server practice (null in fixture mode or before the backend is ready).
+  progression: ProgressionRepository | null;
+  session: GuestSession | null;
 };
 const Context = createContext<AppContextValue | null>(null);
 export function AppProvider({
@@ -340,6 +344,8 @@ export function AppProvider({
       },
       refreshFavorites,
       completeTask,
+      progression: (session && backend?.progression) || null,
+      session,
     }),
     [
       local,
@@ -357,6 +363,8 @@ export function AppProvider({
       pendingFavorites,
       refreshFavorites,
       completeTask,
+      backend,
+      session,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
