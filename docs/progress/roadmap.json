@@ -320,10 +320,11 @@
           "id": "m1-home",
           "title": "App: Home with CMS-driven sections",
           "status": "in_progress",
-          "notes": "Home renders the precomputed homeFeeds/{language} doc (doc 06 §3) with banners first. Pending: buildHomeFeed server job, rules deploy, CHALLENGES/LEAGUE/FESTIVALS sections.",
+          "notes": "App renders homeFeeds/{language}; buildHomeFeed (dirty flag + 5-min schedule, claim-checked transactional writes) implemented and emulator-tested. Pending: Functions deploy (Blaze), on-device check, FESTIVALS/CHALLENGES/LEAGUE sections.",
           "evidence": [
             "src/domain/home.ts",
-            "src/features/home/HomeScreen.tsx"
+            "functions/src/home.ts",
+            "functions/test/home.test.ts"
           ]
         },
         {
@@ -484,10 +485,13 @@
         {
           "id": "m1-admin-home-sections",
           "title": "Admin: home section manager",
-          "status": "not_started",
-          "notes": "Queued stream. Pairs with the in-progress CMS-driven Home.",
+          "status": "in_progress",
+          "notes": "Home manager callables (getHomeLayout, updateHomeLayout with revision check + audit, previewHomeFeed, rebuildHomeFeed) emulator-tested. Admin web UI in progress.",
           "blockedBy": [
             "blaze-plan"
+          ],
+          "evidence": [
+            "functions/src/home.ts"
           ]
         },
         {
