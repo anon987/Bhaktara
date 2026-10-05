@@ -83,6 +83,10 @@ function ExistingContent({ id }: { id: string }) {
         setFlash(`Moved from ${from} to ${to}.`);
         setVersion((value) => value + 1);
       }}
+      onMediaProcessed={() => {
+        setFlash("Media rendered and saved.");
+        setVersion((value) => value + 1);
+      }}
     />
   );
 }
@@ -91,9 +95,10 @@ type FormProps = {
   record: ContentRecord | null;
   flash?: string | null;
   onMoved: (from: ContentStatus, to: ContentStatus) => void;
+  onMediaProcessed?: () => void;
 };
 
-export function EditorForm({ record, flash, onMoved }: FormProps) {
+export function EditorForm({ record, flash, onMoved, onMediaProcessed }: FormProps) {
   const { api, role } = useAdmin();
   const isNew = record === null;
   const initial = useMemo(
@@ -524,7 +529,9 @@ export function EditorForm({ record, flash, onMoved }: FormProps) {
                 dirty={dirty}
                 onMoved={(to) => onMoved(status, to)}
               />
-              {can(role, "content.upload") && <MediaUpload contentId={record.id} />}
+              {can(role, "content.upload") && editable && (
+                <MediaUpload contentId={record.id} type={form.type} onProcessed={() => onMediaProcessed?.()} />
+              )}
             </>
           )}
         </aside>

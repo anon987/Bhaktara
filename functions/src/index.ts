@@ -4,7 +4,10 @@ import { CallableOptions, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
+import * as assets from "./assets";
 import * as banners from "./banners";
+import * as catalog from "./catalog";
+import * as dashboard from "./dashboard";
 import * as content from "./content";
 import { Actor, actorFrom } from "./core";
 import * as home from "./home";
@@ -12,6 +15,7 @@ import * as media from "./media";
 import * as progression from "./progression";
 import { setAdminRole as setRole } from "./roles";
 import { requestUploadUrl as uploadSlot } from "./uploads";
+import * as users from "./users";
 
 // Admin CMS functions (doc 08 §3). Firestore lives in asia-south1.
 // Deploying needs the Blaze plan; until then they run in the local emulator.
@@ -58,6 +62,27 @@ export const requestUploadUrl = admin(
     secrets: r2Secrets,
   },
 );
+
+// Admin panel v2 (doc 09 §1): dashboard, catalogue, config, users, assets.
+export const getDashboard = admin(dashboard.getDashboard, { timeoutSeconds: 120 });
+export const saveCatalogItem = admin(catalog.saveCatalogItem);
+export const deleteCatalogItem = admin(catalog.deleteCatalogItem);
+export const saveConfig = admin(catalog.saveConfig);
+export const rollbackConfig = admin(catalog.rollbackConfig);
+export const searchUsers = admin(users.searchUsers);
+export const getUserDetail = admin(users.getUserDetail);
+export const moderateUser = admin(users.moderateUser);
+export const setUserDisabled = admin(users.setUserDisabled);
+export const deleteUserAccount = admin(users.deleteUserAccount, { timeoutSeconds: 300 });
+export const listAdmins = admin((actor) => users.listAdmins(actor));
+export const requestAssetUpload = admin(
+  (actor, data) => assets.requestAssetUpload(actor, data),
+  { secrets: r2Secrets },
+);
+export const processAsset = admin((actor, data) => assets.processAsset(actor, data), {
+  timeoutSeconds: 540,
+});
+export const deleteAsset = admin(assets.deleteAsset);
 
 // Doc 22 §A4 step 4: render staged originals on the Cloud Run media
 // processor (MEDIA_PROCESSOR_URL; R2 keys live with the processor, not here)

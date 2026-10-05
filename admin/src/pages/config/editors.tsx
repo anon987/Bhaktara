@@ -1,0 +1,305 @@
+import { useMemo, type ReactNode } from "react";
+import { Ban } from "lucide-react";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import {
+  defaultGamificationConfig,
+  defaultSadhanaConfig,
+  rankNames,
+  xpForLevel,
+  type GamificationConfig,
+  type SadhanaConfig,
+} from "../../../../src/domain/progression";
+import {
+  bhogKinds,
+  bhogNames,
+  flowerKinds,
+  flowerNames,
+  forbiddenFlowers,
+  garlandKinds,
+  garlandNames,
+  offeringsFor,
+  trayNames,
+  type DeityOfferings,
+} from "../../../../src/domain/puja";
+import type { PujaConfig } from "../../../../src/domain/admin";
+import { LocalizedInput, localizedOf } from "../../components/panel/fields";
+import { NumberField, SelectField, SwitchField, useDeityOptions } from "../../components/panel/inputs";
+import type { ConfigId } from "../../panelApi";
+
+type Editor = {
+  title: string;
+  description: string;
+  defaults: () => unknown;
+  normalize: (data: unknown) => unknown;
+  Editor: (props: { value: never; onChange: (value: unknown) => void }) => ReactNode;
+};
+
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+// ---- XP & levels ---------------------------------------------------------------
+
+const curveConfig = { xp: { label: "XP to reach level", color: "var(--chart-1)" } } satisfies ChartConfig;
+
+function GamificationEditor({ value: c, onChange }: { value: GamificationConfig; onChange: (value: GamificationConfig) => void }) {
+  const set = <K extends keyof GamificationConfig>(key: K, patch: Partial<GamificationConfig[K]>) =>
+    onChange({ ...c, [key]: { ...(c[key] as object), ...patch } });
+  const curve = useMemo(
+    () => Array.from({ length: 60 }, (_, i) => ({ level: i + 1, xp: xpForLevel(i + 1, c) })),
+    [c],
+  );
+  const grid = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3";
+  return (
+    <>
+      <Section title="XP for each practice" description="Direct XP comes only from practice and challenges (doc 10 §2).">
+        <div className={grid}>
+          <NumberField id="xp-task" label="Sadhana task" value={c.xp.task} min={0} onChange={(task) => set("xp", { task })} />
+          <NumberField id="xp-full" label="Full Sadhana bonus" value={c.xp.fullSadhanaBonus} min={0} onChange={(fullSadhanaBonus) => set("xp", { fullSadhanaBonus })} />
+          <NumberField id="xp-mala" label="One mala" value={c.xp.mala} min={0} onChange={(mala) => set("xp", { mala })} />
+          <NumberField id="xp-meditation" label="Meditation session" value={c.xp.meditationSession} min={0} onChange={(meditationSession) => set("xp", { meditationSession })} />
+          <NumberField id="xp-mandir" label="Mandir visit" value={c.xp.mandirVisit} min={0} onChange={(mandirVisit) => set("xp", { mandirVisit })} />
+        </div>
+      </Section>
+      <Section title="Limits" description="The daily cap must be at least the largest single award.">
+        <div className={grid}>
+          <NumberField id="cap" label="Daily XP cap" value={c.limits.dailyXpCap} min={1} onChange={(dailyXpCap) => set("limits", { dailyXpCap })} />
+          <NumberField id="malas-day" label="Rewarded malas per day" value={c.limits.malasPerDay} min={0} onChange={(malasPerDay) => set("limits", { malasPerDay })} />
+          <NumberField id="med-day" label="Rewarded meditations per day" value={c.limits.meditationSessionsPerDay} min={0} onChange={(meditationSessionsPerDay) => set("limits", { meditationSessionsPerDay })} />
+          <NumberField id="med-min" label="Meditation minimum (min)" value={c.limits.meditationSessionMinMinutes} min={1} onChange={(meditationSessionMinMinutes) => set("limits", { meditationSessionMinMinutes })} />
+          <NumberField id="starts" label="Session starts per day" value={c.limits.sessionStartsPerDay} min={1} onChange={(sessionStartsPerDay) => set("limits", { sessionStartsPerDay })} />
+        </div>
+      </Section>
+      <Section title="Sessions and fair play" description="Server-timed checks (doc 10 §9).">
+        <div className={grid}>
+          <NumberField id="sec-mala" label="Seconds per mala (min)" value={c.session.minSecondsPerMala} min={1} onChange={(minSecondsPerMala) => set("session", { minSecondsPerMala })} />
+          <NumberField id="max-malas" label="Malas per session (max)" value={c.session.maxMalasPerSession} min={1} onChange={(maxMalasPerSession) => set("session", { maxMalasPerSession })} />
+          <NumberField id="max-med" label="Meditation minutes (max)" value={c.session.maxMeditationMinutes} min={1} onChange={(maxMeditationMinutes) => set("session", { maxMeditationMinutes })} />
+          <NumberField id="open-hours" label="Session open hours (max)" value={c.session.maxOpenHours} min={1} onChange={(maxOpenHours) => set("session", { maxOpenHours })} />
+          <NumberField id="grace" label="Clock grace (seconds)" value={c.session.graceSeconds} min={0} onChange={(graceSeconds) => set("session", { graceSeconds })} />
+          <NumberField id="sus" label="Flag above malas per hour" value={c.suspicious.malasPerHour} min={1} onChange={(malasPerHour) => set("suspicious", { malasPerHour })} />
+        </div>
+      </Section>
+      <Section title="Levels and ranks" description="XP to reach level n = base × (n − 1)^exponent. Ranks begin at the levels below.">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <NumberField id="base" label="Base" value={c.levelCurve.base} min={1} step={1} onChange={(base) => set("levelCurve", { base })} />
+              <NumberField id="exponent" label="Exponent" value={c.levelCurve.exponent} min={1} step={0.05} onChange={(exponent) => set("levelCurve", { exponent })} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {c.rankLevels.map((entry, index) => (
+                <NumberField
+                  key={entry.rank}
+                  id={`rank-${entry.rank}`}
+                  label={`${rankNames[entry.rank].en} (${rankNames[entry.rank].hi}) from level`}
+                  value={entry.minLevel}
+                  min={1}
+                  onChange={(minLevel) =>
+                    onChange({ ...c, rankLevels: c.rankLevels.map((r, i) => (i === index ? { ...r, minLevel } : r)) })
+                  }
+                />
+              ))}
+            </div>
+          </div>
+          <ChartContainer config={curveConfig} className="h-64 w-full">
+            <LineChart data={curve} margin={{ left: 0, right: 8 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="level" tickLine={false} axisLine={false} />
+              <YAxis tickLine={false} axisLine={false} width={56} />
+              <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, payload) => `Level ${payload?.[0]?.payload?.level}`} />} />
+              <Line dataKey="xp" stroke="var(--color-xp)" strokeWidth={2.5} dot={false} />
+            </LineChart>
+          </ChartContainer>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+// ---- Sadhana plan ------------------------------------------------------------------
+
+function SadhanaEditor({ value: c, onChange }: { value: SadhanaConfig; onChange: (value: SadhanaConfig) => void }) {
+  return (
+    <>
+      <Section title="Daily plan" description="What completes each Sadhana task.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <NumberField id="jaap-target" label="Jaap: malas for the task" value={c.jaapTargetMalas} min={1} onChange={(jaapTargetMalas) => onChange({ ...c, jaapTargetMalas })} />
+          <NumberField id="med-target" label="Meditation: minutes for the task" value={c.meditationTargetMinutes} min={1} onChange={(meditationTargetMinutes) => onChange({ ...c, meditationTargetMinutes })} />
+        </div>
+      </Section>
+      <Section title="Puja tray" description="The offerings on the prayer tray, in traditional order (D-054). Required ones record the day's prayer.">
+        <div className="space-y-4">
+          {c.prayerItems.map((item, index) => {
+            const update = (patch: Partial<typeof item>) =>
+              onChange({ ...c, prayerItems: c.prayerItems.map((p, i) => (i === index ? { ...p, ...patch } : p)) });
+            return (
+              <div key={item.id} className="space-y-3 rounded-xl border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{index + 1}. {trayNames[item.kind]?.en ?? item.kind}</p>
+                  <SwitchField id={`req-${item.id}`} label="Required" checked={item.required} onChange={(required) => update({ required })} />
+                </div>
+                <LocalizedInput id={`label-${item.id}`} label="Name (read aloud by screen readers)" value={item.label} onChange={(label) => update({ label })} maxLength={80} />
+                <LocalizedInput id={`line-${item.id}`} label="Sanskrit line (optional)" value={item.line ?? { hi: "", en: "" }} onChange={(line) => update({ line: line.hi || line.en ? line : undefined })} maxLength={200} />
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+    </>
+  );
+}
+
+// ---- Puja offerings per deity ---------------------------------------------------
+
+function OfferingsEditor({
+  deityId,
+  value: o,
+  onChange,
+}: {
+  deityId: string | null;
+  value: DeityOfferings;
+  onChange: (value: DeityOfferings) => void;
+}) {
+  const banned = (deityId && forbiddenFlowers[deityId]) || [];
+  const toggle = <T extends string>(list: T[], item: T) =>
+    list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+  return (
+    <div className="space-y-5">
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Flowers in the drawer</legend>
+        <div className="flex flex-wrap gap-2">
+          {flowerKinds.map((flower) => {
+            const forbidden = banned.includes(flower);
+            const on = o.flowers.includes(flower);
+            return (
+              <button
+                key={flower}
+                type="button"
+                disabled={forbidden}
+                aria-pressed={on}
+                title={forbidden ? "Never offered to this deity" : undefined}
+                onClick={() => onChange({ ...o, flowers: toggle(o.flowers, flower) })}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
+                  forbidden ? "cursor-not-allowed border-destructive/30 text-destructive/60 line-through" : on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                )}
+              >
+                {forbidden && <Ban className="size-3.5" />}
+                {flowerNames[flower].en} · {flowerNames[flower].hi}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Bhog in the drawer</legend>
+        <div className="flex flex-wrap gap-2">
+          {bhogKinds.map((bhog) => {
+            const on = o.bhog.includes(bhog);
+            return (
+              <button
+                key={bhog}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange({ ...o, bhog: toggle(o.bhog, bhog) })}
+                className={cn("rounded-full border px-3 py-1.5 text-sm transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent")}
+              >
+                {bhogNames[bhog].en} · {bhogNames[bhog].hi}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <SelectField id={`garland-${deityId}`} label="Garland" value={o.garland} options={garlandKinds.map((g) => ({ value: g, label: garlandNames[g].en }))} onChange={(garland) => onChange({ ...o, garland })} />
+        <SelectField id={`tilak-${deityId}`} label="Tilak" value={o.tilak} options={[{ value: "tripundra", label: "Tripundra (three lines)" }, { value: "urdhvaPundra", label: "Urdhva pundra (U mark)" }, { value: "bindu", label: "Bindu (kumkum dot)" }]} onChange={(tilak) => onChange({ ...o, tilak })} />
+      </div>
+      <SwitchField id={`tulsi-${deityId}`} label="Tulsi leaf on the bhog" description="For Vishnu, Krishna and Ram" checked={o.tulsiOnBhog} onChange={(tulsiOnBhog) => onChange({ ...o, tulsiOnBhog })} />
+    </div>
+  );
+}
+
+function PujaEditor({ value: c, onChange }: { value: PujaConfig; onChange: (value: PujaConfig) => void }) {
+  const deities = useDeityOptions();
+  const ids = Array.from(new Set([...deities.map((d) => d.value), ...Object.keys(c.deities)]));
+  const name = (id: string) => deities.find((d) => d.value === id)?.label ?? id.charAt(0).toUpperCase() + id.slice(1);
+  return (
+    <Section title="Offerings for each deity" description="Only what suits the deity appears in the app's drawers. Forbidden offerings cannot be chosen (ketaki or tulsi for Shiva, tulsi for Ganesha, durva for the Devi).">
+      <Tabs defaultValue="general">
+        <TabsList className="flex h-auto flex-wrap justify-start">
+          <TabsTrigger value="general">All others</TabsTrigger>
+          {ids.map((id) => (
+            <TabsTrigger key={id} value={id}>{name(id)}</TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="general" className="pt-4">
+          <OfferingsEditor deityId={null} value={c.general} onChange={(general) => onChange({ ...c, general })} />
+        </TabsContent>
+        {ids.map((id) => (
+          <TabsContent key={id} value={id} className="pt-4">
+            <OfferingsEditor
+              deityId={id}
+              value={c.deities[id] ?? offeringsFor(id)}
+              onChange={(offerings) => onChange({ ...c, deities: { ...c.deities, [id]: offerings } })}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
+    </Section>
+  );
+}
+
+const pujaDefaults = (): PujaConfig => ({
+  version: 1,
+  general: offeringsFor(null),
+  deities: Object.fromEntries(
+    ["shiva", "ganesha", "krishna", "vishnu", "ram", "lakshmi", "durga", "hanuman", "saraswati"].map((id) => [id, offeringsFor(id)]),
+  ),
+});
+
+export const configEditors: Record<ConfigId, Editor> = {
+  gamification: {
+    title: "XP & levels",
+    description: "XP values, daily caps, fair-play limits and the level curve. The app and the server read these without a release.",
+    defaults: () => defaultGamificationConfig,
+    normalize: (data) => ({ ...defaultGamificationConfig, ...(data as object) }),
+    Editor: GamificationEditor as Editor["Editor"],
+  },
+  sadhana: {
+    title: "Sadhana plan",
+    description: "The daily plan targets and the puja tray offerings.",
+    defaults: () => defaultSadhanaConfig,
+    normalize: (data) => {
+      const value = data as SadhanaConfig;
+      return {
+        ...defaultSadhanaConfig,
+        ...value,
+        prayerItems: (value.prayerItems ?? defaultSadhanaConfig.prayerItems).map((item) => ({
+          ...item,
+          label: localizedOf(item.label),
+        })),
+      };
+    },
+    Editor: SadhanaEditor as Editor["Editor"],
+  },
+  puja: {
+    title: "Puja offerings",
+    description: "Flowers, garland, bhog and tilak for each deity's puja (D-054).",
+    defaults: pujaDefaults,
+    normalize: (data) => ({ ...pujaDefaults(), ...(data as object) }),
+    Editor: PujaEditor as Editor["Editor"],
+  },
+};

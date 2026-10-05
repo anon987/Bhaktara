@@ -128,7 +128,7 @@ export function processorClientFromEnv(
 // Processor failures the operator can act on keep their message; the rest
 // (auth misconfiguration, crashes, timeouts) are logged and reported
 // generically.
-function toHttpsError(error: unknown, contentId: string): HttpsError {
+export function toHttpsError(error: unknown, contentId: string): HttpsError {
   if (error instanceof ProcessorCallError) {
     const visible: Partial<Record<string, FunctionsErrorCode>> = {
       INVALID_MEDIA: "failed-precondition",
