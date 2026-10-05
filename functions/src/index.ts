@@ -42,10 +42,14 @@ export const updateHomeLayout = admin(home.updateHomeLayout);
 export const previewHomeFeed = admin(home.previewHomeFeed);
 export const rebuildHomeFeed = admin(home.rebuildHomeFeed);
 
-// R2 keys live in Secret Manager in deployed environments. The emulator
-// reads them (if at all) from functions/.env.local, which is Git-ignored.
+// R2 keys live in Secret Manager in deployed environments, once an upload
+// token exists: set R2_UPLOAD_SECRETS=true in functions/.env.<projectId> after
+// creating the R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY secrets. Until then
+// the callable deploys without them and answers that uploads are not
+// configured. The emulator reads keys (if at all) from functions/.env.local.
 const r2Secrets =
-  process.env.FUNCTIONS_EMULATOR === "true"
+  process.env.FUNCTIONS_EMULATOR === "true" ||
+  process.env.R2_UPLOAD_SECRETS !== "true"
     ? []
     : [defineSecret("R2_ACCESS_KEY_ID"), defineSecret("R2_SECRET_ACCESS_KEY")];
 export const requestUploadUrl = admin(

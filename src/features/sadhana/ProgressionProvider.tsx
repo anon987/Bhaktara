@@ -122,7 +122,14 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
         lastLoad.current = Date.now();
         setStatus("ready");
       })
-      .catch(() => setStatus("offline"));
+      .catch((error: unknown) => {
+        // Codes only: no tokens or user data in logs.
+        console.warn(
+          "[progression] refresh failed",
+          (error as { code?: string })?.code ?? String(error),
+        );
+        setStatus("offline");
+      });
   }, [progression]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 {
   "$comment": "Single source of truth for docs/MILESTONES.md. Edit this file, then run `npm run progress`. CI runs `npm run progress:check`. Statuses: done | in_progress | not_started | blocked | deferred. Evidence entries are repo-relative paths (validated) or commit hashes. blockedBy entries are blocker ids (below) or item ids.",
   "title": "Bhaktara milestone tracker",
-  "updated": "2026-10-05",
+  "updated": "2026-10-06",
   "source": "bhaktara_docs/16_RELEASE_ROADMAP.md",
   "milestones": [
     {
@@ -140,11 +140,8 @@
         {
           "id": "m0-auth-profile",
           "title": "Server-owned user profile provisioning",
-          "status": "blocked",
-          "notes": "setTimezone (called at app start) and the first practice call create users/{uid} server-side with default preferences; emulator-verified, including the owner-update rule.",
-          "blockedBy": [
-            "dev-functions-deploy"
-          ],
+          "status": "done",
+          "notes": "setTimezone (called at app start) and the first practice call create users/{uid} server-side with default preferences; emulator-verified, including the owner-update rule. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progression.ts",
             "functions/test/progression.test.ts"
@@ -434,28 +431,22 @@
         {
           "id": "m1-admin-auth",
           "title": "Admin: auth and roles",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: role claims + checks in every callable, grant-role script, admin web sign-in and role gate. Deploy (Functions, Hosting) waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: role claims + checks in every callable, grant-role script, admin web sign-in and role gate. Deploy (Functions, Hosting) waits for the dev deploy. Functions deployed to bhaktara-dev on 2026-10-06; the admin web Hosting deploy and a live check are next.",
           "evidence": [
             "src/domain/cms.ts",
             "admin/",
             "docs/ADMIN_CMS.md"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-admin-crud",
           "title": "Admin: content CRUD with DRAFT→PUBLISHED workflow (D-036)",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: content callables with D-036 workflow + checklist gating, admin web list/editor/transitions. Deploy waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: content callables with D-036 workflow + checklist gating, admin web list/editor/transitions. Functions deployed to bhaktara-dev on 2026-10-06; the admin web Hosting deploy and a live check are next.",
           "evidence": [
             "functions/src/content.ts",
             "admin/"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
@@ -469,7 +460,8 @@
             "docs/MEDIA_PROCESSOR.md"
           ],
           "blockedBy": [
-            "dev-functions-deploy"
+            "m0-r2-token",
+            "media-processor-deploy"
           ]
         },
         {
@@ -482,7 +474,8 @@
             "services/media-processor/"
           ],
           "blockedBy": [
-            "dev-functions-deploy"
+            "m0-r2-token",
+            "media-processor-deploy"
           ]
         },
         {
@@ -495,30 +488,25 @@
             "services/media-processor/"
           ],
           "blockedBy": [
-            "dev-functions-deploy"
+            "m0-r2-token",
+            "media-processor-deploy"
           ]
         },
         {
           "id": "m1-admin-banners",
           "title": "Admin: banner manager",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: banner callables + admin web banner manager. Deploy waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: banner callables + admin web banner manager. Functions deployed to bhaktara-dev on 2026-10-06; the admin web Hosting deploy and a live check are next.",
           "evidence": [
             "functions/src/banners.ts",
             "admin/"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m1-admin-home-sections",
           "title": "Admin: home section manager",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: Home manager callables (layout, preview, rebuild); admin web screen for it still to add. Deploy waits for the dev deploy.",
-          "blockedBy": [
-            "dev-functions-deploy"
-          ],
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: Home manager callables (layout, preview, rebuild); admin web screen for it still to add. Functions deployed to bhaktara-dev on 2026-10-06; the admin web Hosting deploy and a live check are next.",
           "evidence": [
             "functions/src/home.ts"
           ]
@@ -526,14 +514,11 @@
         {
           "id": "m1-admin-audit",
           "title": "Admin: audit log",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: audit entry per mutation in the same transaction + admin web audit viewer. Deploy waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: audit entry per mutation in the same transaction + admin web audit viewer. Functions deployed to bhaktara-dev on 2026-10-06; the admin web Hosting deploy and a live check are next.",
           "evidence": [
             "functions/src/content.ts",
             "admin/"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
@@ -613,8 +598,8 @@
         {
           "id": "m2-daily-plan",
           "title": "Sadhana: daily plan",
-          "status": "in_progress",
-          "notes": "Three lamps (jaap, dhyan, prarthana) from appConfig/sadhana; tasks, full-Sadhana bonus and Brahma Muhurta are server-decided. Jest-verified; on-device check waits for the functions deploy and a native rebuild.",
+          "status": "done",
+          "notes": "Three lamps (jaap, dhyan, prarthana) from appConfig/sadhana; tasks, full-Sadhana bonus and Brahma Muhurta are server-decided. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "src/features/sadhana/SadhanaScreen.tsx",
             "src/features/sadhana/SadhanaParts.tsx"
@@ -624,7 +609,7 @@
           "id": "m2-jaap",
           "title": "Sadhana: jaap",
           "status": "in_progress",
-          "notes": "108-bead mala with sumeru, deity mantra and mala type, haptic tick, bell and petals. One server session per mala (60 s minimum); the bead count starts again at 04:00 (D-051). Jest-verified; device check pending.",
+          "notes": "108-bead mala with sumeru, deity mantra and mala type, haptic tick, bell and petals. One server session per mala (60 s minimum); the bead count starts again at 04:00 (D-051). Built into the phone build of 2026-10-06; on-device check by the operator pending.",
           "evidence": [
             "src/features/sadhana/PracticeScreens.tsx",
             "src/features/sadhana/art/MalaRing.tsx"
@@ -633,8 +618,8 @@
         {
           "id": "m2-meditation",
           "title": "Sadhana: meditation timer",
-          "status": "in_progress",
-          "notes": "Diya with breathing halo and a light ring that fills; server session bounds the credited minutes; stopping early credits whole minutes. Device check pending.",
+          "status": "done",
+          "notes": "Diya with breathing halo and a light ring that fills; server session bounds the credited minutes; stopping early credits whole minutes. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "src/features/sadhana/PracticeScreens.tsx",
             "src/features/sadhana/art/Diya.tsx"
@@ -644,7 +629,7 @@
           "id": "m2-prayer",
           "title": "Sadhana: prayer checklist",
           "status": "in_progress",
-          "notes": "Guided puja thali: one step at a time, each offering placed on the plate, aarti lamp on completion; completePrayerChecklist validates the configured steps. Device check pending.",
+          "notes": "Guided puja thali: one step at a time, each offering placed on the plate, aarti lamp on completion; completePrayerChecklist validates the configured steps. On-device check by the operator pending.",
           "evidence": [
             "src/features/sadhana/PracticeScreens.tsx",
             "src/features/sadhana/art/Thali.tsx"
@@ -654,7 +639,7 @@
           "id": "m2-history",
           "title": "Sadhana: history",
           "status": "in_progress",
-          "notes": "Lamp calendar (5 weeks) from users/{uid}/days, totals and milestones. Device check pending.",
+          "notes": "Lamp calendar (5 weeks) from users/{uid}/days, totals and milestones. On-device check by the operator pending.",
           "evidence": [
             "src/features/sadhana/SadhanaParts.tsx"
           ]
@@ -662,105 +647,81 @@
         {
           "id": "m2-xp",
           "title": "XP (single currency, D-023)",
-          "status": "blocked",
-          "notes": "Server-only XP per doc 10 §2 (config in appConfig/gamification), 300/day cap with CAPPED ledger lines; shown as अंक. Emulator-verified.",
+          "status": "done",
+          "notes": "Server-only XP per doc 10 §2 (config in appConfig/gamification), 300/day cap with CAPPED ledger lines; shown as अंक. Emulator-verified. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progressionEngine.ts",
             "src/domain/progression.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-levels",
           "title": "Levels and ranks (D-027)",
-          "status": "blocked",
-          "notes": "Level curve 50 × (level−1)^1.6 and D-027 ranks from config; level-up and rank-up in the reward result. Unit-tested.",
+          "status": "done",
+          "notes": "Level curve 50 × (level−1)^1.6 and D-027 ranks from config; level-up and rank-up in the reward result. Unit-tested. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "src/domain/progression.ts",
             "tests/progression.test.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-streak",
           "title": "Streak (server-authoritative, D-024/D-026)",
-          "status": "blocked",
-          "notes": "D-024/D-026 streak in the practice transaction (task, mala or daily challenge qualifies); never moves backwards after a timezone change; app shows a lapsed streak as 0. Emulator-verified.",
+          "status": "done",
+          "notes": "D-024/D-026 streak in the practice transaction (task, mala or daily challenge qualifies); never moves backwards after a timezone change; app shows a lapsed streak as 0. Emulator-verified. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progressionEngine.ts",
             "functions/test/unit/progression.test.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-daily-challenges",
           "title": "Daily challenges",
-          "status": "blocked",
-          "notes": "Challenges progress in the same transaction, per period (user's practice day); userChallenges/{uid}_{challengeId}_{periodKey}; expireChallenges at 04:05 IST. Emulator-verified.",
+          "status": "done",
+          "notes": "Challenges progress in the same transaction, per period (user's practice day); userChallenges/{uid}_{challengeId}_{periodKey}; expireChallenges at 04:05 IST. Emulator-verified. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progression.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-weekly-challenges",
           "title": "Weekly challenges",
-          "status": "blocked",
-          "notes": "Weekly period = Monday 04:00 IST week (shared with leagues). Emulator-verified with the dev challenge set.",
+          "status": "done",
+          "notes": "Weekly period = Monday 04:00 IST week (shared with leagues). Emulator-verified with the dev challenge set. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progression.ts",
             "scripts/progression/seed.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-badges",
           "title": "Badges",
-          "status": "blocked",
-          "notes": "V1 badge set (doc 10 §7) evaluated on every practice; league badges wait for M3. Unlocks shown in the blessing sheet, History and Profile.",
+          "status": "done",
+          "notes": "V1 badge set (doc 10 §7) evaluated on every practice; league badges wait for M3. Unlocks shown in the blessing sheet, History and Profile. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "scripts/progression/seed.ts",
             "src/features/sadhana/SadhanaParts.tsx"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-ledger",
           "title": "Reward ledger",
-          "status": "blocked",
-          "notes": "rewardTransactions/{uid}_{type}_{sourceId}, written only by the practice transaction; retries and parallel calls pay once (emulator test).",
+          "status": "done",
+          "notes": "rewardTransactions/{uid}_{type}_{sourceId}, written only by the practice transaction; retries and parallel calls pay once (emulator test). Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progression.ts",
             "functions/test/progression.test.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
           "id": "m2-functions",
           "title": "Idempotent Cloud Functions for practice sessions and rewards",
-          "status": "blocked",
-          "notes": "setTimezone, startSession, completeSession, completePrayerChecklist and expireChallenges; 26 unit + 33 emulator tests pass. Not yet deployed.",
+          "status": "done",
+          "notes": "setTimezone, startSession, completeSession, completePrayerChecklist and expireChallenges; 26 unit + 33 emulator tests pass. Not yet deployed. Live on bhaktara-dev since 2026-10-06 (smoke: fast mala rejected, prayer XP + first badge, retry ALREADY_DONE; meditation credited on the phone).",
           "evidence": [
             "functions/src/progression.ts",
             "functions/src/progressionEngine.ts",
             "functions/src/index.ts"
-          ],
-          "blockedBy": [
-            "dev-functions-deploy"
           ]
         },
         {
@@ -1147,13 +1108,6 @@
   ],
   "blockers": [
     {
-      "id": "dev-functions-deploy",
-      "title": "Deploy Cloud Functions to bhaktara-dev",
-      "kind": "decision",
-      "detail": "Blaze is enabled on bhaktara-dev (operator, 2026-10-05). The first deploy of Functions (and the Cloud Run media processor and admin Hosting) is billed and waits for operator confirmation; until then the CMS and the habit layer run only in the emulators, and the phone earns no XP in cloud mode.",
-      "ref": "docs/FIREBASE_DEVELOPMENT.md"
-    },
-    {
       "id": "domain-purchase",
       "title": "Buy a Bhaktara domain",
       "kind": "purchase",
@@ -1179,6 +1133,13 @@
       "title": "Google Play developer account readiness",
       "kind": "external",
       "detail": "Confirm the developer account and any closed-testing tester requirements that apply to it before M4 closed testing."
+    },
+    {
+      "id": "media-processor-deploy",
+      "title": "Deploy the Cloud Run media processor to bhaktara-dev",
+      "kind": "decision",
+      "detail": "processMedia is deployed but needs the Cloud Run processor (billed) and its MEDIA_PROCESSOR_URL; uploads need the R2 token secrets (R2_UPLOAD_SECRETS=true in functions/.env.bhaktara-dev). Both wait for operator confirmation.",
+      "ref": "docs/MEDIA_R2.md"
     }
   ]
 }
