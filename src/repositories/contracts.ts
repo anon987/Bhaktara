@@ -18,6 +18,27 @@ export interface ContentRepository {
   // has been published for that language yet.
   getHome(language: HomeLanguage): Promise<HomeFeed | null>;
 }
+// One `users/{uid}/favorites/{contentId}` record (doc 06).
+export type FavoriteRecord = {
+  contentId: string;
+  type: ContentType;
+  createdAtMs: number;
+};
+export interface FavoritesRepository {
+  // "account": the session user's Firestore list (guests included, D-016).
+  // "device": fixture mode; favorites live only in device storage.
+  readonly kind: "account" | "device";
+  // Idempotent: the doc ID is the content ID, so re-adding an existing
+  // favorite succeeds. Without `type` the published content is read first.
+  add(contentId: string, type?: ContentType): Promise<void>;
+  // Idempotent: removing a missing favorite succeeds.
+  remove(contentId: string): Promise<void>;
+  // Newest first.
+  list(input?: {
+    limit?: number;
+    cursor?: string;
+  }): Promise<{ items: FavoriteRecord[]; nextCursor?: string }>;
+}
 export interface ProgressionService {
   startSession(input: {
     type: "JAAP" | "MEDITATION";

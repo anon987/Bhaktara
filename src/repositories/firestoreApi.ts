@@ -17,4 +17,8 @@ export type FirestoreApi = Pick<
   | "documentId"
   | "getDocFromServer"
   | "getDocsFromServer"
+  | "setDoc"
+  | "deleteDoc"
+  | "serverTimestamp"
+  | "Timestamp"
 >;

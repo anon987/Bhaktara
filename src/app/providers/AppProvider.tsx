@@ -20,6 +20,24 @@ import { ContentQuery, ContentRepository } from "../../repositories/contracts";
 import { Language, StringKey, translate } from "../../i18n/strings";
 import { analytics } from "../../services/analytics";
 import { remoteConfig } from "../../services/remoteConfig";
+import { GuestSession } from "../../services/auth/session";
+import {
+  createFavoritesSync,
+  FavoritesSync,
+} from "../../services/favorites/sync";
+import {
+  FavoritesSyncStore,
+  favoritesSyncStore,
+} from "../../services/favorites/syncStore";
+export type FavoritesStatus = {
+  // "account": favorites are saved to the session's account and device
+  // storage is the cache; "device": fixture mode, device storage only.
+  source: "account" | "device";
+  // Changes saved on this device that have not reached the account yet.
+  pending: number;
+  // The last write could not reach the server; pending changes will retry.
+  waiting: boolean;
+};
 type AppContextValue = {
   local: LocalState;
   ready: boolean;
@@ -37,13 +55,20 @@ type AppContextValue = {
   getHome: ContentRepository["getHome"];
   setCatalogMode: (mode: CatalogMode) => void;
   toggleFavorite: (id: string) => void;
+  favoritesStatus: FavoritesStatus;
+  // Re-reads the account list into the cache (throttled unless forced).
+  refreshFavorites: (options?: { force?: boolean }) => Promise<void>;
   completeTask: (task: "jaap" | "meditation" | "prayer", at?: Date) => void;
 };
 const Context = createContext<AppContextValue | null>(null);
 export function AppProvider({
   children,
   loadBackend = getBackend,
-}: React.PropsWithChildren<{ loadBackend?: () => Promise<Backend> }>) {
+  favoritesStore = favoritesSyncStore,
+}: React.PropsWithChildren<{
+  loadBackend?: () => Promise<Backend>;
+  favoritesStore?: FavoritesSyncStore;
+}>) {
   const [local, setLocal] = useState(initialState);
   const [ready, setReady] = useState(false);
   const [storageError, setStorageError] = useState(false);
@@ -55,6 +80,7 @@ export function AppProvider({
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogMode, setCatalogMode] = useState<CatalogMode>("loading");
   const [backend, setBackend] = useState<Backend | null>(null);
+  const [session, setSession] = useState<GuestSession | null>(null);
   const [connection, setConnection] =
     useState<AppContextValue["connection"]>("loading");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
@@ -89,10 +115,11 @@ export function AppProvider({
     let active = true;
     loadBackend()
       .then(async (services) => {
-        await services.session.ensureSession();
+        const current = await services.session.ensureSession();
         const data = await services.content.getCatalog();
         if (active) {
           setBackend(services);
+          setSession(current);
           setConnection(services.mode);
           setCatalog(data);
           setCatalogMode("ready");
@@ -164,6 +191,61 @@ export function AppProvider({
   useEffect(() => {
     localRef.current = local;
   }, [local]);
+  // Latest favorites, updated synchronously so rapid taps toggle correctly.
+  const favoritesRef = useRef(local.favorites);
+  useEffect(() => {
+    favoritesRef.current = local.favorites;
+  }, [local.favorites]);
+  const [sync, setSync] = useState<FavoritesSync | null>(null);
+  // Toggles made before account sync started (backend still loading).
+  const unsynced = useRef(new Map<string, boolean>());
+  const [pendingFavorites, setPendingFavorites] = useState({
+    pending: 0,
+    waiting: false,
+  });
+  const accountFavorites =
+    backend?.favorites?.kind === "account" && session
+      ? backend.favorites
+      : null;
+  useEffect(() => {
+    if (!ready || !accountFavorites || !session) return;
+    const engine = createFavoritesSync({
+      repository: accountFavorites,
+      store: favoritesStore,
+      apply: (fn) => {
+        favoritesRef.current = fn(favoritesRef.current);
+        setLocal((state) => ({ ...state, favorites: fn(state.favorites) }));
+      },
+      onPendingChange: setPendingFavorites,
+    });
+    setSync(engine);
+    // Held until start() has loaded the stored queue.
+    for (const [id, favorite] of unsynced.current)
+      void engine.setFavorite(id, favorite);
+    unsynced.current.clear();
+    // Declared after the localRef effect, so this is the hydrated list.
+    engine.start(session.uid, localRef.current.favorites).catch(() => {
+      // The stored queue could not be read; the device cache stays usable
+      // and the next backend retry starts sync again.
+    });
+    const listener = AppState.addEventListener("change", (next) => {
+      if (next === "active") {
+        void engine.flush();
+        void engine.refresh().catch(() => undefined);
+      }
+    });
+    return () => {
+      listener.remove();
+      engine.stop();
+      setSync(null);
+    };
+  }, [ready, accountFavorites, session, favoritesStore]);
+  const refreshFavorites = useCallback(
+    async (options?: { force?: boolean }) => {
+      await sync?.refresh(options);
+    },
+    [sync],
+  );
   useEffect(() => {
     if (!ready) return;
     const listener = AppState.addEventListener("change", (state) => {
@@ -232,13 +314,31 @@ export function AppProvider({
       setCatalogMode,
       toggleFavorite: (id) => {
         analytics.track("content_favorite", { content_id: id });
-        setLocal((state) => ({
-          ...state,
-          favorites: state.favorites.includes(id)
-            ? state.favorites.filter((value) => value !== id)
-            : [...state.favorites, id],
-        }));
+        const favorite = !favoritesRef.current.includes(id);
+        // Optimistic: the device cache changes now; the account write is
+        // queued durably and retried until it lands.
+        const next = (ids: string[]) => {
+          const rest = ids.filter((value) => value !== id);
+          if (!favorite) return rest;
+          // The account list is newest first; device-only keeps add order.
+          return sync ? [id, ...rest] : [...rest, id];
+        };
+        favoritesRef.current = next(favoritesRef.current);
+        setLocal((state) => ({ ...state, favorites: next(state.favorites) }));
+        if (!sync) unsynced.current.set(id, favorite);
+        sync
+          ?.setFavorite(
+            id,
+            favorite,
+            catalog?.content.find((item) => item.id === id)?.type,
+          )
+          .catch(() => setStorageError(true));
       },
+      favoritesStatus: {
+        source: sync ? "account" : "device",
+        ...pendingFavorites,
+      },
+      refreshFavorites,
       completeTask,
     }),
     [
@@ -253,6 +353,9 @@ export function AppProvider({
       searchContent,
       getContent,
       getHome,
+      sync,
+      pendingFavorites,
+      refreshFavorites,
       completeTask,
     ],
   );
