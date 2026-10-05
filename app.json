@@ -37,6 +37,13 @@
           "recordAudioAndroid": false,
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": false
+        }
       ]
     ],
     "scheme": "bhaktara",

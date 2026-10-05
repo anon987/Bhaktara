@@ -7,6 +7,9 @@ export type TabParams = {
   Sadhana: undefined;
   Profile: undefined;
 };
+// Doc 13 common content parameter: where the user opened the item from.
+// Where content was opened from (doc 13 `source`); defined with the player.
+export type ContentSource = PlaySource;
 export type RootParams = {
   Main: undefined;
   Player: undefined;

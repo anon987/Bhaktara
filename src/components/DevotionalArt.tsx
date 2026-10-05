@@ -20,7 +20,8 @@ const palettes: Record<string, [string, string, string]> = {
   hanuman: ["#7C352B", "#D5814F", "#F6D7A0"],
   durga: ["#632D3D", "#B56870", "#EDCB83"],
 };
-type ArtProps = { assetKey: string; size?: number; lit?: boolean };
+// size is the frame height; "100%" fills a parent that sets its own aspect.
+type ArtProps = { assetKey: string; size?: number | "100%"; lit?: boolean };
 export function DevotionalArt({ assetKey, size = 160, lit = false }: ArtProps) {
   const uri = resolveMediaUrl(assetKey);
   const [failed, setFailed] = useState<string | null>(null);

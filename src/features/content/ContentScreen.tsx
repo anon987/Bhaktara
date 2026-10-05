@@ -19,6 +19,7 @@ import { platformServices } from "../../services/platform";
 import { usePlayer } from "../player/PlayerProvider";
 import { audioTypes, playableVariant } from "../player/playback";
 import { resolveMediaUrl } from "../../services/media/config";
+import { StatusVideo } from "./StatusVideo";
 export function ContentScreen({
   route,
   navigation,
@@ -76,16 +77,27 @@ export function ContentScreen({
   const playable = Boolean(variant && resolveMediaUrl(variant.key));
   return (
     <Page title={t("preview")} onBack={navigation.goBack}>
-      {/* Detail screens load the larger variant; lists stay on thumb (doc 22 §A5). */}
-      <DevotionalArt
-        assetKey={
-          (item.media.mobile ?? item.media.poster ?? item.media.thumb).key
-        }
-        size={350}
-      />
-      <Txt muted size={11} style={{ textAlign: "center" }}>
-        {t("placeholder")}
-      </Txt>
+      {item.type === "STATUS" ? (
+        // Poster first; the video loads only when tapped (doc 22 §A5).
+        <StatusVideo
+          key={item.id}
+          content={item}
+          source={route.params.source ?? "explore"}
+        />
+      ) : (
+        <>
+          {/* Detail screens load the larger variant; lists stay on thumb (doc 22 §A5). */}
+          <DevotionalArt
+            assetKey={
+              (item.media.mobile ?? item.media.poster ?? item.media.thumb).key
+            }
+            size={350}
+          />
+          <Txt muted size={11} style={{ textAlign: "center" }}>
+            {t("placeholder")}
+          </Txt>
+        </>
+      )}
       <Row>
         <Txt bold size={28} style={{ flex: 1 }}>
           {item.title[local.language]}
