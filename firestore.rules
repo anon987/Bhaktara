@@ -122,6 +122,50 @@ service cloud.firestore {
       allow list: if contentAdmin() && bounded(100);
     }
 
+    // ---- Admin panel v2 reads (keep in sync with src/domain/cms.ts). Writes
+    // go through the catalogue, config and asset callables (audited).
+    function catalogStaff() { return hasRole(['SUPER_ADMIN', 'CONTENT_ADMIN', 'EDITOR', 'ANALYST']); }
+    function configStaff() { return hasRole(['SUPER_ADMIN', 'CONTENT_ADMIN', 'ANALYST']); }
+    match /deities/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /categories/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /collections/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /challenges/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /badges/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /festivals/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /mandirOfferings/{id} {
+      allow get: if catalogStaff();
+      allow list: if catalogStaff() && bounded(200);
+    }
+    match /appConfig/{id} {
+      allow get: if configStaff();
+      match /versions/{version} {
+        allow get: if configStaff();
+        allow list: if configStaff() && bounded(50);
+      }
+    }
+    match /mediaAssets/{id} {
+      allow get: if contentStaff();
+      allow list: if contentStaff() && bounded(100);
+    }
+
     // CMS, private provenance, ledgers, merges and unimplemented collections
     // are denied to client SDKs. Trusted server code uses the Admin SDK.
     match /{document=**} { allow read, write: if false; }

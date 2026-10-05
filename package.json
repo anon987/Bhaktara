@@ -88,12 +88,12 @@
     "functions:install": "npm --prefix functions ci",
     "functions:build": "npm --prefix functions run build",
     "functions:typecheck": "npm --prefix functions run typecheck",
-    "test:functions": "npm run functions:build && npm --prefix functions test && MEDIA_PROCESSOR_URL=http://127.0.0.1:5098 MEDIA_PROCESSOR_DEV_TOKEN=emulator-only-processor-token firebase emulators:exec --project demo-bhaktara --only auth,firestore,functions \"tsx --test --test-concurrency=1 functions/test/*.test.ts\"",
+    "test:functions": "npm run functions:build && npm --prefix functions test && MEDIA_PROCESSOR_URL=http://127.0.0.1:5098 MEDIA_PROCESSOR_DEV_TOKEN=emulator-only-processor-token firebase emulators:exec --project demo-bhaktara --only auth,firestore,functions --inspect-functions 9229 \"tsx --test --test-concurrency=1 functions/test/*.test.ts\"",
     "processor:install": "npm --prefix services/media-processor ci",
     "processor:typecheck": "npm --prefix services/media-processor run typecheck",
     "processor:build": "npm --prefix services/media-processor run build",
     "test:processor": "npm --prefix services/media-processor test",
-    "emulators:cms": "npm run functions:build && firebase emulators:start --project demo-bhaktara --only auth,firestore,functions",
+    "emulators:cms": "npm run functions:build && firebase emulators:start --project demo-bhaktara --only auth,firestore,functions --inspect-functions 9229",
     "admin:grant-role": "tsx scripts/admin/grant-role.ts",
     "admin:install": "npm --prefix admin ci",
     "admin:dev": "npm --prefix admin run dev",
@@ -101,7 +101,7 @@
     "admin:typecheck": "npm --prefix admin run typecheck",
     "admin:test": "npm --prefix admin test",
     "admin:check": "npm run admin:typecheck && npm run admin:test && npm run admin:build",
-    "admin:smoke": "npm run functions:build && firebase emulators:exec --project demo-bhaktara --only auth,firestore,functions \"tsx admin/e2e/emulator-smoke.ts\""
+    "admin:smoke": "npm run functions:build && firebase emulators:exec --project demo-bhaktara --only auth,firestore,functions --inspect-functions 9229 \"tsx admin/e2e/emulator-smoke.ts\""
   },
   "private": true
 }

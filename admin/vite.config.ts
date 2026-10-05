@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -10,8 +11,9 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 // enforce. Those files import zod; dedupe resolves it from this package, so
 // admin/ installs and builds on its own.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
+    alias: { "@": here("./src") },
     dedupe: ["zod", "react", "react-dom"],
   },
   server: {

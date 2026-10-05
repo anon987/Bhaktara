@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import { describeEnvironment, readConfig } from "./config";
 import { createFirebase } from "./firebase";
-import "./styles.css";
+import "./index.css";
 
 const root = createRoot(document.getElementById("root")!);
 

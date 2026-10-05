@@ -1,36 +1,65 @@
 import { useEffect, useState } from "react";
 
-// A tiny hash router: four screens do not need a routing library, and hash
-// URLs work on any static host (Firebase Hosting rewrites are still set).
+// A small hash router: hash URLs work on any static host (Firebase Hosting
+// rewrites are still set). Pages are flat; editors carry an ID.
+export const pageNames = [
+  "dashboard",
+  "content",
+  "media",
+  "home",
+  "banners",
+  "collections",
+  "deities",
+  "categories",
+  "challenges",
+  "badges",
+  "puja",
+  "sadhana-config",
+  "gamification-config",
+  "festivals",
+  "mandir-offerings",
+  "users",
+  "roles",
+  "audit",
+] as const;
+export type PageName = (typeof pageNames)[number];
+
 export type Route =
-  | { name: "content" }
+  | { name: PageName }
   | { name: "content-new" }
   | { name: "content-edit"; id: string }
-  | { name: "banners" }
-  | { name: "audit" }
-  | { name: "home" }
+  | { name: "user"; uid: string }
+  | { name: "home-redirect" }
   | { name: "not-found" };
 
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
-  if (parts.length === 0) return { name: "home" };
-  if (parts[0] === "content") {
+  if (parts.length === 0) return { name: "home-redirect" };
+  const [head, second, third] = parts;
+  if (head === "content") {
     if (parts.length === 1) return { name: "content" };
-    if (parts[1] === "new" && parts.length === 2) return { name: "content-new" };
-    if (parts[1] === "edit" && parts.length === 3)
-      return { name: "content-edit", id: decodeURIComponent(parts[2]) };
+    if (second === "new" && parts.length === 2) return { name: "content-new" };
+    if (second === "edit" && third && parts.length === 3)
+      return { name: "content-edit", id: decodeURIComponent(third) };
+    return { name: "not-found" };
   }
-  if (parts.length === 1 && parts[0] === "banners") return { name: "banners" };
-  if (parts.length === 1 && parts[0] === "audit") return { name: "audit" };
+  if (head === "users" && second && parts.length === 2)
+    return { name: "user", uid: decodeURIComponent(second) };
+  if (parts.length === 1 && (pageNames as readonly string[]).includes(head))
+    return { name: head as PageName };
   return { name: "not-found" };
 }
 
 export const paths = {
+  page: (name: PageName) => `#/${name}`,
+  dashboard: "#/dashboard",
   content: "#/content",
   contentNew: "#/content/new",
   contentEdit: (id: string) => `#/content/edit/${encodeURIComponent(id)}`,
   banners: "#/banners",
   audit: "#/audit",
+  users: "#/users",
+  user: (uid: string) => `#/users/${encodeURIComponent(uid)}`,
 };
 
 export const navigate = (path: string) => {

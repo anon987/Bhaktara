@@ -4,6 +4,7 @@ import { readConfig } from "./config";
 import { draftFromForm, emptyForm, formFromDraft, validateForm } from "./content/draftForm";
 import { readableError } from "./errors";
 import { callableError } from "./test/fakeApi";
+import { withoutUndefined } from "./panelApi";
 
 describe("readConfig", () => {
   it("defaults to the emulators with the demo project", () => {
@@ -101,10 +102,22 @@ describe("draft form", () => {
 
 describe("parseHash", () => {
   it("parses the admin routes", () => {
-    expect(parseHash("")).toEqual({ name: "home" });
+    expect(parseHash("")).toEqual({ name: "home-redirect" });
     expect(parseHash("#/content")).toEqual({ name: "content" });
     expect(parseHash("#/content/new")).toEqual({ name: "content-new" });
     expect(parseHash("#/content/edit/om%20x")).toEqual({ name: "content-edit", id: "om x" });
+    expect(parseHash("#/dashboard")).toEqual({ name: "dashboard" });
+    expect(parseHash("#/users/abc123")).toEqual({ name: "user", uid: "abc123" });
+    expect(parseHash("#/mandir-offerings")).toEqual({ name: "mandir-offerings" });
+    expect(parseHash("#/content/edit")).toEqual({ name: "not-found" });
     expect(parseHash("#/nope")).toEqual({ name: "not-found" });
+  });
+});
+
+describe("withoutUndefined", () => {
+  it("drops undefined fields at any depth and keeps null and arrays", () => {
+    expect(
+      withoutUndefined({ a: undefined, b: null, c: { d: undefined, e: 1 }, f: [{ g: undefined, h: "x" }] }),
+    ).toEqual({ b: null, c: { e: 1 }, f: [{ h: "x" }] });
   });
 });

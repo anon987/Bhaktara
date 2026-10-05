@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -12,10 +16,25 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node", "vite/client", "@testing-library/jest-dom/vitest"],
+    "types": [
+      "node",
+      "vite/client",
+      "@testing-library/jest-dom/vitest"
+    ],
     "paths": {
-      "zod": ["./node_modules/zod"]
+      "@/*": [
+        "./src/*"
+      ],
+      "zod": [
+        "./node_modules/zod"
+      ]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "e2e/**/*.ts", "vite.config.ts", "vitest.setup.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "e2e/**/*.ts",
+    "vite.config.ts",
+    "vitest.setup.ts"
+  ]
 }

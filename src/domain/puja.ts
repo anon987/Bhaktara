@@ -131,7 +131,7 @@ const offerings: Record<string, DeityOfferings> = {
 };
 
 // Flowers never offered to a deity, whatever the configuration says.
-const forbidden: Record<string, FlowerKind[]> = {
+export const forbiddenFlowers: Record<string, FlowerKind[]> = {
   shiva: ["tulsi"],
   ganesha: ["tulsi"],
   durga: ["durva"],
@@ -143,7 +143,7 @@ export function offeringsFor(
   deityId: string | null | undefined,
 ): DeityOfferings {
   const base = (deityId && offerings[deityId]) || general;
-  const banned = (deityId && forbidden[deityId]) || [];
+  const banned = (deityId && forbiddenFlowers[deityId]) || [];
   return { ...base, flowers: base.flowers.filter((f) => !banned.includes(f)) };
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { BannerRecord } from "../api";
 import { useAdmin } from "../app/context";
+import { AssetPicker } from "../components/panel/media";
 import { BannerInput, bannerInputSchema, bannerRoutes, can } from "../domain";
 import { readableError, ReadableError } from "../errors";
 import {
@@ -342,6 +343,26 @@ function BannerEditor({
       </fieldset>
       <fieldset disabled={saving}>
         <legend>Image and target</legend>
+        <AssetPicker
+          purpose="banner"
+          label="Banner image"
+          value={
+            form.mobileKey
+              ? {
+                  mobile: form.original?.mobile ?? { key: form.mobileKey },
+                  ...(form.thumbKey ? { thumb: form.original?.thumb ?? { key: form.thumbKey } } : {}),
+                }
+              : null
+          }
+          onChange={(art) =>
+            setForm((current) => ({
+              ...current,
+              mobileKey: art?.mobile.key ?? "",
+              thumbKey: art?.thumb?.key ?? "",
+              original: art ? { mobile: art.mobile, ...(art.thumb ? { thumb: art.thumb } : {}) } : undefined,
+            }))
+          }
+        />
         <div className="two-col">
           <TextField
             label="Mobile image key"
