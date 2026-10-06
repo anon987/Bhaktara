@@ -29,6 +29,23 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 | Staff roles | Staff accounts and roles; grant or remove a role | SA | `listAdmins`, `setAdminRole` |
 | Audit log | Every admin change, newest first | SA, CA | Firestore reads |
 
+### Upload (single, many, folder or ZIP)
+
+**Library → Upload** (or **Upload files** on any library section) turns files into drafts with their media in one go:
+
+1. Pick the category. Optionally set batch details: deity, audio language, AI tool and plan.
+2. Drop files, a folder or a `.zip`, or use the pickers. Folders are walked and ZIPs unpacked in the browser; system files (`.DS_Store`, `__MACOSX`) are ignored. Files are typed by extension.
+3. Each main file becomes one item: audio for bhajans, aartis, mantras, chalisas and ringtones; an image for wallpapers; a video for status videos. An image with the same base name (`song.mp3` + `song.jpg`) becomes the cover or poster. Files that do not fit are listed under "left out" with the reason.
+4. The ID and English title come from the file name (`01 - shiv_tandav (HQ).mp3` → `shiv-tandav-hq`, "Shiv Tandav"). Both titles can be edited before or after uploading; the Hindi title can also wait for the editor.
+5. **Upload** first checks that uploads and rendering are configured, so nothing is created when they are not. It then pre-checks each file in the browser (wallpaper at least 1080×2400, ringtone 20–30 s, status video 15–30 s); a file that fails is flagged and creates no draft. Two items run at a time: create the DRAFT, upload the originals to R2 staging (with progress), then `processMedia` renders the variants onto it. A taken ID gets `-2`, `-3`…
+6. A failed item shows why and resumes with **Retry failed** from the step that failed. Everything stays DRAFT for the normal review (D-036).
+
+**Covers for audio:** an uploaded cover is used; otherwise album art embedded in the MP3/M4A becomes the cover; otherwise the item has no cover yet and one can be added later.
+
+**Replace media:** in the editor (Draft items), **Upload or replace media** takes only the files that should change, for example just a new cover, and keeps the rest. A published item goes back to Draft first.
+
+**Media library:** **Upload images** takes many images, a folder or a ZIP for banners, deities, festivals, offerings or collection covers, with names from the file names.
+
 Rules the server enforces:
 
 - **Catalogue**: deities and categories are deactivated, never deleted (`DEACTIVATE_INSTEAD`); a deity cannot be active without Mandir art (`ART_REQUIRED`); challenge and offering dates are stored as Timestamps.
@@ -78,4 +95,4 @@ Root `eslint .` lints `admin/` (the `@/` alias is resolved by TypeScript) and ig
 
 An operator account needs a role first: sign in once, then `GOOGLE_CLOUD_QUOTA_PROJECT=bhaktara-dev npm run admin:grant-role -- --email <email> --role SUPER_ADMIN --project dev --confirm-project bhaktara-dev` (with user Application Default Credentials the Auth Admin API needs a quota project), then sign out and in again to refresh the claim. Later roles can be granted on the **Staff roles** page. The operator account `informdhananjay@gmail.com` holds SUPER_ADMIN on `bhaktara-dev` since 2026-10-06.
 
-Uploads answer "not configured" until the R2 secrets exist (`R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`), and rendering needs the Cloud Run media processor (`MEDIA_PROCESSOR_URL`; [MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md)). R2 needs a CORS rule that allows PUT from the admin origin.
+Uploads answer "not configured" until the R2 secrets exist (`R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`), and rendering needs the Cloud Run media processor (`MEDIA_PROCESSOR_URL`; [MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md)). Browsers upload straight to R2, so the bucket needs the PUT rule in `infra/r2/cors.json` (admin origins, `Content-Type` header); apply it with `npx wrangler r2 bucket cors set bhaktara-media-dev --file infra/r2/cors.json` or in the Cloudflare dashboard (R2 → bucket → Settings → CORS policy).

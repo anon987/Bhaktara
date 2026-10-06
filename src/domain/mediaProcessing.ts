@@ -39,19 +39,22 @@ export const inputExtensions = Object.fromEntries(
   ]),
 ) as Record<MediaInputRole, string[]>;
 
-// Which originals each type needs (mirrors scripts/media/process.ts).
+// Which originals each type takes (mirrors scripts/media/process.ts). At
+// least one original is always needed. Audio items may arrive without a cover
+// (it is taken from embedded album art when there is one, or added later),
+// and a cover or poster alone replaces just that image on an existing item.
 export const mediaInputRules: Record<
   MediaType,
   { required: MediaInputRole[]; optional: MediaInputRole[] }
 > = {
-  bhajan: { required: ["audio", "image"], optional: [] },
-  aarti: { required: ["audio", "image"], optional: [] },
-  mantra: { required: ["audio", "image"], optional: [] },
-  chalisa: { required: ["audio", "image"], optional: [] },
-  ringtone: { required: ["audio", "image"], optional: [] },
+  bhajan: { required: [], optional: ["audio", "image"] },
+  aarti: { required: [], optional: ["audio", "image"] },
+  mantra: { required: [], optional: ["audio", "image"] },
+  chalisa: { required: [], optional: ["audio", "image"] },
+  ringtone: { required: [], optional: ["audio", "image"] },
   wallpaper: { required: ["image"], optional: [] },
-  // The poster comes from the optional image, or a frame one second in.
-  status: { required: ["video"], optional: ["image"] },
+  // The poster comes from the image, or a frame one second into the video.
+  status: { required: [], optional: ["video", "image"] },
   banner: { required: ["image"], optional: [] },
   deity: { required: ["image"], optional: [] },
 };
@@ -125,7 +128,7 @@ function checkInputs(
       context.addIssue({
         code: "custom",
         path: ["inputs", role],
-        message: `${type} does not take a ${role} file`,
+        message: `${type} does not take ${role === "video" ? "a" : "an"} ${role} file`,
       });
 }
 
@@ -151,9 +154,10 @@ export type ProcessRequest = z.infer<typeof processRequestSchema>;
 // Processor → callable response: the produced variants (doc 06 MediaVariant),
 // for audio and video the playable duration (content.durationSeconds), and
 // advisory warnings for the operator (e.g. a master below the recommended size).
+// Only the variants this run produced; processMedia merges them into the item.
 export const processedMediaSchema = z
   .partialRecord(z.enum(mediaVariantNames), mediaVariantSchema)
-  .refine((media) => !!media.thumb, "a thumb variant is required");
+  .refine((media) => Object.keys(media).length > 0, "at least one variant is required");
 export const processResponseSchema = z
   .object({
     media: processedMediaSchema,

@@ -6,6 +6,7 @@ import { CatalogPage } from "../pages/catalog/CatalogPage";
 import { ConfigPage } from "../pages/config/ConfigPage";
 import { ContentEditorPage } from "../pages/content/ContentEditorPage";
 import { ContentLibraryPage } from "../pages/content/ContentLibraryPage";
+import { UploadPage } from "../pages/content/UploadPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { HomeManagerPage } from "../pages/HomeManagerPage";
 import { MediaLibraryPage } from "../pages/MediaLibraryPage";
@@ -28,6 +29,8 @@ export function pageFor(route: Route, role: AdminRole): ReactNode | null {
     case "ringtones":
     case "status-videos":
       return <ContentLibraryPage key={route.name} type={librarySections[route.name]} />;
+    case "upload":
+      return <UploadPage key={`upload-${"type" in route ? (route.type ?? "") : ""}`} type={"type" in route ? route.type : undefined} />;
     case "content-new":
       return <ContentEditorPage key={`new-${route.type ?? ""}`} type={route.type} />;
     case "content-edit":

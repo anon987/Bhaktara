@@ -268,8 +268,8 @@ describe("processMedia", () => {
       { image: staging("other-item", "png") },
       { image: "bhajan/media-inputs/thumb.0123abcd.webp" },
       { image: "staging/media-inputs/../../secret.png" },
-      // A bhajan needs the audio as well as the cover image.
-      { image: staging("media-inputs", "png") },
+      // A bhajan takes audio and a cover image, never a video.
+      { video: staging("media-inputs", "mp4") },
     ])
       await rejects(
         users.EDITOR.call("processMedia", {

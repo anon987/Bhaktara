@@ -15,7 +15,11 @@ import { FileDrop } from "../components/panel/media";
 
 const megabytes = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
 const roleIcons: Record<MediaInputRole, typeof FileAudio> = { audio: FileAudio, image: FileImage, video: FileVideo };
-const roleLabels: Record<MediaInputRole, string> = { audio: "Audio master", image: "Image", video: "Video" };
+const roleLabels = (type: ContentType): Record<MediaInputRole, string> => ({
+  audio: "Audio",
+  image: type === "STATUS" ? "Poster image" : type === "WALLPAPER" ? "Wallpaper image" : "Cover image",
+  video: "Video",
+});
 const acceptFor = (role: MediaInputRole) =>
   (Object.keys(uploadKinds) as UploadMime[]).filter((mime) => mime.startsWith(role)).join(",");
 
@@ -64,7 +68,9 @@ export function MediaUpload({
     }
   };
 
-  const ready = rule.required.every((role) => slots[role]);
+  // Upload only what should change (e.g. just a new cover); required roles
+  // still apply (a wallpaper always needs its image).
+  const ready = roles.some((role) => slots[role]) && rule.required.every((role) => slots[role]);
   const render = async () => {
     setProcessing(true);
     setError(null);
@@ -88,10 +94,10 @@ export function MediaUpload({
   return (
     <section className="panel space-y-4" aria-labelledby="upload-heading">
       <div>
-        <h2 id="upload-heading">Media</h2>
+        <h2 id="upload-heading">Upload or replace media</h2>
         <p className="muted">
-          Upload the originals; the processor renders every size the app needs. Needs: {rule.required.join(" + ")}
-          {rule.optional.length > 0 && ` (optional: ${rule.optional.join(", ")})`}.
+          Upload only what you want to add or change, for example just a new cover. The processor renders every size
+          the app needs and replaces those files on this item; the rest stays as it is.
         </p>
       </div>
       {roles.map((role) => {
@@ -100,8 +106,7 @@ export function MediaUpload({
         return (
           <div key={role} className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-medium">
-              <Icon className="size-4 text-primary" /> {roleLabels[role]}
-              {rule.required.includes(role) ? "" : " (optional)"}
+              <Icon className="size-4 text-primary" /> {roleLabels(type)[role]}
             </p>
             {slot ? (
               <p className="flex items-center gap-2 rounded-xl border bg-muted/40 p-3 text-sm">
@@ -125,7 +130,7 @@ export function MediaUpload({
         );
       })}
       <Button type="button" className="w-full" disabled={!ready || processing || progress !== null} onClick={() => void render()}>
-        <Wand2 /> {processing ? "Rendering on the server… (up to a few minutes)" : "Render media"}
+        <Wand2 /> {processing ? "Rendering on the server… (up to a few minutes)" : "Render and save"}
       </Button>
       <ErrorNotice error={error} />
       <p role="status" className="ok">{result}</p>

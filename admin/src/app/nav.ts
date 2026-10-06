@@ -24,6 +24,7 @@ import {
   Sparkles,
   Tags,
   Target,
+  UploadCloud,
   Users,
 } from "lucide-react";
 import type { Permission } from "../domain";
@@ -49,6 +50,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Library",
     items: [
+      { page: "upload", label: "Upload", icon: UploadCloud, permission: "content.upload", description: "Upload one file, many files, a folder or a ZIP" },
       { page: "bhajans", label: "Bhajans", icon: Music4, permission: "content.read", description: "Devotional songs, with a player" },
       { page: "aartis", label: "Aartis", icon: FlameKindling, permission: "content.read", description: "Aartis for each deity, with a player" },
       { page: "mantras", label: "Mantras", icon: AudioLines, permission: "content.read", description: "Mantra chants, with a player" },

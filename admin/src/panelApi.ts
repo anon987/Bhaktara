@@ -11,6 +11,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import type { FirebaseServices } from "./firebase";
 import { toIso } from "./api";
+import { withoutUndefined } from "./callable";
 import type { AdminRole } from "./domain";
 import { catalogKinds, type AssetPurpose, type CatalogKind } from "../../src/domain/admin";
 import type { HomeLayoutSectionInput } from "../../src/domain/home";
@@ -160,19 +161,6 @@ export interface PanelApi {
   rebuildHomeFeed(): Promise<unknown>;
 }
 
-// The callable client encodes `undefined` fields as null, which the strict
-// server schemas read as a value; leave them out instead.
-export function withoutUndefined<T>(value: T): T {
-  if (Array.isArray(value)) return value.map(withoutUndefined) as T;
-  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype)
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([, item]) => item !== undefined)
-        .map(([key, item]) => [key, withoutUndefined(item)]),
-    ) as T;
-  return value;
-}
-
 export function firebasePanelApi({ db, functions }: FirebaseServices): PanelApi {
   const call =
     <I, O>(name: string, timeout = 70_000) =>
@@ -252,3 +240,5 @@ export function firebasePanelApi({ db, functions }: FirebaseServices): PanelApi 
     rebuildHomeFeed: () => call("rebuildHomeFeed", 120_000)({}),
   };
 }
+
+export { withoutUndefined };

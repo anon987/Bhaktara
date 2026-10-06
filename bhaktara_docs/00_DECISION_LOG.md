@@ -140,6 +140,10 @@ Format: ID · Decision · Date · Affects
 
 - **D-055 · Admin panel v2.** The operator panel is rebuilt on shadcn/ui and Tailwind in the Bhaktara theme (cream and saffron by day, maroon and brass by night) with a collapsible sidebar that becomes a hamburger menu on phones, a ⌘K page search and a light/dark switch. Beyond the M1 screens (content, banners, Home manager, audit) it adds a dashboard, a media library with an asset picker, catalogue managers (deities, categories, collections, challenges, badges, festivals, Mandir offerings), versioned editors for `appConfig/gamification`, `appConfig/sadhana` and the new `appConfig/puja` (every save is a version that can be restored; stale saves are refused), a users section and a staff roles page. Reads use staff rules; every write goes through an audited callable. Moderators search, view, flag, annotate and reset display names; only SUPER_ADMIN disables or deletes accounts, never their own or another staff account. Deleting removes the profile, practice history, stats and challenges and the sign-in account, and keeps reward ledger lines without the user (`uid: deleted-user`). Deities and categories are deactivated, never deleted, and a deity cannot be active without its Mandir art. · Affects: 06, 09, 10
 
+## Round 17 — Bulk upload (2026-10-06)
+
+- **D-056 · Upload from files, fill in later.** Content managers upload one file, many files, a folder or a ZIP per category in the admin panel; every file becomes a DRAFT with its media rendered, and titles come from the file names (English; Hindi and the rest are added later). Audio needs no cover up front: an image with the same name is used, else album art embedded in the file, else the cover is added later. Media on a draft is replaced by uploading only what changes. The browser checks wallpaper size and ringtone/status length before anything is created, and the panel first confirms uploads are configured, so failed uploads never leave empty drafts. No AI fills metadata. · Affects: 09, 12, 22
+
 ## Pending / resolved items
 
 - ~~P-01~~ Resolved by D-022.

@@ -101,3 +101,8 @@ Cloud Run, Secret Manager, Artifact Registry and 2nd-gen Functions all need Blaz
 - Staging originals sit in the public media bucket under unguessable keys until they are processed. Consider a separate private staging bucket before launch.
 - Silence trimming and EXIF orientation, as for `media:publish`.
 - Banner and deity art go through `media:publish`. The processor supports both types, but no callable writes banner or deity documents yet.
+
+## Inputs per type (2026-10-06, D-056)
+
+At least one original is always needed. Audio types (bhajan, aarti, mantra, chalisa, ringtone) take audio, a cover image, or both: audio alone takes its cover from album art embedded in the file, or has no cover yet (a warning says so); a cover alone replaces just the thumb. Status takes a video, a poster image, or both (a poster alone replaces poster and thumb). Wallpaper, banner and deity art need their image. `processMedia` merges the produced variants into the item and keeps the others, which is how the admin panel replaces media.
+

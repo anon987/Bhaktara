@@ -8,6 +8,20 @@
       },
       "exposeHeaders": ["Content-Length", "Content-Range", "Accept-Ranges", "ETag"],
       "maxAgeSeconds": 86400
+    },
+    {
+      "allowed": {
+        "origins": [
+          "https://bhaktara-dev.web.app",
+          "https://bhaktara-dev.firebaseapp.com",
+          "http://127.0.0.1:5173",
+          "http://localhost:5173"
+        ],
+        "methods": ["PUT"],
+        "headers": ["Content-Type"]
+      },
+      "exposeHeaders": ["ETag"],
+      "maxAgeSeconds": 3600
     }
   ]
 }
