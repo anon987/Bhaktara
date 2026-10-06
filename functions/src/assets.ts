@@ -67,10 +67,8 @@ export async function processAsset(
 ) {
   requirePermission(actor, "asset.write");
   const input = parse(processAssetSchema, data);
-  const snapshot = await assetRef(input.assetId).get();
-  if (!snapshot.exists) throw new HttpsError("not-found", "Asset not found.");
-  if (!isStagingKeyFor(input.assetId, "image", input.image))
-    throw new HttpsError("invalid-argument", "That upload does not belong to this asset.");
+  // Configuration first (as processMedia does), so the panel can ask whether
+  // processing works before it creates anything.
   const processor =
     deps.processor === undefined ? processorClientFromEnv(process.env) : deps.processor;
   if (!processor)
@@ -78,6 +76,10 @@ export async function processAsset(
       "failed-precondition",
       "Media processing is not configured for this environment.",
     );
+  const snapshot = await assetRef(input.assetId).get();
+  if (!snapshot.exists) throw new HttpsError("not-found", "Asset not found.");
+  if (!isStagingKeyFor(input.assetId, "image", input.image))
+    throw new HttpsError("invalid-argument", "That upload does not belong to this asset.");
   const type = assetMediaType(snapshot.get("purpose") as AssetPurpose);
   let result: ProcessResponse;
   try {

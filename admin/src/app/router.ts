@@ -21,6 +21,7 @@ export const sectionForType = (type: ContentType) =>
 export const pageNames = [
   "dashboard",
   "content",
+  "upload",
   ...(Object.keys(librarySections) as LibrarySection[]),
   "media",
   "home",
@@ -44,6 +45,7 @@ export type PageName = (typeof pageNames)[number];
 export type Route =
   | { name: PageName }
   | { name: "content-new"; type?: ContentType }
+  | { name: "upload"; type?: ContentType }
   | { name: "content-edit"; id: string }
   | { name: "user"; uid: string }
   | { name: "home-redirect" }
@@ -62,6 +64,10 @@ export function parseHash(hash: string): Route {
       return { name: "content-edit", id: decodeURIComponent(third) };
     return { name: "not-found" };
   }
+  if (head === "upload" && second && parts.length === 2)
+    return (contentTypes as readonly string[]).includes(second)
+      ? { name: "upload", type: second as ContentType }
+      : { name: "not-found" };
   if (head === "users" && second && parts.length === 2)
     return { name: "user", uid: decodeURIComponent(second) };
   if (parts.length === 1 && (pageNames as readonly string[]).includes(head))
@@ -75,6 +81,7 @@ export const paths = {
   content: "#/content",
   contentNew: "#/content/new",
   contentNewOf: (type: ContentType) => `#/content/new/${type}`,
+  upload: (type?: ContentType) => (type ? `#/upload/${type}` : "#/upload"),
   contentEdit: (id: string) => `#/content/edit/${encodeURIComponent(id)}`,
   banners: "#/banners",
   audit: "#/audit",

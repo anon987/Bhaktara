@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, Clock, Pencil, Plus, Search } from "lucide-react";
+import { BookOpen, Clock, Pencil, Plus, Search, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -105,11 +105,18 @@ export function ContentLibraryPage({ type: fixedType }: { type?: ContentType }) 
           "Every bhajan, aarti, mantra, chalisa, wallpaper, ringtone and status video, from draft to published (D-036)."
         }
         actions={
-          writable && (
-            <Button onClick={() => navigate(newPath)}>
-              <Plus /> {newLabel}
-            </Button>
-          )
+          <>
+            {can(role, "content.upload") && (
+              <Button variant="outline" onClick={() => navigate(paths.upload(fixedType))}>
+                <UploadCloud /> Upload files
+              </Button>
+            )}
+            {writable && (
+              <Button onClick={() => navigate(newPath)}>
+                <Plus /> {newLabel}
+              </Button>
+            )}
+          </>
         }
       />
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">

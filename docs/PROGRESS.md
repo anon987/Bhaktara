@@ -15,7 +15,7 @@ Branches: `main` (production), `develop` (integration), `feature/*` merged into 
 1. **Ask the operator how the new practice screens feel on the phone** (jaap mala, dhyan lamp, the new puja, blessing sheet) and adjust. A meditation was credited on the phone on 2026-10-06 (30 XP, streak 1); jaap with a real minute-long mala, prayer, history and airplane mode still need a hands-on check.
 2. **Write the launch challenge set** (8 weeks, doc 18) to replace the four development challenges in `scripts/progression/seed.ts`, then `npm run seed:progression:dev`.
 3. **Admin panel live check:** sign in at https://bhaktara-dev.web.app with the SUPER_ADMIN account ([ADMIN_CMS.md](ADMIN_CMS.md)) and walk the pages: dashboard, content, Home manager, catalogue, config (save one version and restore it), users, staff roles, audit. Nothing has been tried there with a real account yet.
-4. **Media pipeline (needs the owner's gcloud login, billed):** run `gcloud auth login` with the `bhaktara-dev` owner account, store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, build and deploy the Cloud Run processor ([MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md)), set `MEDIA_PROCESSOR_URL`, redeploy functions, and add the R2 CORS rule for the admin origin. Then the media library and content uploads work.
+4. **Turn on uploads (owner steps):** (a) apply the bucket PUT CORS rule: `! npx wrangler login`, then `npx wrangler r2 bucket cors set bhaktara-media-dev --file infra/r2/cors.json` (or paste the file in the Cloudflare dashboard); (b) `gcloud auth login` with the `bhaktara-dev` owner, store `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` in Secret Manager, set `R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`, build and deploy the Cloud Run processor ([MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md)), set `MEDIA_PROCESSOR_URL`, redeploy functions; (c) add an R2 lifecycle rule expiring `staging/` after a day. The Upload page, media library and replace-media then work live (they were verified locally against the dev bucket on 2026-10-06).
 5. Still open from M1: `p-11` (deity list), real launch content, "Save wallpaper" on device.
 
 Working rules for this repository:
@@ -25,6 +25,16 @@ Working rules for this repository:
 - Dev is the default target; staging/prod, DNS, token creation, cache purges and anything billed (including deploys) need explicit confirmation (doc 23).
 - Native changes need a rebuild ([ANDROID_DEVICE.md](ANDROID_DEVICE.md), about 9 minutes incremental); JS changes reload through Metro.
 - Bhaktara is used by elderly people: large type, Hindi first, plain words and guided flows for anything that leaves the app. Practice screens use devotional metaphors (D-052).
+
+## Bulk upload (2026-10-06)
+
+Decision: D-056. Guide: [ADMIN_CMS.md](ADMIN_CMS.md) "Upload".
+
+- **Panel:** Library → Upload (files, folders, ZIPs via `fflate`) makes one DRAFT per file with media rendered; titles from file names; batch deity/language/AI tool; two at a time; resumable retries; in-browser checks (wallpaper size, ringtone/status length) and a configuration pre-check so nothing half-made is left. Media library uploads many images at once. The editor's media panel replaces only what is uploaded (e.g. just a cover).
+- **Server:** audio types accept audio, a cover, or both (embedded album art becomes the cover); status accepts a poster alone; the processor returns only what it produced and `processMedia` merges it. `processAsset` checks configuration before the asset lookup.
+- **Fixed:** the content callables sent unset fields as `null`, so a new draft without a duration or expiry was refused (the editor was affected too); the shared `withoutUndefined` now covers every callable (`admin/src/callable.ts`).
+- **Verified:** locally end to end in Chrome against the R2 dev bucket (processor on loopback, test objects deleted afterwards): bhajans with embedded art and same-name covers, a wallpaper ZIP, ringtones, a status video, bulk media-library images and a cover replacement. Tests: processor 24, admin 39, functions 26 + 45, rules 20, app 134.
+- **Open:** the PUT CORS rule and the Cloud Run processor (step 4 above). One `test:functions` run saw a transient `internal` error in the content-workflow test under the single-worker emulator; the rerun passed.
 
 ## Admin panel v2 (2026-10-06)
 

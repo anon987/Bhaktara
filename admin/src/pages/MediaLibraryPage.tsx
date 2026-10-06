@@ -1,12 +1,12 @@
-import { useCallback, useState } from "react";
-import { Copy, Images, Trash2, Upload } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Copy, Images, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { assetPurposes, type AssetPurpose } from "../../../src/domain/admin";
@@ -15,10 +15,14 @@ import { can } from "../domain";
 import { ConfirmAction } from "../components/panel/confirm";
 import { ago } from "../components/panel/format";
 import { SelectField } from "../components/panel/inputs";
-import { FileDrop, MediaThumb, mediaUrl, useAssetUpload } from "../components/panel/media";
+import { MultiDrop } from "../components/panel/drop";
+import { maxBytesOf, titleFromFileName, uploadMimeOf, withUploadType } from "../components/panel/files";
+import { MediaThumb, mediaUrl } from "../components/panel/media";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "../components/panel/page";
 import { useAction } from "../components/panel/useAction";
 import { useLoad } from "../useLoad";
+import { errorText, uploadsUnavailable } from "./content/uploadPipeline";
+import { cn } from "@/lib/utils";
 import type { AssetRow } from "../panelApi";
 
 const purposeLabels: Record<AssetPurpose, string> = {
@@ -29,43 +33,139 @@ const purposeLabels: Record<AssetPurpose, string> = {
   collection: "Collection covers",
 };
 
+type ImageRow = {
+  key: string;
+  file: File;
+  label: string;
+  status: "waiting" | "uploading" | "processing" | "done" | "error";
+  progress: number;
+  error?: string;
+};
+
+// Many images at once (files, a folder or a ZIP), two at a time.
 function UploadDialog({ onDone }: { onDone: () => void }) {
+  const { api, panel } = useAdmin();
   const [open, setOpen] = useState(false);
   const [purpose, setPurpose] = useState<AssetPurpose>("banner");
-  const [label, setLabel] = useState("");
-  const upload = useAssetUpload(purpose);
+  const [rows, setRowsState] = useState<ImageRow[]>([]);
+  const rowsRef = useRef<ImageRow[]>([]);
+  const [running, setRunning] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const commit = (next: ImageRow[]) => {
+    rowsRef.current = next;
+    setRowsState(next);
+  };
+  const update = (key: string, patch: Partial<ImageRow>) =>
+    commit(rowsRef.current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+
+  const add = (files: File[]) => {
+    const known = new Set(rowsRef.current.map((row) => `${row.file.name}:${row.file.size}`));
+    let skipped = 0;
+    const added: ImageRow[] = [];
+    for (const file of files) {
+      const mime = uploadMimeOf(file.name);
+      if (!mime || !mime.startsWith("image/") || file.size > maxBytesOf(mime)) {
+        skipped += 1;
+        continue;
+      }
+      if (known.has(`${file.name}:${file.size}`)) continue;
+      added.push({ key: `${Date.now()}-${added.length}-${file.name}`, file: withUploadType(file, mime), label: titleFromFileName(file.name), status: "waiting", progress: 0 });
+    }
+    if (skipped) toast.warning(`${skipped} file${skipped === 1 ? " was" : "s were"} left out (only JPEG, PNG or WebP up to 40 MB).`);
+    commit([...rowsRef.current, ...added]);
+  };
+
+  const start = async () => {
+    setRunning(true);
+    const queue = rowsRef.current.filter((row) => row.status === "waiting" || row.status === "error").map((row) => row.key);
+    const worker = async () => {
+      for (let key = queue.shift(); key; key = queue.shift()) {
+        const row = rowsRef.current.find((item) => item.key === key)!;
+        try {
+          update(key, { status: "uploading", progress: 0, error: undefined });
+          const slot = await panel.requestAssetUpload({
+            purpose,
+            label: row.label.trim() || row.file.name,
+            contentType: row.file.type as "image/jpeg" | "image/png" | "image/webp",
+            bytes: row.file.size,
+          });
+          await api.putFile(slot, row.file, (progress) => update(key, { progress }));
+          update(key, { status: "processing", progress: 1 });
+          await panel.processAsset({ assetId: slot.assetId, image: slot.key });
+          update(key, { status: "done" });
+        } catch (error) {
+          update(key, { status: "error", error: errorText(error) });
+        }
+      }
+    };
+    await Promise.all([worker(), worker()]);
+    setRunning(false);
+    const done = rowsRef.current.filter((row) => row.status === "done").length;
+    if (done) {
+      toast.success(`${done} image${done === 1 ? "" : "s"} added to the library`);
+      onDone();
+    }
+  };
+  const begin = async () => {
+    setRunning(true);
+    const problem = await uploadsUnavailable(api, panel);
+    setRunning(false);
+    if (problem) {
+      setNotice(problem);
+      return;
+    }
+    setNotice(null);
+    await start();
+  };
+
+  const waiting = rows.filter((row) => row.status === "waiting" || row.status === "error").length;
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (running) return;
+        setOpen(next);
+        if (!next) commit(rowsRef.current.filter((row) => row.status !== "done"));
+      }}
+    >
       <DialogTrigger asChild>
-        <Button><Upload /> Upload image</Button>
+        <Button><Upload /> Upload images</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Upload an image</DialogTitle>
-          <DialogDescription>Uploaded straight to R2 and rendered for phones by the media processor.</DialogDescription>
+          <DialogTitle>Upload images</DialogTitle>
+          <DialogDescription>One image, many, a folder or a ZIP. Each is uploaded to R2 and rendered for phones; names come from the file names.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SelectField id="upload-purpose" label="For" value={purpose} options={assetPurposes.map((p) => ({ value: p, label: purposeLabels[p] }))} onChange={setPurpose} />
-          <div className="space-y-2">
-            <Label htmlFor="upload-label">Name</Label>
-            <Input id="upload-label" value={label} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. Diwali banner" />
-          </div>
-        </div>
-        <FileDrop
-          accept="image/jpeg,image/png,image/webp"
-          busy={upload.busy}
-          progress={upload.progress}
-          onFile={async (file) => {
-            const result = await upload.run(file, label.trim() || file.name.replace(/\.[^.]+$/, ""));
-            if (result) {
-              setOpen(false);
-              setLabel("");
-              onDone();
-            }
-          }}
-        >
-          <p className="text-xs text-muted-foreground">JPEG, PNG or WebP · up to 40 MB · {purpose === "deity" || purpose === "offering" ? "square thumbnail" : "wide thumbnail"}</p>
-        </FileDrop>
+        <SelectField id="upload-purpose" label="For" value={purpose} options={assetPurposes.map((p) => ({ value: p, label: purposeLabels[p] }))} onChange={setPurpose} />
+        <MultiDrop accept="image/jpeg,image/png,image/webp" disabled={running} onFiles={add} onError={(message) => toast.error(message)}>
+          <p className="mt-1 text-xs text-muted-foreground">JPEG, PNG or WebP · up to 40 MB each · {purpose === "deity" || purpose === "offering" ? "square thumbnail" : "wide thumbnail"}</p>
+        </MultiDrop>
+        {notice && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">{notice}</p>}
+        {rows.length > 0 && (
+          <ul className="space-y-2">
+            {rows.map((row) => (
+              <li key={row.key} className={cn("rounded-xl border p-2", row.status === "error" && "border-destructive/40")}>
+                <div className="flex items-center gap-2">
+                  <Input aria-label={`Name for ${row.file.name}`} value={row.label} disabled={running || row.status === "done"} onChange={(event) => update(row.key, { label: event.target.value })} className="h-8 flex-1" />
+                  <Badge variant={row.status === "error" ? "destructive" : "secondary"} className="whitespace-nowrap">
+                    {row.status === "uploading" ? `${Math.round(row.progress * 100)}%` : row.status === "processing" ? "Rendering" : row.status === "done" ? "Done" : row.status === "error" ? "Failed" : "Waiting"}
+                  </Badge>
+                  {row.status === "waiting" && !running && (
+                    <Button variant="ghost" size="icon" className="size-8" aria-label={`Remove ${row.file.name}`} onClick={() => commit(rowsRef.current.filter((item) => item.key !== row.key))}>
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+                {row.status === "uploading" && <Progress value={row.progress * 100} className="mt-2 h-1" />}
+                {row.error && <p className="mt-1 text-xs text-destructive">{row.error}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button disabled={running || waiting === 0} onClick={() => void begin()}>
+          {running ? <Loader2 className="animate-spin" /> : <Upload />}
+          {running ? "Uploading…" : `Upload ${waiting} image${waiting === 1 ? "" : "s"}`}
+        </Button>
       </DialogContent>
     </Dialog>
   );

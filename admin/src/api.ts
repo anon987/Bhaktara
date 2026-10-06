@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import type { FirebaseServices } from "./firebase";
+import { withoutUndefined } from "./callable";
 import {
   BannerInput,
   ContentDraftInput,
@@ -158,7 +159,8 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
   const call =
     <I, O>(name: string) =>
     async (input: I): Promise<O> =>
-      (await httpsCallable<I, O>(functions, name)(input)).data;
+      // Unset fields must stay absent: the client would send them as null.
+      (await httpsCallable<I, O>(functions, name)(withoutUndefined(input))).data;
 
   return {
     async listContent({ status, type, after, pageSize: requested }) {

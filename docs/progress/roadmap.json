@@ -789,15 +789,17 @@
         },
         {
           "id": "m2-admin-media-library",
-          "title": "Admin: media library",
+          "title": "Admin: uploads and media library",
           "status": "blocked",
-          "notes": "Image library for banners, deities, festivals, offerings and covers (requestAssetUpload, processAsset, deleteAsset) with an asset picker in the editors. Deployed; uploads wait for the R2 secrets and the Cloud Run processor.",
+          "notes": "Bulk Upload page (files, folders, ZIPs; one draft per file with media rendered; titles from file names; embedded album art as cover; in-browser rule checks; resumable), bulk image upload in the media library, and replace-media in the editor (D-056). Verified end to end on 2026-10-06 against the R2 dev bucket with the processor run locally. Live use waits for the R2 secrets, the Cloud Run processor and the bucket PUT CORS rule.",
           "blockedBy": [
             "media-processor-deploy"
           ],
           "evidence": [
+            "admin/src/pages/content/UploadPage.tsx",
+            "admin/src/components/panel/files.ts",
             "functions/src/assets.ts",
-            "admin/src/pages/MediaLibraryPage.tsx"
+            "infra/r2/cors.json"
           ]
         }
       ]

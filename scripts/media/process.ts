@@ -149,61 +149,63 @@ export async function processMedia(
     case "bhajan":
     case "aarti":
     case "mantra":
-    case "chalisa": {
-      const audio = need(inputs.audio, `${type} needs --audio`);
-      const image = need(
-        inputs.image,
-        `${type} needs --image for the thumbnail`,
-      );
-      await ffmpeg([
-        "-i",
-        audio,
-        "-vn",
-        "-map_metadata",
-        "-1",
-        "-af",
-        loudnorm,
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-ar",
-        "44100",
-        "-movflags",
-        "+faststart",
-        add("stream", "m4a", "audio/mp4"),
-      ]);
-      await webp(image, add("thumb", "webp", "image/webp"), cover(320, 320));
-      break;
-    }
+    case "chalisa":
     case "ringtone": {
-      const audio = need(inputs.audio, "ringtone needs --audio");
-      const image = need(
-        inputs.image,
-        "ringtone needs --image for the thumbnail",
-      );
-      const { durationSeconds = 0 } = await probe(audio);
-      if (durationSeconds < 20 || durationSeconds > 30)
-        throw new MediaValidationError(
-          `Ringtones must be 20–30 s (doc 12 §6); got ${durationSeconds} s`,
+      if (!inputs.audio && !inputs.image)
+        throw new MediaValidationError(`${type} needs --audio, --image or both`);
+      if (inputs.audio && type === "ringtone") {
+        const { durationSeconds = 0 } = await probe(inputs.audio);
+        if (durationSeconds < 20 || durationSeconds > 30)
+          throw new MediaValidationError(
+            `Ringtones must be 20–30 s (doc 12 §6); got ${durationSeconds} s`,
+          );
+      }
+      if (inputs.audio)
+        await ffmpeg(
+          type === "ringtone"
+            ? [
+                "-i",
+                inputs.audio,
+                "-vn",
+                "-map_metadata",
+                "-1",
+                "-af",
+                loudnorm,
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "160k",
+                "-ar",
+                "44100",
+                add("file", "mp3", "audio/mpeg"),
+              ]
+            : [
+                "-i",
+                inputs.audio,
+                "-vn",
+                "-map_metadata",
+                "-1",
+                "-af",
+                loudnorm,
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-ar",
+                "44100",
+                "-movflags",
+                "+faststart",
+                add("stream", "m4a", "audio/mp4"),
+              ],
         );
-      await ffmpeg([
-        "-i",
-        audio,
-        "-vn",
-        "-map_metadata",
-        "-1",
-        "-af",
-        loudnorm,
-        "-c:a",
-        "libmp3lame",
-        "-b:a",
-        "160k",
-        "-ar",
-        "44100",
-        add("file", "mp3", "audio/mpeg"),
-      ]);
-      await webp(image, add("thumb", "webp", "image/webp"), cover(320, 320));
+      // The cover: the uploaded image, else album art embedded in the audio
+      // file, else none yet (it can be uploaded later on its own).
+      const cover320 = cover(320, 320);
+      if (inputs.image)
+        await webp(inputs.image, add("thumb", "webp", "image/webp"), cover320);
+      else if (inputs.audio && (await probe(inputs.audio)).hasVideo)
+        await webp(inputs.audio, add("thumb", "webp", "image/webp"), cover320);
+      else warn("No cover image yet; add one later to complete the item.");
       break;
     }
     case "wallpaper": {
@@ -232,7 +234,14 @@ export async function processMedia(
       break;
     }
     case "status": {
-      const video = need(inputs.video, "status needs --video");
+      // A poster image alone replaces the poster and thumb of an item.
+      if (!inputs.video) {
+        const image = need(inputs.image, "status needs --video, --image or both");
+        await webp(image, add("poster", "webp", "image/webp"), cover(720, 1280));
+        await webp(image, add("thumb", "webp", "image/webp"), cover(306, 544));
+        break;
+      }
+      const video = inputs.video;
       const { durationSeconds = 0, width = 0, height = 0 } = await probe(video);
       if (durationSeconds < 15 || durationSeconds > 30)
         throw new MediaValidationError(

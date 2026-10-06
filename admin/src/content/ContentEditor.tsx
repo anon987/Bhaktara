@@ -541,6 +541,15 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
               {can(role, "content.upload") && editable && (
                 <MediaUpload contentId={record.id} type={form.type} onProcessed={() => onMediaProcessed?.()} />
               )}
+              {can(role, "content.upload") && !editable && (
+                <section className="panel" aria-labelledby="replace-heading">
+                  <h2 id="replace-heading">Replace media</h2>
+                  <p className="muted">
+                    Media can be changed while the item is a Draft. Move it back to Draft above, replace the files,
+                    then send it through READY again.
+                  </p>
+                </section>
+              )}
             </>
           )}
         </aside>
