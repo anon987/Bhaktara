@@ -249,8 +249,12 @@
         {
           "id": "m0-r2-token",
           "title": "R2 upload API token (dev bucket only)",
-          "status": "not_started",
-          "notes": "MEDIA_R2.md records no API token yet; media:publish and content:import need it for real uploads."
+          "status": "done",
+          "notes": "Object Read & Write token scoped to bhaktara-media-dev, in .env.r2 locally and in Secret Manager (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) on bhaktara-dev since 2026-10-06.",
+          "evidence": [
+            "docs/MEDIA_R2.md",
+            "docs/MEDIA_PROCESSOR.md"
+          ]
         },
         {
           "id": "m0-r2-staging-prod",
@@ -453,44 +457,41 @@
         {
           "id": "m1-media-images",
           "title": "Media pipeline: image variants",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: image variants via CLI importer and the Cloud Run processMedia service (presigned staging upload → renditions → final keys). Cloud Run deploy waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: image variants via CLI importer and the Cloud Run processMedia service (presigned staging upload → renditions → final keys). Cloud Run deploy waits for the dev deploy. Cloud Run processor deployed on bhaktara-dev 2026-10-06; first live upload next.",
           "evidence": [
             "scripts/media/process.ts",
             "services/media-processor/",
             "docs/MEDIA_PROCESSOR.md"
           ],
           "blockedBy": [
-            "m0-r2-token",
-            "media-processor-deploy"
+            "m0-r2-token"
           ]
         },
         {
           "id": "m1-media-audio",
           "title": "Media pipeline: audio normalization",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: loudness-normalized AAC/MP3 via CLI importer and processMedia. Cloud Run deploy waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: loudness-normalized AAC/MP3 via CLI importer and processMedia. Cloud Run deploy waits for the dev deploy. Cloud Run processor deployed on bhaktara-dev 2026-10-06; first live upload next.",
           "evidence": [
             "scripts/media/process.ts",
             "services/media-processor/"
           ],
           "blockedBy": [
-            "m0-r2-token",
-            "media-processor-deploy"
+            "m0-r2-token"
           ]
         },
         {
           "id": "m1-media-video",
           "title": "Media pipeline: video renditions",
-          "status": "blocked",
-          "notes": "Code complete and emulator-verified: 720p H.264 + poster via CLI importer and processMedia. Cloud Run deploy waits for the dev deploy.",
+          "status": "in_progress",
+          "notes": "Code complete and emulator-verified: 720p H.264 + poster via CLI importer and processMedia. Cloud Run deploy waits for the dev deploy. Cloud Run processor deployed on bhaktara-dev 2026-10-06; first live upload next.",
           "evidence": [
             "scripts/media/process.ts",
             "services/media-processor/"
           ],
           "blockedBy": [
-            "m0-r2-token",
-            "media-processor-deploy"
+            "m0-r2-token"
           ]
         },
         {
@@ -790,11 +791,8 @@
         {
           "id": "m2-admin-media-library",
           "title": "Admin: uploads and media library",
-          "status": "blocked",
-          "notes": "Bulk Upload page (files, folders, ZIPs; one draft per file with media rendered; titles from file names; embedded album art as cover; in-browser rule checks; resumable), bulk image upload in the media library, and replace-media in the editor (D-056). Verified end to end on 2026-10-06 against the R2 dev bucket with the processor run locally. Live use waits for the R2 secrets, the Cloud Run processor and the bucket PUT CORS rule.",
-          "blockedBy": [
-            "media-processor-deploy"
-          ],
+          "status": "in_progress",
+          "notes": "Bulk Upload page (files, folders, ZIPs; one draft per file with media rendered; titles from file names; embedded album art as cover; in-browser rule checks; resumable), bulk image upload in the media library, and replace-media in the editor (D-056). Verified end to end on 2026-10-06 against the R2 dev bucket with the processor run locally. The R2 secrets, the Cloud Run processor and the bucket PUT CORS rule are live on bhaktara-dev (2026-10-06); a first upload by the operator on the live panel is next.",
           "evidence": [
             "admin/src/pages/content/UploadPage.tsx",
             "admin/src/components/panel/files.ts",
@@ -1189,13 +1187,6 @@
       "title": "Google Play developer account readiness",
       "kind": "external",
       "detail": "Confirm the developer account and any closed-testing tester requirements that apply to it before M4 closed testing."
-    },
-    {
-      "id": "media-processor-deploy",
-      "title": "Deploy the Cloud Run media processor to bhaktara-dev",
-      "kind": "decision",
-      "detail": "processMedia is deployed but needs the Cloud Run processor (billed) and its MEDIA_PROCESSOR_URL; uploads need the R2 token secrets (R2_UPLOAD_SECRETS=true in functions/.env.bhaktara-dev). Both wait for operator confirmation.",
-      "ref": "docs/MEDIA_R2.md"
     }
   ]
 }
