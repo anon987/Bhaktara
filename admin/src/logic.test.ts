@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseHash } from "./app/router";
+import { librarySections, parseHash, sectionForType } from "./app/router";
 import { readConfig } from "./config";
 import { draftFromForm, emptyForm, formFromDraft, validateForm } from "./content/draftForm";
 import { readableError } from "./errors";
+import { contentTypes } from "./domain";
 import { callableError } from "./test/fakeApi";
 import { withoutUndefined } from "./panelApi";
+import { audioVariant, clock } from "./components/panel/preview";
 
 describe("readConfig", () => {
   it("defaults to the emulators with the demo project", () => {
@@ -110,6 +112,10 @@ describe("parseHash", () => {
     expect(parseHash("#/users/abc123")).toEqual({ name: "user", uid: "abc123" });
     expect(parseHash("#/mandir-offerings")).toEqual({ name: "mandir-offerings" });
     expect(parseHash("#/content/edit")).toEqual({ name: "not-found" });
+    expect(parseHash("#/wallpapers")).toEqual({ name: "wallpapers" });
+    expect(parseHash("#/status-videos")).toEqual({ name: "status-videos" });
+    expect(parseHash("#/content/new/RINGTONE")).toEqual({ name: "content-new", type: "RINGTONE" });
+    expect(parseHash("#/content/new/PODCAST")).toEqual({ name: "not-found" });
     expect(parseHash("#/nope")).toEqual({ name: "not-found" });
   });
 });
@@ -119,5 +125,26 @@ describe("withoutUndefined", () => {
     expect(
       withoutUndefined({ a: undefined, b: null, c: { d: undefined, e: 1 }, f: [{ g: undefined, h: "x" }] }),
     ).toEqual({ b: null, c: { e: 1 }, f: [{ h: "x" }] });
+  });
+});
+
+describe("library previews", () => {
+  it("has a section for every content type", () => {
+    expect(Object.values(librarySections).sort()).toEqual([...contentTypes].sort());
+    expect(sectionForType("STATUS")).toBe("status-videos");
+  });
+
+  it("plays the MP3 for ringtones and the stream for devotional audio", () => {
+    const media = { stream: { key: "a/stream.m4a" }, file: { key: "a/file.mp3" } };
+    expect(audioVariant("RINGTONE", media)?.key).toBe("a/file.mp3");
+    expect(audioVariant("BHAJAN", media)?.key).toBe("a/stream.m4a");
+    expect(audioVariant("AARTI", { file: { key: "b.mp3" } })?.key).toBe("b.mp3");
+  });
+
+  it("formats durations", () => {
+    expect(clock(0)).toBe("0:00");
+    expect(clock(65.4)).toBe("1:05");
+    expect(clock(3725)).toBe("1:02:05");
+    expect(clock(null)).toBe("–:––");
   });
 });

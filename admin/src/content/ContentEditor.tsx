@@ -36,11 +36,12 @@ import {
 } from "./draftForm";
 import { MediaUpload } from "./MediaUpload";
 import { TransitionPanel } from "./TransitionPanel";
+import { ContentPreview } from "../components/panel/preview";
 
-type Props = { id?: string };
+type Props = { id?: string; type?: ContentType };
 
-export function ContentEditor({ id }: Props) {
-  if (!id) return <EditorForm record={null} onMoved={() => {}} />;
+export function ContentEditor({ id, type }: Props) {
+  if (!id) return <EditorForm record={null} initialType={type} onMoved={() => {}} />;
   return <ExistingContent id={id} />;
 }
 
@@ -96,14 +97,16 @@ type FormProps = {
   flash?: string | null;
   onMoved: (from: ContentStatus, to: ContentStatus) => void;
   onMediaProcessed?: () => void;
+  // The type a new item starts as (a library section's "New" button).
+  initialType?: ContentType;
 };
 
-export function EditorForm({ record, flash, onMoved, onMediaProcessed }: FormProps) {
+export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialType }: FormProps) {
   const { api, role } = useAdmin();
   const isNew = record === null;
   const initial = useMemo(
-    () => (record ? formFromDraft(record.draft) : emptyForm()),
-    [record],
+    () => (record ? formFromDraft(record.draft) : emptyForm(initialType)),
+    [record, initialType],
   );
   const [form, setForm] = useState<DraftForm>(initial);
   const [saved, setSaved] = useState<DraftForm>(initial);
@@ -521,6 +524,12 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed }: FormPro
             </section>
           ) : (
             <>
+              <ContentPreview
+                type={record.draft.type}
+                title={record.draft.title.en || record.draft.title.hi}
+                media={record.draft.media}
+                duration={record.draft.durationSeconds}
+              />
               <TransitionPanel
                 contentId={record.id}
                 status={status}

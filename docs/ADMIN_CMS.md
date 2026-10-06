@@ -7,7 +7,7 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 
 ## Layout
 
-- A collapsible sidebar groups the pages (Overview, Content, Catalogue, Sadhana, Mandir & festivals, People) and shows only what the role may open. On phones it becomes a slide-in menu behind the hamburger button.
+- A collapsible sidebar groups the pages (Overview, Library, Content, Catalogue, Sadhana, Mandir & festivals, People) and shows only what the role may open. On phones it becomes a slide-in menu behind the hamburger button.
 - The header has breadcrumbs, the environment badge, page search (⌘K / Ctrl+K) and the light/dark switch. The account menu holds the theme choice and sign-out.
 - A page that hits a render error shows the error with **Try again**; the menu keeps working.
 
@@ -16,8 +16,10 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 | Page | What it does | Roles | Backend |
 |---|---|---|---|
 | Dashboard | Devotees (total, new, active), active streaks, XP given today, 14-day practice chart, content by status, challenge days queued, publishing this week, festivals in the next 45 days, alerts | all staff | `getDashboard` (cached 5 min in `jobState/dashboard`; **Refresh** forces) |
-| Content library | Status tabs, type filter, title search, paging | SA, CA, EDITOR | Firestore reads |
-| Content editor | The D-036 editor: fields, checklist, status moves, media upload (originals → `processMedia` renders every variant) | SA, CA, EDITOR | `createContent`, `updateContent`, `transitionContentStatus`, `requestUploadUrl`, `processMedia` |
+| Library: Bhajans, Aartis, Mantras, Chalisas, Ringtones | One section per type: rows with an audio player (M4A stream; MP3 for ringtones), deity, duration, status; **New** creates that type | SA, CA, EDITOR | Firestore reads |
+| Library: Wallpapers, Status videos | Tall preview tiles; a wallpaper opens a full-size viewer with its sizes (full, mobile, thumb), a status video plays in a 9:16 player | SA, CA, EDITOR | Firestore reads |
+| All content | Every type in one table with a thumbnail and a preview per row; status tabs, type filter, search, paging | SA, CA, EDITOR | Firestore reads |
+| Content editor | The D-036 editor: fields, checklist, a **Preview** panel (player or viewer for the saved media), status moves, media upload (originals → `processMedia` renders every variant) | SA, CA, EDITOR | `createContent`, `updateContent`, `transitionContentStatus`, `requestUploadUrl`, `processMedia` |
 | Media library | Images for banners, deities, festivals, offerings and covers; upload, preview, copy keys, remove. Editors pick from it with the asset picker | SA, CA, EDITOR | `requestAssetUpload`, `processAsset`, `deleteAsset`; `mediaAssets` reads |
 | Home manager | Sections per language: reorder, show/hide, edit rails, quotes and shortcuts, phone preview, rebuild feeds | SA, CA | `getHomeLayout`, `updateHomeLayout`, `rebuildHomeFeed` |
 | Banners | Banner manager with the image picker; internal targets only (D-015) | SA, CA | `createBanner`, `updateBanner`, `deleteBanner` |
@@ -70,7 +72,7 @@ Root `eslint .` lints `admin/` (the `@/` alias is resolved by TypeScript) and ig
 `admin/src/config.ts` reads Vite env vars (see `admin/.env.example`):
 
 - **Emulator mode** is the default. It requires a `demo-*` project ID.
-- **Project mode** (`VITE_USE_EMULATORS=false`) needs the web app config (`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, optional `VITE_FIREBASE_APP_ID`) in `admin/.env.production.local`, which Git ignores. It refuses `demo-*` IDs. `VITE_MEDIA_BASE_URL` (the app's `EXPO_PUBLIC_MEDIA_BASE_URL`) turns media keys into previews.
+- **Project mode** (`VITE_USE_EMULATORS=false`) needs the web app config (`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, optional `VITE_FIREBASE_APP_ID`) in `admin/.env.production.local`, which Git ignores. It refuses `demo-*` IDs. `VITE_MEDIA_BASE_URL` (the app's `EXPO_PUBLIC_MEDIA_BASE_URL`) turns media keys into previews, players and viewers; without it they show placeholders. Only one sound plays at a time in the panel.
 
 `firebase.json` has a `hosting` block that serves `admin/dist` with an SPA rewrite and no-index/no-frame headers, and builds it first. **Panel v2 is deployed to `bhaktara-dev` (2026-10-06): https://bhaktara-dev.web.app** (`npx firebase deploy --project dev --only hosting`). The Google provider is enabled and the default `web.app`/`firebaseapp.com` domains are authorized.
 

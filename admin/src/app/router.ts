@@ -1,10 +1,27 @@
 import { useEffect, useState } from "react";
+import { contentTypes, type ContentType } from "../domain";
 
 // A small hash router: hash URLs work on any static host (Firebase Hosting
 // rewrites are still set). Pages are flat; editors carry an ID.
+
+// One library section per content type (sidebar "Library").
+export const librarySections = {
+  bhajans: "BHAJAN",
+  aartis: "AARTI",
+  mantras: "MANTRA",
+  chalisas: "CHALISA",
+  wallpapers: "WALLPAPER",
+  ringtones: "RINGTONE",
+  "status-videos": "STATUS",
+} as const satisfies Record<string, ContentType>;
+export type LibrarySection = keyof typeof librarySections;
+export const sectionForType = (type: ContentType) =>
+  (Object.keys(librarySections) as LibrarySection[]).find((key) => librarySections[key] === type)!;
+
 export const pageNames = [
   "dashboard",
   "content",
+  ...(Object.keys(librarySections) as LibrarySection[]),
   "media",
   "home",
   "banners",
@@ -26,7 +43,7 @@ export type PageName = (typeof pageNames)[number];
 
 export type Route =
   | { name: PageName }
-  | { name: "content-new" }
+  | { name: "content-new"; type?: ContentType }
   | { name: "content-edit"; id: string }
   | { name: "user"; uid: string }
   | { name: "home-redirect" }
@@ -39,6 +56,8 @@ export function parseHash(hash: string): Route {
   if (head === "content") {
     if (parts.length === 1) return { name: "content" };
     if (second === "new" && parts.length === 2) return { name: "content-new" };
+    if (second === "new" && parts.length === 3 && (contentTypes as readonly string[]).includes(third))
+      return { name: "content-new", type: third as ContentType };
     if (second === "edit" && third && parts.length === 3)
       return { name: "content-edit", id: decodeURIComponent(third) };
     return { name: "not-found" };
@@ -55,6 +74,7 @@ export const paths = {
   dashboard: "#/dashboard",
   content: "#/content",
   contentNew: "#/content/new",
+  contentNewOf: (type: ContentType) => `#/content/new/${type}`,
   contentEdit: (id: string) => `#/content/edit/${encodeURIComponent(id)}`,
   banners: "#/banners",
   audit: "#/audit",

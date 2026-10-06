@@ -25,6 +25,7 @@ import {
   TransitionInput,
   UploadMime,
 } from "./domain";
+import type { MediaVariant, MediaVariantName } from "../../src/domain/media";
 
 // Everything the screens need from Firebase, behind one interface so the
 // components can be tested with a fake. Reads go straight to Firestore
@@ -40,6 +41,10 @@ export type ContentRow = {
   title: Localized;
   updatedAt: string | null;
   scheduledAt: string | null;
+  // For previews in the library (absent on rows from older callers).
+  media?: Partial<Record<MediaVariantName, MediaVariant>>;
+  durationSeconds?: number | null;
+  deityIds?: string[];
 };
 
 export type ContentRecord = {
@@ -178,6 +183,9 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
           title: localized(data.title),
           updatedAt: toIso(data.updatedAt),
           scheduledAt: toIso(data.scheduledAt),
+          media: (data.media ?? undefined) as ContentRow["media"],
+          durationSeconds: typeof data.durationSeconds === "number" ? data.durationSeconds : null,
+          deityIds: Array.isArray(data.deityIds) ? (data.deityIds as string[]) : [],
         };
       });
       const items = rows.slice(0, pageSize);
