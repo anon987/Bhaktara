@@ -27,6 +27,8 @@ export type CatalogRow<T = Record<string, unknown>> = {
 
 export type DashboardData = {
   computedAt: string;
+  // Figures the server could not compute this time (shown as zero).
+  unavailable?: string[];
   today: string;
   users: { total: number; guests: number; signedIn: number; new7: number; new30: number; active1: number; active7: number };
   practice: {

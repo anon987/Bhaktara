@@ -133,6 +133,12 @@ export function DashboardPage() {
             <Stat label="Lamps burning" value={compact(data.practice.activeStreaks)} hint={`Active streaks · ${compact(data.practice.xpToday)} XP given today`} icon={Flame} tone="kumkum" />
           </div>
 
+          {!!data.unavailable?.length && (
+            <p role="status" className="rounded-xl border border-dashed px-4 py-2 text-sm text-muted-foreground">
+              Some figures could not be worked out just now and show as zero ({data.unavailable.join(", ")}). Try Refresh in a few minutes.
+            </p>
+          )}
+
           {data.alerts.length > 0 && (
             <Card>
               <CardHeader className="pb-3">

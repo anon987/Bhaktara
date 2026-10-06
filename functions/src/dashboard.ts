@@ -3,7 +3,14 @@
 // cached for five minutes in jobState/dashboard so a busy panel stays cheap.
 // Analytics-based metrics (DAU from Analytics, ad revenue, crash-free rate)
 // wait for collection to be enabled (M4).
-import { AggregateField, FieldValue, Query, Timestamp } from "firebase-admin/firestore";
+import {
+  AggregateField,
+  FieldValue,
+  Query,
+  QueryDocumentSnapshot,
+  Timestamp,
+} from "firebase-admin/firestore";
+import { logger } from "firebase-functions/v2";
 import { z } from "zod";
 import { contentStatuses } from "../../src/domain/cms";
 import { addDays, bhaktiDayAt, DEFAULT_TIMEZONE } from "../../src/domain/progression";
@@ -15,6 +22,11 @@ const inputSchema = z.object({ force: z.boolean().optional() }).strict().nullish
 
 const count = async (query: Query) => (await query.count().get()).data().count;
 
+// One failing figure (a missing or still-building index, say) must not blank
+// the whole dashboard: it falls back and is named in `unavailable`.
+type Snap = { docs: QueryDocumentSnapshot[]; size: number };
+const emptySnap: Snap = { docs: [], size: 0 };
+
 export async function computeDashboard(now = new Date()) {
   const firestore = db();
   const users = firestore.collection("users");
@@ -23,6 +35,13 @@ export async function computeDashboard(now = new Date()) {
   const at = (ms: number) => Timestamp.fromMillis(now.getTime() - ms);
   const today = bhaktiDayAt(now, DEFAULT_TIMEZONE);
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13));
+  const unavailable: string[] = [];
+  const soft = <T>(name: string, promise: Promise<T>, fallback: T): Promise<T> =>
+    promise.catch((error: unknown) => {
+      unavailable.push(name);
+      logger.warn("Dashboard figure unavailable", { name, error: String(error).slice(0, 300) });
+      return fallback;
+    });
 
   const [
     totalUsers,
@@ -40,47 +59,71 @@ export async function computeDashboard(now = new Date()) {
     challenges,
     festivals,
   ] = await Promise.all([
-    count(users),
-    count(users.where("isAnonymous", "==", true)),
-    count(users.where("createdAt", ">=", at(7 * DAY_MS))),
-    count(users.where("createdAt", ">=", at(30 * DAY_MS))),
-    count(users.where("lastActiveAt", ">=", at(DAY_MS))),
-    count(users.where("lastActiveAt", ">=", at(7 * DAY_MS))),
-    count(stats.where("lastQualifyingDay", ">=", addDays(today, -1))),
-    count(stats.where("flags.suspicious", "==", true)),
-    Promise.all(contentStatuses.map((status) => count(content.where("status", "==", status)))),
-    // Practice per day: practice days recorded, and those that kept a streak.
-    Promise.all(
-      days.map(async (day) => {
-        const group = firestore.collectionGroup("days").where("day", "==", day);
-        const [all, qualifying, full] = await Promise.all([
-          count(group),
-          count(group.where("qualifying", "==", true)),
-          count(group.where("fullSadhana", "==", true)),
-        ]);
-        return { day, practised: all, qualifying, fullSadhana: full };
-      }),
+    soft("totalUsers", count(users), 0),
+    soft("guests", count(users.where("isAnonymous", "==", true)), 0),
+    soft("new7", count(users.where("createdAt", ">=", at(7 * DAY_MS))), 0),
+    soft("new30", count(users.where("createdAt", ">=", at(30 * DAY_MS))), 0),
+    soft("active1", count(users.where("lastActiveAt", ">=", at(DAY_MS))), 0),
+    soft("active7", count(users.where("lastActiveAt", ">=", at(7 * DAY_MS))), 0),
+    soft("activeStreaks", count(stats.where("lastQualifyingDay", ">=", addDays(today, -1))), 0),
+    soft("flagged", count(stats.where("flags.suspicious", "==", true)), 0),
+    soft(
+      "contentByStatus",
+      Promise.all(contentStatuses.map((status) => count(content.where("status", "==", status)))),
+      contentStatuses.map(() => 0),
     ),
-    firestore
-      .collection("rewardTransactions")
-      .where("bhaktiDay", "==", today)
-      .aggregate({ xp: AggregateField.sum("xp") })
-      .get()
-      .then((snap) => snap.data().xp ?? 0),
-    content
-      .where("status", "==", "SCHEDULED")
-      .where("scheduledAt", "<=", Timestamp.fromMillis(now.getTime() + 7 * DAY_MS))
-      .orderBy("scheduledAt")
-      .limit(20)
-      .get(),
-    firestore.collection("challenges").where("isActive", "==", true).limit(200).get(),
-    firestore
-      .collection("festivals")
-      .where("date", ">=", today)
-      .where("date", "<=", addDays(today, 45))
-      .orderBy("date")
-      .limit(20)
-      .get(),
+    // Practice per day: practice days recorded, and those that kept a streak.
+    soft(
+      "practiceSeries",
+      Promise.all(
+        days.map(async (day) => {
+          const group = firestore.collectionGroup("days").where("day", "==", day);
+          const [all, qualifying, full] = await Promise.all([
+            count(group),
+            count(group.where("qualifying", "==", true)),
+            count(group.where("fullSadhana", "==", true)),
+          ]);
+          return { day, practised: all, qualifying, fullSadhana: full };
+        }),
+      ),
+      days.map((day) => ({ day, practised: 0, qualifying: 0, fullSadhana: 0 })),
+    ),
+    soft(
+      "xpToday",
+      firestore
+        .collection("rewardTransactions")
+        .where("bhaktiDay", "==", today)
+        .aggregate({ xp: AggregateField.sum("xp") })
+        .get()
+        .then((snap) => snap.data().xp ?? 0),
+      0,
+    ),
+    soft<Snap>(
+      "scheduledSoon",
+      content
+        .where("status", "==", "SCHEDULED")
+        .where("scheduledAt", "<=", Timestamp.fromMillis(now.getTime() + 7 * DAY_MS))
+        .orderBy("scheduledAt")
+        .limit(20)
+        .get(),
+      emptySnap,
+    ),
+    soft<Snap>(
+      "challenges",
+      firestore.collection("challenges").where("isActive", "==", true).limit(200).get(),
+      emptySnap,
+    ),
+    soft<Snap>(
+      "festivals",
+      firestore
+        .collection("festivals")
+        .where("date", ">=", today)
+        .where("date", "<=", addDays(today, 45))
+        .orderBy("date")
+        .limit(20)
+        .get(),
+      emptySnap,
+    ),
   ]);
 
   // How far ahead the challenge calendar is filled (doc 09 §2: alert < 14 days).
@@ -123,6 +166,7 @@ export async function computeDashboard(now = new Date()) {
     })),
     flaggedUsers: flagged,
     alerts,
+    unavailable,
   };
 }
 

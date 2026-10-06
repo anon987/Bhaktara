@@ -199,7 +199,9 @@ describe("dashboard", () => {
       users: { total: number; guests: number; signedIn: number; new7: number; active1: number };
       practice: { series: { day: string; practised: number; qualifying: number }[] };
       alerts: { key: string }[];
+      unavailable: string[];
     }>("getDashboard", { force: true });
+    assert.deepEqual(value.unavailable, []);
     assert.deepEqual(
       [value.users.total, value.users.guests, value.users.signedIn, value.users.new7, value.users.active1],
       [2, 1, 1, 1, 1],
