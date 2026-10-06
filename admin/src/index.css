@@ -122,6 +122,20 @@
 }
 
 @layer base {
+  /* Native controls (select lists, date pickers, checkboxes, scrollbars)
+     follow the theme; without this they stay light in dark mode. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  select,
+  option,
+  optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
   * {
     @apply border-border outline-ring/50;
   }
