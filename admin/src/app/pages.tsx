@@ -12,16 +12,24 @@ import { MediaLibraryPage } from "../pages/MediaLibraryPage";
 import { RolesPage } from "../pages/RolesPage";
 import { UserDetailPage } from "../pages/users/UserDetailPage";
 import { UsersPage } from "../pages/users/UsersPage";
-import type { Route } from "./router";
+import { librarySections, type Route } from "./router";
 
 export function pageFor(route: Route, role: AdminRole): ReactNode | null {
   switch (route.name) {
     case "dashboard":
       return <DashboardPage />;
     case "content":
-      return <ContentLibraryPage />;
+      return <ContentLibraryPage key="all" />;
+    case "bhajans":
+    case "aartis":
+    case "mantras":
+    case "chalisas":
+    case "wallpapers":
+    case "ringtones":
+    case "status-videos":
+      return <ContentLibraryPage key={route.name} type={librarySections[route.name]} />;
     case "content-new":
-      return <ContentEditorPage key="new" />;
+      return <ContentEditorPage key={`new-${route.type ?? ""}`} type={route.type} />;
     case "content-edit":
       return <ContentEditorPage key={route.id} id={route.id} />;
     case "media":

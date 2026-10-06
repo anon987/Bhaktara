@@ -1,5 +1,12 @@
 import {
+  AudioLines,
   Award,
+  BellRing,
+  BookOpenText,
+  Clapperboard,
+  FlameKindling,
+  Image,
+  Music4,
   BookOpen,
   CalendarHeart,
   Flame,
@@ -40,9 +47,21 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Library",
+    items: [
+      { page: "bhajans", label: "Bhajans", icon: Music4, permission: "content.read", description: "Devotional songs, with a player" },
+      { page: "aartis", label: "Aartis", icon: FlameKindling, permission: "content.read", description: "Aartis for each deity, with a player" },
+      { page: "mantras", label: "Mantras", icon: AudioLines, permission: "content.read", description: "Mantra chants, with a player" },
+      { page: "chalisas", label: "Chalisas", icon: BookOpenText, permission: "content.read", description: "Chalisa recitations, with a player" },
+      { page: "wallpapers", label: "Wallpapers", icon: Image, permission: "content.read", description: "Phone wallpapers, with full-size view" },
+      { page: "ringtones", label: "Ringtones", icon: BellRing, permission: "content.read", description: "Ringtones, with a player" },
+      { page: "status-videos", label: "Status videos", icon: Clapperboard, permission: "content.read", description: "WhatsApp status videos, with a video player" },
+      { page: "content", label: "All content", icon: BookOpen, permission: "content.read", description: "Every item of every type in one list" },
+    ],
+  },
+  {
     label: "Content",
     items: [
-      { page: "content", label: "Content library", icon: BookOpen, permission: "content.read", description: "Bhajans, aartis, wallpapers, ringtones and status videos" },
       { page: "media", label: "Media library", icon: Images, permission: "asset.read", description: "Images for banners, deities, festivals and offerings" },
       { page: "home", label: "Home manager", icon: LayoutTemplate, permission: "home.read", description: "Order and content of the Home screen" },
       { page: "banners", label: "Banners", icon: Megaphone, permission: "banner.read", description: "The hero carousel at the top of Home" },
