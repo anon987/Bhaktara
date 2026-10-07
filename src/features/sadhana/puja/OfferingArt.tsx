@@ -8,6 +8,7 @@ import {
 } from "../../../domain/puja";
 import { sanctum } from "../../../theme/tokens";
 import { MarigoldShape } from "../art/Marigold";
+import { SlotImage } from "../shrine/Ornaments";
 
 // Offerings drawn in a 40 × 40 box; decorative (callers label them).
 
@@ -244,11 +245,26 @@ export function FlowerShape({ kind }: { kind: FlowerKind }) {
   }
 }
 
-export function Flower({ kind, size }: { kind: FlowerKind; size: number }) {
+// `imageKey`: the admin's image for this offering (D-057), drawn instead.
+export function Flower({
+  kind,
+  size,
+  imageKey,
+}: {
+  kind: FlowerKind;
+  size: number;
+  imageKey?: string;
+}) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 40 40" accessible={false}>
-      <FlowerShape kind={kind} />
-    </Svg>
+    <SlotImage
+      assetKey={imageKey}
+      style={{ width: size, height: size }}
+      fallback={
+        <Svg width={size} height={size} viewBox="0 0 40 40" accessible={false}>
+          <FlowerShape kind={kind} />
+        </Svg>
+      }
+    />
   );
 }
 
@@ -514,16 +530,50 @@ export function BhogShape({ kind }: { kind: BhogKind }) {
   }
 }
 
-export function Bhog({ kind, size }: { kind: BhogKind; size: number }) {
+export function Bhog({
+  kind,
+  size,
+  imageKey,
+}: {
+  kind: BhogKind;
+  size: number;
+  imageKey?: string;
+}) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 40 40" accessible={false}>
-      <BhogShape kind={kind} />
-    </Svg>
+    <SlotImage
+      assetKey={imageKey}
+      style={{ width: size, height: size }}
+      fallback={
+        <Svg width={size} height={size} viewBox="0 0 40 40" accessible={false}>
+          <BhogShape kind={kind} />
+        </Svg>
+      }
+    />
   );
 }
 
 // A garland hanging as a U over the sanctum arch; width × height in px.
 export function Garland({
+  kind,
+  width,
+  height,
+  imageKey,
+}: {
+  kind: GarlandKind;
+  width: number;
+  height: number;
+  imageKey?: string;
+}) {
+  return (
+    <SlotImage
+      assetKey={imageKey}
+      style={{ width, height }}
+      fallback={<DrawnGarland kind={kind} width={width} height={height} />}
+    />
+  );
+}
+
+function DrawnGarland({
   kind,
   width,
   height,

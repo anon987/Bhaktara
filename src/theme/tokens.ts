@@ -44,3 +44,33 @@ export const sanctum = {
   text: "#FBEBD3",
   textMuted: "#D6BFA3",
 };
+// Prayer and Jaap (D-057): a sunlit marble shrine. Parchment and ivory
+// grounds, maroon serif headings, antique gold lines and saffron for what is
+// chosen or done.
+export const shrine = {
+  parchment: "#FBF1DF",
+  parchmentDeep: "#F3E2C3",
+  ivory: "#FFF8EC",
+  card: "#FFF5E4",
+  line: "#E6CC9B",
+  lineSoft: "rgba(201, 151, 63, 0.28)",
+  gold: "#C9973F",
+  goldDeep: "#9E7027",
+  goldLight: "#F2D9A0",
+  maroon: "#7A1C1C",
+  maroonDeep: "#5A1212",
+  ink: "#4A2A1A",
+  inkMuted: "#8A6A4A",
+  saffron: "#F0A23B",
+  saffronLight: "#FFD58A",
+  saffronDeep: "#D9801E",
+  wood: "#9C6B45",
+  woodDark: "#5E3A22",
+  marble: "#F1E1C2",
+  marbleShade: "#D9BC88",
+  sanctumGreen: "#2E5A4A",
+  sanctumGreenDeep: "#1C3D32",
+};
+// Headings on the Prayer and Jaap screens use the platform's serif (Noto
+// Serif on Android, Georgia on iOS); Hindi keeps Noto Devanagari.
+export const serif = { android: "serif", ios: "Georgia", default: "serif" };

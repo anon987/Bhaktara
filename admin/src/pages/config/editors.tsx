@@ -22,10 +22,19 @@ import {
   garlandKinds,
   garlandNames,
   offeringsFor,
+  trayItems,
+  trayLabels,
   trayNames,
   type DeityOfferings,
 } from "../../../../src/domain/puja";
-import type { PujaConfig } from "../../../../src/domain/admin";
+import {
+  emptyVisualsConfig,
+  type SceneSlot,
+  type VisualArt,
+  type VisualsConfig,
+} from "../../../../src/domain/visuals";
+import { AssetPicker } from "../../components/panel/media";
+import type { AssetPurpose, PujaConfig } from "../../../../src/domain/admin";
 import { LocalizedInput, localizedOf } from "../../components/panel/fields";
 import { NumberField, SelectField, SwitchField, useDeityOptions } from "../../components/panel/inputs";
 import type { ConfigId } from "../../panelApi";
@@ -270,6 +279,103 @@ const pujaDefaults = (): PujaConfig => ({
   ),
 });
 
+// ---- Prayer & Jaap visuals (D-057) ------------------------------------------------
+
+type Slot = { id: string; label: string; hint?: string; purpose?: AssetPurpose };
+
+// A grid of image slots for one group of the config; an empty slot keeps the
+// app's own drawing.
+function SlotGrid({
+  slots,
+  purpose,
+  value,
+  onChange,
+}: {
+  slots: Slot[];
+  purpose: AssetPurpose;
+  value: Partial<Record<string, VisualArt>>;
+  onChange: (value: Partial<Record<string, VisualArt>>) => void;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {slots.map((slot) => (
+        <div key={slot.id} className="space-y-2 rounded-xl border p-3">
+          <div>
+            <p className="font-medium">{slot.label}</p>
+            {slot.hint && <p className="text-xs text-muted-foreground">{slot.hint}</p>}
+          </div>
+          <AssetPicker
+            purpose={slot.purpose ?? purpose}
+            label="Image"
+            value={value[slot.id] ?? null}
+            onChange={(art) => {
+              const next = { ...value };
+              if (art) next[slot.id] = art;
+              else delete next[slot.id];
+              onChange(next);
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const sceneSlots: (Slot & { id: SceneSlot; purpose: AssetPurpose })[] = [
+  { id: "prayerBackground", purpose: "background", label: "Prayer background", hint: "Full-screen parchment behind the temple. Portrait 1080 × 2400; keep the middle calm, decoration at the edges." },
+  { id: "jaapBackground", purpose: "background", label: "Jaap background", hint: "Full-screen ground behind the mala. Portrait 1080 × 2400." },
+  { id: "toran", purpose: "decor", label: "Toran (top garland)", hint: "Marigold garland across the top of both screens. Transparent PNG, wide, about 1080 × 240." },
+  { id: "divider", purpose: "decor", label: "Divider", hint: "The small ornament under headings. Transparent PNG, about 520 × 44." },
+];
+
+function VisualsEditor({ value: c, onChange }: { value: VisualsConfig; onChange: (value: VisualsConfig) => void }) {
+  const tile = "Transparent PNG, square, at least 512 × 512.";
+  return (
+    <>
+      <Section title="Backgrounds and decoration" description="What the Prayer and Jaap screens are drawn on. Leave a slot empty to keep the app's own drawing.">
+        <SlotGrid
+          slots={sceneSlots}
+          purpose="decor"
+          value={c.scenes}
+          onChange={(scenes) => onChange({ ...c, scenes })}
+        />
+      </Section>
+      <Section title="Offering tray" description={`The eight tiles under "Choose an offering". ${tile}`}>
+        <SlotGrid
+          slots={trayItems.map((id) => ({ id, label: `${trayLabels[id].en} · ${trayLabels[id].hi}`, hint: trayNames[id].en }))}
+          purpose="offering"
+          value={c.tray}
+          onChange={(tray) => onChange({ ...c, tray })}
+        />
+      </Section>
+      <Section title="Flowers" description={`Shown in the flower drawer and falling at the deity's feet. Only the flowers that suit a deity appear for it (Puja offerings). ${tile}`}>
+        <SlotGrid
+          slots={flowerKinds.map((id) => ({ id, label: `${flowerNames[id].en} · ${flowerNames[id].hi}` }))}
+          purpose="offering"
+          value={c.flowers}
+          onChange={(flowers) => onChange({ ...c, flowers })}
+        />
+      </Section>
+      <Section title="Garlands" description="Hung over the deity. Transparent PNG, a U-shaped garland about 600 × 420.">
+        <SlotGrid
+          slots={garlandKinds.map((id) => ({ id, label: `${garlandNames[id].en} · ${garlandNames[id].hi}` }))}
+          purpose="offering"
+          value={c.garlands}
+          onChange={(garlands) => onChange({ ...c, garlands })}
+        />
+      </Section>
+      <Section title="Bhog" description={`Shown in the bhog drawer and on the altar plate. ${tile}`}>
+        <SlotGrid
+          slots={bhogKinds.map((id) => ({ id, label: `${bhogNames[id].en} · ${bhogNames[id].hi}` }))}
+          purpose="offering"
+          value={c.bhog}
+          onChange={(bhog) => onChange({ ...c, bhog })}
+        />
+      </Section>
+    </>
+  );
+}
+
 export const configEditors: Record<ConfigId, Editor> = {
   gamification: {
     title: "XP & levels",
@@ -301,5 +407,12 @@ export const configEditors: Record<ConfigId, Editor> = {
     defaults: pujaDefaults,
     normalize: (data) => ({ ...pujaDefaults(), ...(data as object) }),
     Editor: PujaEditor as Editor["Editor"],
+  },
+  visuals: {
+    title: "Prayer & Jaap visuals",
+    description: "Images for the Prayer and Jaap screens: backgrounds, the toran, the offering tray, flowers, garlands and bhog. Temples and jaap emblems are set on each deity (Deities). Saved images appear in the app on its next start.",
+    defaults: emptyVisualsConfig,
+    normalize: (data) => ({ ...emptyVisualsConfig(), ...(data as object) }),
+    Editor: VisualsEditor as Editor["Editor"],
   },
 };

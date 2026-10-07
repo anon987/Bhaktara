@@ -81,6 +81,8 @@ type DeityForm = {
   isMandirEnabled: boolean;
   sortOrder: number;
   mandirArt: PickedArt | null;
+  shrineArt: PickedArt | null;
+  jaapEmblem: PickedArt | null;
 };
 const deity: KindDef<DeityForm> = {
   kind: "deity",
@@ -88,7 +90,7 @@ const deity: KindDef<DeityForm> = {
   singular: "deity",
   description: "Deities shown in Explore, Jaap, the puja and the Mandir. Active deities need Mandir art.",
   icon: Sparkles,
-  empty: () => ({ name: emptyLocalized(), description: emptyLocalized(), aliases: "", isActive: false, isMandirEnabled: true, sortOrder: 0, mandirArt: null }),
+  empty: () => ({ name: emptyLocalized(), description: emptyLocalized(), aliases: "", isActive: false, isMandirEnabled: true, sortOrder: 0, mandirArt: null, shrineArt: null, jaapEmblem: null }),
   fromDoc: (d) => ({
     name: localizedOf(d.name),
     description: localizedOf(d.description),
@@ -97,6 +99,8 @@ const deity: KindDef<DeityForm> = {
     isMandirEnabled: bool(d.isMandirEnabled, true),
     sortOrder: num(d.sortOrder),
     mandirArt: artOf(d.mandirArt),
+    shrineArt: artOf(d.shrineArt),
+    jaapEmblem: artOf(d.jaapEmblem),
   }),
   toInput: (f) => ({
     name: f.name,
@@ -106,6 +110,8 @@ const deity: KindDef<DeityForm> = {
     isMandirEnabled: f.isMandirEnabled,
     sortOrder: f.sortOrder,
     ...(f.mandirArt ? { mandirArt: f.mandirArt } : {}),
+    ...(f.shrineArt ? { shrineArt: f.shrineArt } : {}),
+    ...(f.jaapEmblem ? { jaapEmblem: f.jaapEmblem } : {}),
   }),
   row: (d) => ({
     title: localizedOf(d.name).en || "Untitled",
@@ -126,6 +132,20 @@ const deity: KindDef<DeityForm> = {
       <div className="space-y-2">
         <Label>Mandir art</Label>
         <AssetPicker purpose="deity" label="Art" value={f.mandirArt} onChange={(mandirArt) => set({ ...f, mandirArt })} />
+      </div>
+      <div className="space-y-2">
+        <Label>Prayer temple</Label>
+        <AssetPicker purpose="temple" label="Temple" value={f.shrineArt} onChange={(shrineArt) => set({ ...f, shrineArt })} />
+        <p className="text-xs text-muted-foreground">
+          The whole temple painted with the deity inside, shown on the Prayer screen. Portrait, about 5 : 6 (for example 1500 × 1800), the deity centred and the altar along the bottom edge; a PNG with a transparent background blends best. Empty: the app draws a marble temple around the Mandir art.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label>Jaap emblem</Label>
+        <AssetPicker purpose="decor" label="Emblem" value={f.jaapEmblem} onChange={(jaapEmblem) => set({ ...f, jaapEmblem })} />
+        <p className="text-xs text-muted-foreground">
+          The symbol above the mantra on the Jaap screen (Krishna&apos;s flute, Shiva&apos;s trishul…). Transparent PNG, wide, about 5 : 2. Empty: the app draws one.
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <SwitchField id="deity-active" label="Active" description="Shown in the app" checked={f.isActive} onChange={(isActive) => set({ ...f, isActive })} />

@@ -9,6 +9,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { Check } from "lucide-react-native";
+import { Txt } from "../../../components/ui";
 import { useReducedMotion } from "../../../components/useReducedMotion";
 import { Language } from "../../../i18n/strings";
 import {
@@ -20,9 +22,12 @@ import {
   garlandNames,
   TrayItem,
   trayItems,
+  trayLabels,
   trayNames,
 } from "../../../domain/puja";
-import { sanctum } from "../../../theme/tokens";
+import { noVisuals, Visuals } from "../../../domain/visuals";
+import { shrine } from "../../../theme/tokens";
+import { SlotImage } from "../shrine/Ornaments";
 import { Bhog, Flower, Garland } from "./OfferingArt";
 import { TrayIcon } from "./TrayIcons";
 
@@ -30,8 +35,11 @@ export type Drawer =
   | { item: "pushp"; flowers: FlowerKind[]; garland: GarlandKind }
   | { item: "naivedya"; bhog: BhogKind[] };
 
-// The puja tray (D-054): every item is an animated icon, no text. The next
-// item in the traditional order glows; any item can be used at any time.
+// The offering tray (D-054, D-057): eight labelled tiles in two rows. The
+// next item in the traditional order glows; any item can be used at any
+// time; offered items turn saffron with a tick. Flowers and bhog open a
+// drawer of what suits the deity. Images from the admin panel replace the
+// drawn icons.
 export function PujaTray({
   language,
   done,
@@ -39,6 +47,7 @@ export function PujaTray({
   lit,
   tapKeys,
   drawer,
+  visuals = noVisuals,
   onItem,
   onFlower,
   onGarland,
@@ -50,6 +59,7 @@ export function PujaTray({
   lit: ReadonlySet<TrayItem>;
   tapKeys: Partial<Record<TrayItem, number>>;
   drawer: Drawer | null;
+  visuals?: Visuals;
   onItem: (item: TrayItem) => void;
   onFlower: (kind: FlowerKind) => void;
   onGarland: (kind: GarlandKind) => void;
@@ -67,14 +77,23 @@ export function PujaTray({
                   label={flowerNames[kind][language]}
                   onPress={() => onFlower(kind)}
                 >
-                  <Flower kind={kind} size={44} />
+                  <Flower
+                    kind={kind}
+                    size={38}
+                    imageKey={visuals.flowers[kind]}
+                  />
                 </Choice>
               ))}
               <Choice
                 label={garlandNames[drawer.garland][language]}
                 onPress={() => onGarland(drawer.garland)}
               >
-                <Garland kind={drawer.garland} width={52} height={40} />
+                <Garland
+                  kind={drawer.garland}
+                  width={46}
+                  height={36}
+                  imageKey={visuals.garlands[drawer.garland]}
+                />
               </Choice>
             </>
           ) : (
@@ -84,23 +103,22 @@ export function PujaTray({
                 label={bhogNames[kind][language]}
                 onPress={() => onBhog(kind)}
               >
-                <Bhog kind={kind} size={46} />
+                <Bhog kind={kind} size={40} imageKey={visuals.bhog[kind]} />
               </Choice>
             ))
           )}
         </View>
       )}
-      <LinearGradient
-        colors={[sanctum.brassLight, sanctum.brass, sanctum.brassDeep]}
-        style={styles.tray}
-      >
+      <View style={styles.tray}>
         {[trayItems.slice(0, 4), trayItems.slice(4)].map((row, r) => (
           <View key={r} style={styles.row}>
             {row.map((item) => (
               <TrayButton
                 key={item}
                 item={item}
-                label={trayNames[item][language]}
+                label={trayLabels[item][language]}
+                hint={trayNames[item][language]}
+                imageKey={visuals.tray[item]}
                 done={done.has(item)}
                 glowing={next === item}
                 lit={lit.has(item)}
@@ -111,7 +129,7 @@ export function PujaTray({
             ))}
           </View>
         ))}
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -119,6 +137,8 @@ export function PujaTray({
 function TrayButton({
   item,
   label,
+  hint,
+  imageKey,
   done,
   glowing,
   lit,
@@ -128,6 +148,8 @@ function TrayButton({
 }: {
   item: TrayItem;
   label: string;
+  hint: string;
+  imageKey?: string;
   done: boolean;
   glowing: boolean;
   lit: boolean;
@@ -157,7 +179,6 @@ function TrayButton({
 
   const ring = useAnimatedStyle(() => ({
     opacity: glowing ? 0.35 + pulse.value * 0.65 : 0,
-    transform: [{ scale: 1 + pulse.value * 0.08 }],
   }));
   // Each item answers a tap in its own way: the bell swings, the kalash
   // tips to pour, the shankh lifts, the others bow slightly.
@@ -171,30 +192,53 @@ function TrayButton({
     if (item === "shankh")
       return {
         transform: [
-          { translateY: -Math.sin(t * Math.PI) * 14 },
+          { translateY: -Math.sin(t * Math.PI) * 10 },
           { rotate: `${Math.sin(t * Math.PI) * -20}deg` },
         ],
       };
     return { transform: [{ scale: 1 + Math.sin(t * Math.PI) * 0.18 }] };
   });
 
+  const highlighted = done || selected;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={hint}
       accessibilityState={{ selected, checked: done }}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.cup,
-        selected && styles.cupSelected,
-        pressed && { opacity: 0.85 },
+        styles.tile,
+        highlighted && styles.tileDone,
+        pressed && { transform: [{ scale: 0.97 }] },
       ]}
     >
+      {highlighted && (
+        <LinearGradient
+          colors={["#FFF1D2", shrine.saffronLight]}
+          style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+        />
+      )}
       <Animated.View pointerEvents="none" style={[styles.glow, ring]} />
-      <Animated.View style={icon}>
-        <TrayIcon item={item} size={50} lit={lit} />
+      <Animated.View style={[styles.icon, icon]}>
+        <SlotImage
+          assetKey={imageKey}
+          style={{ width: 58, height: 58 }}
+          fallback={<TrayIcon item={item} size={52} lit={lit} />}
+        />
       </Animated.View>
-      {done && <View style={styles.doneDot} />}
+      <Txt
+        bold
+        size={15}
+        numberOfLines={1}
+        style={{ color: shrine.maroon, textAlign: "center", lineHeight: 20 }}
+      >
+        {label}
+      </Txt>
+      {done && (
+        <View style={styles.tick}>
+          <Check size={14} color="#FFFFFF" strokeWidth={3} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -220,66 +264,97 @@ function Choice({
       style={styles.choice}
     >
       <Animated.View style={style}>{children}</Animated.View>
+      <Txt
+        size={11}
+        numberOfLines={1}
+        style={{ color: shrine.ink, lineHeight: 15 }}
+      >
+        {label}
+      </Txt>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
+  // Floats over the bottom of the scene so the temple keeps its size.
   drawer: {
+    position: "absolute",
+    bottom: "100%",
+    left: 0,
+    right: 0,
+    marginBottom: 8,
+    zIndex: 5,
+    elevation: 6,
+    shadowColor: shrine.goldDeep,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     padding: 8,
-    borderRadius: 24,
-    backgroundColor: "rgba(63, 26, 20, 0.92)",
+    borderRadius: 22,
+    backgroundColor: shrine.ivory,
     borderWidth: 1,
-    borderColor: "rgba(243, 213, 138, 0.4)",
+    borderColor: shrine.line,
   },
   choice: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 58,
+    paddingVertical: 6,
+    borderRadius: 16,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(243, 213, 138, 0.12)",
+    gap: 2,
+    backgroundColor: shrine.card,
+    borderWidth: 1,
+    borderColor: shrine.lineSoft,
   },
   tray: {
-    borderRadius: 28,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    gap: 6,
+    borderRadius: 24,
+    padding: 10,
+    gap: 10,
+    backgroundColor: "rgba(255, 246, 230, 0.9)",
     borderWidth: 1,
-    borderColor: sanctum.brassLight,
+    borderColor: shrine.line,
   },
-  row: { flexDirection: "row", justifyContent: "space-around" },
-  cup: {
-    width: 72,
-    height: 68,
-    borderRadius: 22,
+  row: { flexDirection: "row", gap: 10 },
+  tile: {
+    flex: 1,
+    minHeight: 96,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(110, 42, 28, 0.55)",
+    paddingTop: 6,
+    paddingBottom: 8,
+    paddingHorizontal: 2,
+    backgroundColor: shrine.card,
+    borderWidth: 1,
+    borderColor: shrine.line,
   },
-  cupSelected: { backgroundColor: "rgba(110, 42, 28, 0.9)" },
+  tileDone: { borderColor: shrine.saffron, borderWidth: 1.5 },
+  icon: { height: 60, alignItems: "center", justifyContent: "center" },
   glow: {
     position: "absolute",
     top: -3,
     left: -3,
     right: -3,
     bottom: -3,
-    borderRadius: 24,
-    borderWidth: 3,
-    borderColor: sanctum.ghee,
+    borderRadius: 18,
+    borderWidth: 2.5,
+    borderColor: shrine.saffron,
   },
-  doneDot: {
+  tick: {
     position: "absolute",
-    right: 6,
-    top: 6,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: sanctum.ghee,
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: shrine.saffronDeep,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
 });

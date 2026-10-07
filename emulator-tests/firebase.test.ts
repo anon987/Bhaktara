@@ -159,6 +159,22 @@ test("progression and sensitive documents reject direct client writes and cross-
   await assertFails(getDoc(doc(db, "accountMerges", "alice")));
 });
 
+test("the app reads the Prayer and Jaap visuals, never the staff configs", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "appConfig", "visuals"), {
+      version: 1,
+      scenes: {},
+      tray: {},
+      flowers: {},
+      garlands: {},
+      bhog: {},
+    });
+  });
+  await assertSucceeds(getDoc(doc(guest(), "appConfig", "visuals")));
+  await assertFails(getDoc(doc(guest(), "appConfig", "puja")));
+  await assertFails(setDoc(doc(guest(), "appConfig", "visuals"), { version: 9 }));
+});
+
 test("favorites must belong to the caller and match published content", async () => {
   const value = {
     contentId: "bhajan-1",

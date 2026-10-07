@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Repeat } from "lucide-react-native";
+import { ChevronDown, ChevronUp, RotateCcw } from "lucide-react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
-import { Txt } from "../../components/ui";
 import {
   BhogKind,
   FlowerKind,
@@ -14,17 +13,20 @@ import {
   trayItems,
 } from "../../domain/puja";
 import { requiredPrayerIds } from "../../domain/progression";
-import { sanctum } from "../../theme/tokens";
+import { shrine } from "../../theme/tokens";
+import { noVisuals } from "../../domain/visuals";
 import { usePlayer } from "../player/PlayerProvider";
 import { PetalShower } from "./art/PetalShower";
 import { beadTick, malaPulse, useSound } from "./feedback";
 import { useProgression } from "./ProgressionProvider";
 import { HandItem, PlacedFlower, PujaScene } from "./puja/PujaScene";
 import { Drawer, PujaTray } from "./puja/PujaTray";
-import { EarningNote, SanctumPage } from "./Sanctum";
+import { EarningNote } from "./Sanctum";
+import { FlankLines, LotusDivider, SerifText } from "./shrine/Ornaments";
+import { ShrinePage } from "./shrine/ShrinePage";
 
 // Prarthana as a puja before the chosen deity (D-053), performed from a tray
-// of animated offerings with no instructions on screen (D-054). The next
+// of animated offerings (D-054) in a sunlit marble shrine (D-057). The next
 // traditional item glows; everything can be used at any time and as often
 // as the heart wishes. The day's prayer is recorded once the required
 // offerings (flowers, dhoop, bhog, aarti, shankh) have all been made.
@@ -38,6 +40,7 @@ export function PrayerScreen({
   const deities = catalog?.deities ?? [];
   const deity = deities.find((item) => item.id === local.deityId) ?? deities[0];
   const offerings = offeringsFor(deity?.id);
+  const visuals = catalog?.visuals ?? noVisuals;
   const required = requiredPrayerIds(sadhana) as TrayItem[];
 
   const [stage, setStage] = useState({ width: 0, height: 0 });
@@ -144,10 +147,9 @@ export function PrayerScreen({
     }
   };
 
-  const changeDeity = (id: string) => {
-    update((state) => ({ ...state, deityId: id }));
-    setChoosing(false);
-    // A different deity takes different offerings: begin afresh.
+  // Clear the altar and start the offerings again (the day's prayer, once
+  // recorded, stays recorded).
+  const clearAltar = () => {
     setDone(new Set());
     setFlowers([]);
     setGarland(null);
@@ -159,6 +161,12 @@ export function PrayerScreen({
     doneRef.current = new Set();
     recordedRef.current = false;
   };
+  const changeDeity = (id: string) => {
+    update((state) => ({ ...state, deityId: id }));
+    setChoosing(false);
+    // A different deity takes different offerings: begin afresh.
+    clearAltar();
+  };
 
   const next = trayItems.find((item) => !done.has(item)) ?? null;
   const lit = new Set<TrayItem>();
@@ -166,52 +174,58 @@ export function PrayerScreen({
   if (hand === "deep" || placed.has("deep")) lit.add("deep");
 
   return (
-    <SanctumPage
+    <ShrinePage
       title={t("prarthanaShort")}
-      subtitle={deity?.name[local.language]}
+      background="prayerBackground"
       onBack={navigation.goBack}
     >
       <View style={styles.body}>
-        {deities.length > 1 && (
+        {deity && (
           <View style={styles.deityBar}>
-            {choosing && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chips}
-              >
-                {deities.map((item) => {
-                  const selected = item.id === deity?.id;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      onPress={() => changeDeity(item.id)}
-                      style={[styles.chip, selected && styles.chipSelected]}
-                    >
-                      <Txt
-                        bold
-                        size={17}
-                        style={{
-                          color: selected ? sanctum.night : sanctum.text,
-                        }}
-                      >
-                        {item.name[local.language]}
-                      </Txt>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t("pujaChoose")}
+              accessibilityLabel={`${t("chooseDeity")}: ${deity.name[local.language]}`}
+              accessibilityState={{ expanded: choosing }}
+              disabled={deities.length < 2}
               onPress={() => setChoosing((value) => !value)}
-              style={styles.change}
+              style={({ pressed }) => [
+                styles.picker,
+                pressed && { opacity: 0.85 },
+              ]}
             >
-              <Repeat size={24} color={sanctum.brassLight} />
+              <SerifText size={20}>{deity.name[local.language]}</SerifText>
+              {deities.length > 1 &&
+                (choosing ? (
+                  <ChevronUp size={20} color={shrine.maroon} />
+                ) : (
+                  <ChevronDown size={20} color={shrine.maroon} />
+                ))}
             </Pressable>
+            {choosing && (
+              <View style={styles.menu} accessibilityRole="menu">
+                <ScrollView style={{ maxHeight: 280 }}>
+                  {deities.map((item) => {
+                    const selected = item.id === deity.id;
+                    return (
+                      <Pressable
+                        key={item.id}
+                        accessibilityRole="menuitem"
+                        accessibilityState={{ selected }}
+                        onPress={() => changeDeity(item.id)}
+                        style={[
+                          styles.menuItem,
+                          selected && styles.menuItemSelected,
+                        ]}
+                      >
+                        <SerifText size={18} bold={selected}>
+                          {item.name[local.language]}
+                        </SerifText>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </View>
         )}
         <View
@@ -224,6 +238,8 @@ export function PrayerScreen({
               width={stage.width}
               height={stage.height}
               artKey={deity.artKey}
+              shrineKey={deity.shrineKey}
+              visuals={visuals}
               offerings={offerings}
               flowers={flowers}
               garland={garland}
@@ -244,6 +260,11 @@ export function PrayerScreen({
             />
           )}
         </View>
+        <EarningNote light />
+        <LotusDivider width={260} assetKey={visuals.scenes.divider} />
+        <SerifText size={22} accessibilityRole="header">
+          {t("chooseOffering")}
+        </SerifText>
         <PujaTray
           language={local.language}
           done={done}
@@ -251,6 +272,7 @@ export function PrayerScreen({
           lit={lit}
           tapKeys={tapKeys}
           drawer={drawer}
+          visuals={visuals}
           onItem={onItem}
           onFlower={(kind: FlowerKind) => {
             beadTick();
@@ -272,49 +294,63 @@ export function PrayerScreen({
             mark("naivedya");
           }}
         />
-        <EarningNote />
+        <FlankLines>
+          <Pressable
+            accessibilityRole="button"
+            onPress={clearAltar}
+            hitSlop={10}
+            style={({ pressed }) => [styles.reset, pressed && { opacity: 0.6 }]}
+          >
+            <RotateCcw size={20} color={shrine.maroon} />
+            <SerifText size={17} bold={false}>
+              {t("resetOfferings")}
+            </SerifText>
+          </Pressable>
+        </FlankLines>
       </View>
       <PetalShower trigger={petals} count={30} />
-    </SanctumPage>
+    </ShrinePage>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, gap: 8, paddingHorizontal: 14, paddingBottom: 12 },
-  deityBar: {
-    position: "absolute",
-    top: -62,
-    right: 14,
-    left: 90,
-    zIndex: 2,
+  body: { flex: 1, gap: 6, paddingHorizontal: 14, paddingBottom: 10 },
+  deityBar: { alignItems: "center", zIndex: 3, marginTop: 4 },
+  picker: {
+    minHeight: 50,
+    minWidth: 220,
+    paddingHorizontal: 22,
+    borderRadius: 25,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 8,
-  },
-  chips: { gap: 8, paddingVertical: 2 },
-  chip: {
-    minHeight: 46,
-    paddingHorizontal: 16,
-    borderRadius: 23,
     justifyContent: "center",
+    gap: 10,
+    backgroundColor: shrine.ivory,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  menu: {
+    position: "absolute",
+    top: 56,
+    minWidth: 220,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: shrine.ivory,
     borderWidth: 1,
-    borderColor: "rgba(243, 213, 138, 0.45)",
-    backgroundColor: "rgba(30, 17, 13, 0.92)",
+    borderColor: shrine.line,
+    shadowColor: shrine.goldDeep,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
-  chipSelected: {
-    backgroundColor: sanctum.brass,
-    borderColor: sanctum.brassLight,
-  },
-  change: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(243, 213, 138, 0.5)",
-    backgroundColor: "rgba(30, 17, 13, 0.6)",
-  },
+  menuItem: { minHeight: 48, justifyContent: "center", paddingHorizontal: 20 },
+  menuItemSelected: { backgroundColor: "rgba(240, 162, 59, 0.18)" },
   stage: { flex: 1, overflow: "hidden" },
+  reset: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 44,
+  },
 });

@@ -120,7 +120,7 @@ export type UploadSlot = {
   expiresAt: string;
 };
 
-export type ConfigId = "gamification" | "sadhana" | "puja";
+export type ConfigId = "gamification" | "sadhana" | "puja" | "visuals";
 export type ConfigVersion = { version: number; savedBy: string; savedAt: string | null; action: string };
 
 export type HomeLanguage = "hi" | "en";

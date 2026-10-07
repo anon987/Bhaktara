@@ -32,6 +32,7 @@ export const pageNames = [
   "challenges",
   "badges",
   "puja",
+  "visuals",
   "sadhana-config",
   "gamification-config",
   "festivals",

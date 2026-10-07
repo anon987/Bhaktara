@@ -27,7 +27,12 @@ const entry = (hi: string, en: string, mala: MalaKind): DeityMantra => ({
 
 const mantras: Record<string, DeityMantra> = {
   shiva: entry("ॐ नमः शिवाय", "Om Namah Shivaya", "rudraksha"),
-  krishna: entry("हरे कृष्ण हरे कृष्ण", "Hare Krishna Hare Krishna", "tulsi"),
+  // The Maha-mantra, one line per half-verse.
+  krishna: entry(
+    "हरे कृष्ण हरे कृष्ण\nकृष्ण कृष्ण हरे हरे\nहरे राम हरे राम\nराम राम हरे हरे",
+    "Hare Krishna Hare Krishna\nKrishna Krishna Hare Hare\nHare Rama Hare Rama\nRama Rama Hare Hare",
+    "tulsi",
+  ),
   ram: entry(
     "श्री राम जय राम जय जय राम",
     "Shri Ram Jai Ram Jai Jai Ram",

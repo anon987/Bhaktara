@@ -23,6 +23,7 @@ import {
   FlowerKind,
   GarlandKind,
 } from "../../../domain/puja";
+import { noVisuals, Visuals } from "../../../domain/visuals";
 import { sanctum } from "../../../theme/tokens";
 import { Diya } from "../art/Diya";
 import { SANCTUM, SHRINE_VIEW, Shrine, deityCentre } from "../art/Shrine";
@@ -74,6 +75,8 @@ export function PujaScene({
   width,
   height,
   artKey,
+  shrineKey,
+  visuals = noVisuals,
   offerings,
   flowers,
   garland,
@@ -91,6 +94,8 @@ export function PujaScene({
   width: number;
   height: number;
   artKey: string;
+  shrineKey?: string;
+  visuals?: Visuals;
   offerings: DeityOfferings;
   flowers: PlacedFlower[];
   garland: GarlandKind | null;
@@ -203,8 +208,9 @@ export function PujaScene({
           templeStyle,
         ]}
       >
-        <Shrine size={L.size} artKey={artKey} glow={glow}>
-          {tilak && (
+        <Shrine size={L.size} artKey={artKey} imageKey={shrineKey} glow={glow}>
+          {/* A painted temple's deity has its own tilak. */}
+          {tilak && !shrineKey && (
             <Pop
               style={{
                 position: "absolute",
@@ -228,6 +234,7 @@ export function PujaScene({
                 kind={garland}
                 width={(SANCTUM.width + 20) * L.s}
                 height={SANCTUM.height * 0.62 * L.s}
+                imageKey={visuals.garlands[garland]}
               />
             </Drop>
           )}
@@ -300,7 +307,11 @@ export function PujaScene({
             <View style={{ flexDirection: "row" }}>
               {bhog.slice(-3).map((kind) => (
                 <Pop key={kind}>
-                  <Bhog kind={kind} size={26 * L.s} />
+                  <Bhog
+                    kind={kind}
+                    size={26 * L.s}
+                    imageKey={visuals.bhog[kind]}
+                  />
                 </Pop>
               ))}
             </View>
@@ -308,7 +319,11 @@ export function PujaScene({
               <View
                 style={{ position: "absolute", top: -6 * L.s, right: 2 * L.s }}
               >
-                <Flower kind="tulsi" size={16 * L.s} />
+                <Flower
+                  kind="tulsi"
+                  size={16 * L.s}
+                  imageKey={visuals.flowers.tulsi}
+                />
               </View>
             )}
           </View>
@@ -327,7 +342,11 @@ export function PujaScene({
                 top: L.flowers.y + p.dy * L.s - 18 * L.s,
               }}
             >
-              <Flower kind={flower.kind} size={22 * L.s} />
+              <Flower
+                kind={flower.kind}
+                size={22 * L.s}
+                imageKey={visuals.flowers[flower.kind]}
+              />
             </Drop>
           );
         })}

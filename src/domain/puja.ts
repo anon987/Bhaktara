@@ -147,8 +147,19 @@ export function offeringsFor(
   return { ...base, flowers: base.flowers.filter((f) => !banned.includes(f)) };
 }
 
-// Names for screen readers (the puja screen shows no text, D-054).
+// Names for screen readers.
 type Name = { hi: string; en: string };
+// Short labels under the tray tiles (D-057).
+export const trayLabels: Record<TrayItem, Name> = {
+  kalash: { hi: "कलश", en: "Kalash" },
+  ghanti: { hi: "घंटी", en: "Bell" },
+  chandan: { hi: "तिलक", en: "Tilak" },
+  pushp: { hi: "फूल", en: "Flowers" },
+  dhoop: { hi: "धूप", en: "Incense" },
+  naivedya: { hi: "प्रसाद", en: "Prasad" },
+  deep: { hi: "दीया", en: "Diya" },
+  shankh: { hi: "शंख", en: "Shankh" },
+};
 export const trayNames: Record<TrayItem, Name> = {
   kalash: { hi: "कलश जल छिड़कें", en: "Sprinkle water from the kalash" },
   ghanti: { hi: "घंटी बजाएँ", en: "Ring the bell" },

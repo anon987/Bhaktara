@@ -25,6 +25,7 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 | Banners | Banner manager with the image picker; internal targets only (D-015) | SA, CA | `createBanner`, `updateBanner`, `deleteBanner` |
 | Collections, Deities, Categories, Challenges, Badges, Festivals, Mandir offerings | Card grid, search, live/off filter, side-sheet editor; challenges show an 8-week coverage strip | read: SA, CA, EDITOR, ANALYST; write: SA, CA | `saveCatalogItem`, `deleteCatalogItem` |
 | Puja offerings, Sadhana plan, XP & levels | Versioned `appConfig/puja`, `appConfig/sadhana`, `appConfig/gamification` with history and restore | read: SA, CA, ANALYST; write: SA | `saveConfig`, `rollbackConfig` |
+| Prayer & Jaap visuals | Versioned `appConfig/visuals` (D-057): backgrounds, toran, divider and images for the tray, flowers, garlands and bhog; the app reads it. Temples (`shrineArt`) and jaap emblems (`jaapEmblem`) are set on each deity | read: SA, CA, ANALYST; write: SA | `saveConfig`, `rollbackConfig` |
 | Users | Search by user ID, email or display-name prefix; filters (signed in, guests, flagged, disabled); detail with account facts, practice, 42-day grid, badges and notes | read and moderate: SA, MODERATOR; disable/delete: SA | `searchUsers`, `getUserDetail`, `moderateUser`, `setUserDisabled`, `deleteUserAccount` |
 | Staff roles | Staff accounts and roles; grant or remove a role | SA | `listAdmins`, `setAdminRole` |
 | Audit log | Every admin change, newest first | SA, CA | Firestore reads |

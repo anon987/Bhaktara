@@ -18,7 +18,16 @@ import { Txt } from "../../components/ui";
 import { useReducedMotion } from "../../components/useReducedMotion";
 import { formatTime, remainingAt } from "../../domain/practice";
 import { mantraFor } from "../../domain/mantras";
-import { sanctum } from "../../theme/tokens";
+import { sanctum, shrine } from "../../theme/tokens";
+import { Flower2, RotateCcw } from "lucide-react-native";
+import { DeityEmblem } from "./art/Emblems";
+import {
+  FlankLines,
+  LotusDivider,
+  SerifText,
+  SlotImage,
+} from "./shrine/Ornaments";
+import { PracticeToggles, ShrinePage } from "./shrine/ShrinePage";
 import { Diya } from "./art/Diya";
 import { BEADS, MalaRing } from "./art/MalaRing";
 import { PetalShower } from "./art/PetalShower";
@@ -28,6 +37,8 @@ import { BrassButton, EarningNote, SanctumPage } from "./Sanctum";
 
 // ---- Jaap: a 108-bead mala ------------------------------------------------
 
+// D-057: on parchment under a marigold toran, the deity's emblem and full
+// mantra above a polished wooden mala whose chanted beads turn gold.
 export function JaapScreen({
   navigation,
 }: NativeStackScreenProps<RootParams, "Jaap">) {
@@ -37,11 +48,13 @@ export function JaapScreen({
   const ring = useBell();
   const reduced = useReducedMotion();
   const { width, height } = useWindowDimensions();
-  const deityId = local.deityId ?? catalog?.deities[0]?.id ?? null;
+  const deities = catalog?.deities ?? [];
+  const deityId = local.deityId ?? deities[0]?.id ?? null;
+  const deity = deities.find((item) => item.id === deityId);
   const devotion = mantraFor(deityId);
   const beads = jaapCount % BEADS;
   const malas = Math.floor(jaapCount / BEADS);
-  const size = Math.min(width - 24, height * 0.46, 380);
+  const size = Math.min(width - 40, height * 0.38, 360);
 
   // Local celebration the moment a mala completes (online or not).
   const [completed, setCompleted] = useState(0);
@@ -69,127 +82,156 @@ export function JaapScreen({
   }, [malaBlessing, float]);
 
   return (
-    <SanctumPage
+    <ShrinePage
       title={t("jaapShort")}
-      subtitle={`${devotion.malaName[local.language]} · ${t("tapAnywhere")}`}
+      subtitle={t("jaapTagline")}
+      background="jaapBackground"
       onBack={navigation.goBack}
     >
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }}
-        contentContainerStyle={styles.chips}
-        accessibilityLabel={t("chantFor")}
+        contentContainerStyle={styles.jaapBody}
+        showsVerticalScrollIndicator={false}
       >
-        {catalog?.deities.map((item) => {
-          const selected = item.id === deityId;
-          return (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              onPress={() =>
-                update((state) => ({ ...state, deityId: item.id }))
-              }
-              style={[styles.chip, selected && styles.chipSelected]}
-            >
-              <Txt
-                bold
-                size={17}
-                style={{ color: selected ? sanctum.night : sanctum.text }}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0 }}
+          contentContainerStyle={styles.chips}
+          accessibilityLabel={t("chantFor")}
+        >
+          {deities.map((item) => {
+            const selected = item.id === deityId;
+            return (
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() =>
+                  update((state) => ({ ...state, deityId: item.id }))
+                }
+                style={[styles.chip, selected && styles.chipSelected]}
               >
-                {item.name[local.language]}
-              </Txt>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      {/* The whole middle of the screen is one large tap target (C-001: no
-          ads may ever sit next to it). */}
-      <Pressable
-        testID="jaap-counter"
-        accessibilityRole="button"
-        accessibilityLabel={`${t("tapAnywhere")}. ${beads} / ${BEADS}`}
-        onPress={() => {
-          beadTick();
-          tapBead();
-        }}
-        style={styles.tapArea}
-      >
-        <View style={{ width: size, height: size }}>
-          <MalaRing
-            beads={beads}
-            kind={devotion.mala}
-            size={size}
-            completedKey={completed}
+                <SerifText
+                  size={18}
+                  color={selected ? shrine.maroonDeep : shrine.maroon}
+                >
+                  {item.name[local.language]}
+                </SerifText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        <View style={styles.emblem}>
+          <SlotImage
+            assetKey={deity?.emblemKey}
+            style={{ width: 200, height: 64 }}
+            fallback={<DeityEmblem deityId={deityId} height={60} />}
           />
-          <View style={styles.ringCenter} pointerEvents="none">
-            <Txt
-              bold
-              size={size > 320 ? 22 : 19}
-              style={{ color: sanctum.ghee, textAlign: "center" }}
-            >
-              {devotion.mantra[local.language]}
-            </Txt>
-            <Txt bold size={76} style={{ color: sanctum.text, lineHeight: 92 }}>
-              {beads}
-            </Txt>
-            <Txt size={16} style={{ color: sanctum.textMuted }}>
-              / {BEADS} {t("beadsLabel")}
-            </Txt>
+        </View>
+        <SerifText size={24} style={{ paddingHorizontal: 12 }}>
+          {devotion.mantra[local.language]}
+        </SerifText>
+        <LotusDivider width={260} assetKey={catalog?.visuals?.scenes.divider} />
+        {/* The mala is one large tap target (C-001: no ads may ever sit
+            next to it). */}
+        <Pressable
+          testID="jaap-counter"
+          accessibilityRole="button"
+          accessibilityLabel={`${t("tapAnywhere")}. ${beads} / ${BEADS}`}
+          onPress={() => {
+            beadTick();
+            tapBead();
+          }}
+          style={styles.tapArea}
+        >
+          <View style={{ width: size, height: size }}>
+            <MalaRing
+              beads={beads}
+              kind={devotion.mala}
+              size={size}
+              completedKey={completed}
+              tone="light"
+            />
+            <View style={styles.ringCenter} pointerEvents="none">
+              <LotusDivider width={70} />
+              <SerifText
+                size={size > 300 ? 88 : 72}
+                style={{ lineHeight: size > 300 ? 100 : 84 }}
+              >
+                {beads}
+              </SerifText>
+              <SerifText size={20} bold={false} color={shrine.maroonDeep}>
+                / {BEADS} {t("beadsLabel")}
+              </SerifText>
+              <LotusDivider width={110} />
+              <SerifText size={15} bold={false} color={shrine.inkMuted}>
+                {t("tapToCount")}
+              </SerifText>
+            </View>
+            {malaBlessing && malaBlessing.result.xpGranted > 0 && !reduced && (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.float,
+                  {
+                    opacity: float.interpolate({
+                      inputRange: [0, 0.15, 0.75, 1],
+                      outputRange: [0, 1, 1, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: float.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -size * 0.35],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Txt bold size={30} style={{ color: shrine.saffronDeep }}>
+                  +{malaBlessing.result.xpGranted} {t("points")}
+                </Txt>
+              </Animated.View>
+            )}
           </View>
-          {malaBlessing && malaBlessing.result.xpGranted > 0 && !reduced && (
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.float,
-                {
-                  opacity: float.interpolate({
-                    inputRange: [0, 0.15, 0.75, 1],
-                    outputRange: [0, 1, 1, 0],
-                  }),
-                  transform: [
-                    {
-                      translateY: float.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -size * 0.35],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Txt bold size={30} style={{ color: sanctum.brassLight }}>
-                +{malaBlessing.result.xpGranted} {t("points")}
-              </Txt>
-            </Animated.View>
-          )}
-        </View>
-        <View style={styles.malaRow}>
-          {Array.from({ length: Math.min(malas, 8) }, (_, i) => (
-            <View key={i} style={styles.malaDot} />
-          ))}
-          <Txt bold size={20} style={{ color: sanctum.text }}>
-            {malas} {t("malasToday")}
-          </Txt>
-        </View>
-      </Pressable>
-      <EarningNote />
-      <View style={styles.footer}>
-        <BrassButton
-          quiet
-          label={t("restartMala")}
-          disabled={beads === 0}
-          onPress={() =>
-            showDialog(t("restartQuestion"), t("restartHint"), [
-              { text: t("cancel"), style: "cancel" },
-              { text: t("restartMala"), onPress: resetMala },
-            ])
-          }
-        />
-      </View>
+        </Pressable>
+        <FlankLines width={60}>
+          <View style={styles.malaCount}>
+            <Flower2 size={22} color={shrine.gold} />
+            <SerifText size={20}>
+              {malas} {t("malasToday")}
+            </SerifText>
+          </View>
+        </FlankLines>
+        <EarningNote light />
+        <PracticeToggles />
+        <FlankLines width={40}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: beads === 0 }}
+            disabled={beads === 0}
+            hitSlop={10}
+            onPress={() =>
+              showDialog(t("restartQuestion"), t("restartHint"), [
+                { text: t("cancel"), style: "cancel" },
+                { text: t("restartMala"), onPress: resetMala },
+              ])
+            }
+            style={({ pressed }) => [
+              styles.restart,
+              (pressed || beads === 0) && { opacity: 0.5 },
+            ]}
+          >
+            <RotateCcw size={20} color={shrine.maroon} />
+            <SerifText size={17} bold={false}>
+              {t("restartMalaShort")}
+            </SerifText>
+          </Pressable>
+        </FlankLines>
+      </ScrollView>
       <PetalShower trigger={completed} />
-    </SanctumPage>
+    </ShrinePage>
   );
 }
 
@@ -438,20 +480,33 @@ export function MeditationScreen({
 export { PrayerScreen } from "./PujaScreen";
 
 const styles = StyleSheet.create({
-  chips: { gap: 10, paddingHorizontal: 20, paddingVertical: 8 },
+  jaapBody: { gap: 8, paddingBottom: 24, alignItems: "stretch" },
+  chips: {
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   chip: {
     minHeight: 48,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     borderRadius: 24,
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(243, 213, 138, 0.45)",
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+    backgroundColor: shrine.ivory,
   },
   chipSelected: {
-    backgroundColor: sanctum.brass,
-    borderColor: sanctum.brassLight,
+    backgroundColor: shrine.saffron,
+    borderColor: shrine.saffronDeep,
   },
-  tapArea: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+  emblem: { alignItems: "center", minHeight: 64, justifyContent: "center" },
+  tapArea: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
   ringCenter: {
     position: "absolute",
     top: 0,
@@ -460,28 +515,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 60,
+    paddingHorizontal: 50,
   },
   float: {
     position: "absolute",
     alignSelf: "center",
     top: "38%",
   },
-  malaRow: {
+  malaCount: { flexDirection: "row", alignItems: "center", gap: 10 },
+  restart: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    minHeight: 36,
+    gap: 8,
+    minHeight: 44,
   },
-  malaDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: sanctum.brass,
-    borderWidth: 1,
-    borderColor: sanctum.brassLight,
-  },
-  footer: { padding: 20, paddingTop: 10 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
