@@ -1,5 +1,7 @@
 # Run Bhaktara on an Android phone
 
+> **Workstation rule (2026-10-08, see CLAUDE.md):** Gradle no longer runs on this machine. Native changes are built in GitHub Actions and installed with `scripts/deploy-to-phone.sh <branch>` (a release APK with the JS bundle embedded; it runs without Metro). The local build steps below are kept for reference on other machines.
+
 Verified on **2026-10-04** with Samsung SM_E076B (ARM64), JDK 17, and the Expo development client. This is a debug build that requires Metro; it is not a standalone release APK.
 
 ## Build

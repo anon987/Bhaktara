@@ -1,0 +1,89 @@
+# Release APK for one ABI, built on demand (scripts/deploy-to-phone.sh runs it).
+# The JS bundle is embedded, so the APK runs without Metro. Manual dispatch
+# only, to save Actions minutes.
+name: Android APK
+run-name: APK ${{ inputs.abi }} @ ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: ABI to build for
+        required: true
+        type: choice
+        default: arm64-v8a
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+          - x86_64
+          - x86
+
+concurrency:
+  group: android-apk-${{ github.ref }}-${{ inputs.abi }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ABI: ${{ inputs.abi }}
+      # Booleans only: the secrets themselves reach just the steps that write
+      # them, never npm install scripts.
+      HAS_GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+      HAS_ENV_LOCAL: ${{ secrets.ENV_LOCAL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Write google-services.json
+        if: env.HAS_GOOGLE_SERVICES == 'true'
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+
+      # The app's EXPO_PUBLIC_* settings (backend mode, Firebase web config,
+      # media CDN) are inlined into the release bundle at build time. Without
+      # them the app runs on its built-in sample data.
+      - name: Write .env.local (optional)
+        if: env.HAS_ENV_LOCAL == 'true'
+        env:
+          ENV_LOCAL: ${{ secrets.ENV_LOCAL }}
+        run: printf '%s' "$ENV_LOCAL" | base64 --decode > .env.local
+
+      - name: Check native Firebase config
+        run: |
+          if [ ! -f android/app/google-services.json ]; then
+            echo "::error::android/app/google-services.json is missing. The Google Services plugin needs it; set the GOOGLE_SERVICES_JSON secret (base64)."
+            exit 1
+          fi
+          if [ "$HAS_ENV_LOCAL" != "true" ]; then
+            echo "::warning::No ENV_LOCAL secret: this APK uses built-in sample data, not the Firebase backend."
+          fi
+
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures="$ABI" --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ inputs.abi }}-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
