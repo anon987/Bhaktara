@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ChevronLeft,
   Settings,
@@ -188,6 +189,75 @@ function SettingsPanel() {
   );
 }
 
+// The main action on the parchment screens: a saffron pill.
+export function SaffronButton({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.saffron,
+        pressed && { transform: [{ scale: 0.98 }], opacity: 0.92 },
+      ]}
+    >
+      <LinearGradient
+        colors={[shrine.saffronLight, shrine.saffron, shrine.saffronDeep]}
+        locations={[0, 0.45, 1]}
+        style={[StyleSheet.absoluteFill, { borderRadius: 32 }]}
+      />
+      <View style={styles.saffronContent}>
+        {icon}
+        <SerifText size={22} color={shrine.maroonDeep}>
+          {label}
+        </SerifText>
+      </View>
+    </Pressable>
+  );
+}
+
+// A single on/off row: icon | label | switch (Meditation's sound).
+export function SwitchRow({
+  label,
+  on,
+  onPress,
+}: {
+  label: string;
+  on: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: on }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.switchRow, pressed && { opacity: 0.85 }]}
+    >
+      {on ? (
+        <Volume2 size={22} color={shrine.maroon} />
+      ) : (
+        <VolumeX size={22} color={shrine.inkMuted} />
+      )}
+      <View style={styles.switchDivider} />
+      <Txt size={15} style={{ color: shrine.ink }}>
+        {label}
+      </Txt>
+      <View style={[styles.track, on && styles.trackOn]}>
+        <View style={[styles.knob, on && styles.knobOn]} />
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: {
@@ -233,6 +303,59 @@ const styles = StyleSheet.create({
     borderColor: shrine.line,
   },
   pillOff: { backgroundColor: "rgba(255, 248, 236, 0.55)" },
+  saffron: {
+    minHeight: 64,
+    borderRadius: 32,
+    marginHorizontal: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: shrine.saffronDeep,
+    shadowColor: shrine.saffronDeep,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  saffronContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    zIndex: 1,
+  },
+  switchRow: {
+    alignSelf: "center",
+    minHeight: 56,
+    paddingHorizontal: 20,
+    borderRadius: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: shrine.ivory,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  switchDivider: { width: 1, height: 26, backgroundColor: shrine.line },
+  track: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    padding: 3,
+    backgroundColor: shrine.parchmentDeep,
+    borderWidth: 1,
+    borderColor: shrine.line,
+  },
+  trackOn: { backgroundColor: shrine.saffron, borderColor: shrine.saffronDeep },
+  knob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  knobOn: { transform: [{ translateX: 22 }] },
   panel: {
     marginHorizontal: 16,
     marginTop: 8,

@@ -11,7 +11,8 @@ import {
   trayItems,
 } from "./puja";
 
-// appConfig/visuals (D-057): the images the Prayer and Jaap screens draw,
+// appConfig/visuals (D-057): the images the Prayer, Jaap and Meditation
+// screens draw,
 // chosen in the admin panel from the asset library and read by the app
 // without a release. Every slot is optional; an empty slot keeps the app's
 // own drawn art. Per-deity images (the temple with the deity, the jaap
@@ -26,6 +27,8 @@ export type VisualArt = z.infer<typeof art>;
 export const sceneSlots = [
   "prayerBackground",
   "jaapBackground",
+  "meditationBackground",
+  "meditationLamp",
   "toran",
   "divider",
 ] as const;

@@ -471,6 +471,13 @@ export const strings = {
   jaapTagline: ["A moment of devotion", "भक्ति का एक क्षण"],
   tapToCount: ["Tap to count", "गिनने के लिए छुएँ"],
   chooseOffering: ["Choose an offering", "अर्पण चुनें"],
+  dhyanTagline: [
+    "Rest with the flame within.",
+    "भीतर की ज्योति में विश्राम करें।",
+  ],
+  remainingOf: ["remaining of", "शेष, कुल"],
+  minutesLong: ["minutes", "मिनट"],
+  templeBells: ["Temple bells", "मंदिर की घंटियाँ"],
   resetOfferings: ["Reset offerings", "अर्पण फिर से"],
   restartMalaShort: ["Restart mala", "माला फिर से"],
   practiceSound: ["Sound", "ध्वनि"],

@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, G, Path } from "react-native-svg";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
@@ -18,8 +18,8 @@ import { Txt } from "../../components/ui";
 import { useReducedMotion } from "../../components/useReducedMotion";
 import { formatTime, remainingAt } from "../../domain/practice";
 import { mantraFor } from "../../domain/mantras";
-import { sanctum, shrine } from "../../theme/tokens";
-import { Flower2, RotateCcw } from "lucide-react-native";
+import { shrine } from "../../theme/tokens";
+import { Flower2, Pause, Play, RotateCcw } from "lucide-react-native";
 import { DeityEmblem } from "./art/Emblems";
 import {
   FlankLines,
@@ -27,13 +27,18 @@ import {
   SerifText,
   SlotImage,
 } from "./shrine/Ornaments";
-import { PracticeToggles, ShrinePage } from "./shrine/ShrinePage";
+import {
+  PracticeToggles,
+  SaffronButton,
+  ShrinePage,
+  SwitchRow,
+} from "./shrine/ShrinePage";
 import { Diya } from "./art/Diya";
 import { BEADS, MalaRing } from "./art/MalaRing";
 import { PetalShower } from "./art/PetalShower";
 import { beadTick, malaPulse, useBell } from "./feedback";
 import { useProgression } from "./ProgressionProvider";
-import { BrassButton, EarningNote, SanctumPage } from "./Sanctum";
+import { EarningNote } from "./Sanctum";
 
 // ---- Jaap: a 108-bead mala ------------------------------------------------
 
@@ -243,7 +248,7 @@ const BREATH_MS = 5000;
 export function MeditationScreen({
   navigation,
 }: NativeStackScreenProps<RootParams, "Meditation">) {
-  const { local, t } = useApp();
+  const { local, t, update, catalog } = useApp();
   const {
     startMeditation,
     pauseMeditation,
@@ -252,7 +257,7 @@ export function MeditationScreen({
   } = useProgression();
   const ring = useBell();
   const reduced = useReducedMotion();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [now, setNow] = useState(() => Date.now());
   const { timer } = local;
   const remaining = remainingAt(timer, now);
@@ -312,167 +317,254 @@ export function MeditationScreen({
     };
   }, [running, reduced, breath]);
 
-  const size = Math.min(width - 48, 320);
-  const radius = 46;
+  const size = Math.min(width - 64, height * 0.34, 320);
+  const radius = 47;
   const circumference = 2 * Math.PI * radius;
   const fraction = 1 - remaining / timer.durationSeconds;
+  const minutes = Math.round(timer.durationSeconds / 60);
+  const lampKey = catalog?.visuals?.scenes.meditationLamp;
+  const toggleSound = () =>
+    update((state) => ({
+      ...state,
+      practice: { ...state.practice, sound: !state.practice.sound },
+    }));
+
+  // D-057: the brass lamp in a gold ring on parchment. The ring fills as
+  // the sitting goes on; a small orb breathes with the words below.
+  const lamp = (lit: boolean) => (
+    <View style={[styles.lamp, { width: size, height: size }]}>
+      {lit && running && !reduced && (
+        <Animated.View
+          style={[
+            styles.halo,
+            {
+              width: size * 0.7,
+              height: size * 0.7,
+              borderRadius: size,
+              opacity: breath.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.25, 0.55],
+              }),
+              transform: [
+                {
+                  scale: breath.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1.08],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      )}
+      <Svg
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        style={StyleSheet.absoluteFill}
+      >
+        {/* Faint mandala */}
+        <G opacity={0.28} fill="none" stroke={shrine.gold} strokeWidth={0.35}>
+          {Array.from({ length: 12 }, (_, i) => (
+            <Path
+              key={i}
+              d="M50 50 C 44 40, 44 26, 50 16 C 56 26, 56 40, 50 50 Z"
+              transform={`rotate(${i * 30} 50 50)`}
+            />
+          ))}
+          {Array.from({ length: 12 }, (_, i) => (
+            <Path
+              key={`o${i}`}
+              d="M50 16 C 46 12, 47 8, 50 6 C 53 8, 54 12, 50 16 Z"
+              transform={`rotate(${i * 30 + 15} 50 50)`}
+            />
+          ))}
+          <Circle cx="50" cy="50" r="36" />
+          <Circle cx="50" cy="50" r="41" />
+        </G>
+        <Circle
+          cx="50"
+          cy="50"
+          r={radius}
+          stroke={shrine.line}
+          strokeWidth="1"
+          fill="none"
+        />
+        {fraction > 0 && (
+          <Circle
+            cx="50"
+            cy="50"
+            r={radius}
+            stroke={shrine.saffron}
+            strokeWidth="1.8"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${Math.max(circumference * fraction, 1.5)} ${circumference}`}
+            rotation={-90}
+            origin="50, 50"
+          />
+        )}
+      </Svg>
+      <SlotImage
+        assetKey={lampKey}
+        style={{ width: size * 0.56, height: size * 0.56 }}
+        fallback={
+          <Diya size={size * 0.52} lit={lit} glow={done ? 1 : 0.6} brass />
+        }
+      />
+    </View>
+  );
 
   return (
-    <SanctumPage
+    <ShrinePage
       title={t("dhyanShort")}
-      subtitle={t("dhyanHint")}
+      background="meditationBackground"
       onBack={navigation.goBack}
-      scroll
     >
-      {choosing ? (
-        <>
-          <Txt
-            bold
-            size={22}
-            style={{ color: sanctum.text, textAlign: "center", marginTop: 8 }}
-          >
-            {t("dhyanChoose")}
-          </Txt>
-          <View style={styles.grid}>
-            {durations.map((minutes) => {
-              const selected = timer.durationSeconds === minutes * 60;
-              return (
-                <Pressable
-                  key={minutes}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${minutes} ${t("minutes")}`}
-                  onPress={() => setMeditationMinutes(minutes)}
-                  style={[styles.tile, selected && styles.tileSelected]}
-                >
-                  <Txt
-                    bold
-                    size={40}
-                    style={{
-                      color: selected ? sanctum.night : sanctum.text,
-                      lineHeight: 52,
-                    }}
+      <ScrollView
+        contentContainerStyle={styles.dhyanBody}
+        showsVerticalScrollIndicator={false}
+      >
+        <SerifText size={18} bold={false} color={shrine.ink}>
+          {t("dhyanTagline")}
+        </SerifText>
+        {choosing ? (
+          <>
+            <SerifText size={22} style={{ marginTop: 6 }}>
+              {t("dhyanChoose")}
+            </SerifText>
+            <View style={styles.grid}>
+              {durations.map((option) => {
+                const selected = timer.durationSeconds === option * 60;
+                return (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${option} ${t("minutes")}`}
+                    onPress={() => setMeditationMinutes(option)}
+                    style={[styles.tile, selected && styles.tileSelected]}
                   >
-                    {minutes}
-                  </Txt>
-                  <Txt
-                    size={17}
-                    style={{
-                      color: selected ? sanctum.night : sanctum.textMuted,
-                    }}
-                  >
-                    {t("minutes")}
-                  </Txt>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={{ alignItems: "center" }}>
-            <Diya size={150} lit={false} />
-          </View>
-          <BrassButton
-            label={t("lightLamp")}
-            onPress={() => {
-              ring();
-              startMeditation();
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <View style={[styles.lamp, { width: size, height: size }]}>
-            {running && !reduced && (
-              <Animated.View
-                style={[
-                  styles.halo,
-                  {
-                    width: size * 0.82,
-                    height: size * 0.82,
-                    borderRadius: size,
-                    opacity: breath.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.25, 0.6],
-                    }),
-                    transform: [
-                      {
-                        scale: breath.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.78, 1.08],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-            )}
-            <Svg
-              width={size}
-              height={size}
-              viewBox="0 0 100 100"
-              style={StyleSheet.absoluteFill}
+                    <SerifText
+                      size={34}
+                      color={selected ? shrine.maroonDeep : shrine.maroon}
+                    >
+                      {option}
+                    </SerifText>
+                    <Txt size={15} style={{ color: shrine.ink }}>
+                      {t("minutes")}
+                    </Txt>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {lamp(false)}
+            <SaffronButton
+              label={t("lightLamp")}
+              onPress={() => {
+                ring();
+                startMeditation();
+              }}
+            />
+          </>
+        ) : (
+          <>
+            {lamp(true)}
+            <SerifText
+              size={76}
+              accessibilityRole="timer"
+              style={{ lineHeight: 88 }}
             >
-              <Circle
-                cx="50"
-                cy="50"
-                r={radius}
-                stroke="rgba(243, 213, 138, 0.18)"
-                strokeWidth="2.4"
-                fill="none"
-              />
-              <Circle
-                cx="50"
-                cy="50"
-                r={radius}
-                stroke={sanctum.brass}
-                strokeWidth="2.4"
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={`${circumference * fraction} ${circumference}`}
-                rotation={-90}
-                origin="50, 50"
-              />
-            </Svg>
-            <Diya size={size * 0.52} lit glow={done ? 1 : 0.6} />
-          </View>
-          <Txt
-            bold
-            size={64}
-            accessibilityRole="timer"
-            style={{ color: sanctum.text, textAlign: "center", lineHeight: 80 }}
-          >
-            {formatTime(remaining)}
-          </Txt>
-          <Txt
-            size={22}
-            style={{ color: sanctum.ghee, textAlign: "center", minHeight: 34 }}
-          >
-            {done
-              ? t("dhyanDone")
-              : running && !reduced
-                ? inhale
-                  ? t("breatheIn")
-                  : t("breatheOut")
-                : ""}
-          </Txt>
-          {done ? (
-            <BrassButton label={t("lightLamp")} onPress={resetMeditation} />
-          ) : (
-            <>
-              <BrassButton
-                label={running ? t("pause") : t("resume")}
-                onPress={running ? pauseMeditation : startMeditation}
-              />
-              <BrassButton
-                quiet
-                label={t("endDhyan")}
-                onPress={resetMeditation}
-              />
-            </>
-          )}
-        </>
-      )}
-      <EarningNote />
-    </SanctumPage>
+              {formatTime(remaining)}
+            </SerifText>
+            <SerifText size={19} bold={false} color={shrine.maroonDeep}>
+              {local.language === "en"
+                ? `${t("remainingOf")} ${minutes} ${t("minutesLong")}`
+                : `${minutes} ${t("minutesLong")} में से शेष`}
+            </SerifText>
+            <LotusDivider
+              width={220}
+              assetKey={catalog?.visuals?.scenes.divider}
+            />
+            {done ? (
+              <SerifText size={21}>{t("dhyanDone")}</SerifText>
+            ) : (
+              <View style={styles.breath}>
+                <Animated.View
+                  style={[
+                    styles.orbRing,
+                    !reduced &&
+                      running && {
+                        transform: [
+                          {
+                            scale: breath.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.75, 1.15],
+                            }),
+                          },
+                        ],
+                      },
+                  ]}
+                >
+                  <View style={styles.orb} />
+                </Animated.View>
+                <SerifText size={21} style={{ minHeight: 30 }}>
+                  {running && !reduced
+                    ? inhale
+                      ? t("breatheIn")
+                      : t("breatheOut")
+                    : ""}
+                </SerifText>
+              </View>
+            )}
+            {done ? (
+              <SaffronButton label={t("lightLamp")} onPress={resetMeditation} />
+            ) : (
+              <>
+                <SaffronButton
+                  label={running ? t("pause") : t("resume")}
+                  icon={
+                    running ? (
+                      <Pause
+                        size={26}
+                        color={shrine.maroonDeep}
+                        fill={shrine.maroonDeep}
+                      />
+                    ) : (
+                      <Play
+                        size={26}
+                        color={shrine.maroonDeep}
+                        fill={shrine.maroonDeep}
+                      />
+                    )
+                  }
+                  onPress={running ? pauseMeditation : startMeditation}
+                />
+                <FlankLines width={60}>
+                  <Pressable
+                    accessibilityRole="button"
+                    hitSlop={10}
+                    onPress={resetMeditation}
+                    style={({ pressed }) => [
+                      styles.restart,
+                      pressed && { opacity: 0.6 },
+                    ]}
+                  >
+                    <SerifText size={19}>{t("endDhyan")}</SerifText>
+                  </Pressable>
+                </FlankLines>
+              </>
+            )}
+          </>
+        )}
+        <EarningNote light />
+        <SwitchRow
+          label={t("templeBells")}
+          on={local.practice.sound}
+          onPress={toggleSound}
+        />
+      </ScrollView>
+    </ShrinePage>
   );
 }
 
@@ -529,25 +621,27 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 44,
   },
+  dhyanBody: { gap: 10, paddingBottom: 28, paddingTop: 4 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 14,
+    gap: 12,
     justifyContent: "center",
+    paddingHorizontal: 20,
   },
   tile: {
-    width: "44%",
-    minHeight: 104,
-    borderRadius: 24,
+    width: "42%",
+    minHeight: 92,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "rgba(243, 213, 138, 0.45)",
-    backgroundColor: "rgba(63, 26, 20, 0.6)",
+    borderColor: shrine.line,
+    backgroundColor: shrine.ivory,
   },
   tileSelected: {
-    backgroundColor: sanctum.brass,
-    borderColor: sanctum.brassLight,
+    backgroundColor: shrine.saffronLight,
+    borderColor: shrine.saffronDeep,
   },
   lamp: {
     alignSelf: "center",
@@ -556,6 +650,25 @@ const styles = StyleSheet.create({
   },
   halo: {
     position: "absolute",
-    backgroundColor: "rgba(255, 158, 44, 0.25)",
+    backgroundColor: "rgba(255, 196, 92, 0.35)",
+  },
+  breath: { alignItems: "center", gap: 6 },
+  orbRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(240, 162, 59, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(201, 151, 63, 0.35)",
+  },
+  orb: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: shrine.saffron,
+    borderWidth: 2,
+    borderColor: shrine.saffronLight,
   },
 });

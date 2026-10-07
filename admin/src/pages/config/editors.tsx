@@ -324,6 +324,8 @@ function SlotGrid({
 const sceneSlots: (Slot & { id: SceneSlot; purpose: AssetPurpose })[] = [
   { id: "prayerBackground", purpose: "background", label: "Prayer background", hint: "Full-screen parchment behind the temple. Portrait 1080 × 2400; keep the middle calm, decoration at the edges." },
   { id: "jaapBackground", purpose: "background", label: "Jaap background", hint: "Full-screen ground behind the mala. Portrait 1080 × 2400." },
+  { id: "meditationBackground", purpose: "background", label: "Meditation background", hint: "Full-screen ground behind the lamp. Portrait 1080 × 2400." },
+  { id: "meditationLamp", purpose: "decor", label: "Meditation lamp", hint: "The diya in the circle (a brass lamp, flame lit). Transparent PNG, square, about 800 × 800; the app adds the breathing glow." },
   { id: "toran", purpose: "decor", label: "Toran (top garland)", hint: "Marigold garland across the top of both screens. Transparent PNG, wide, about 1080 × 240." },
   { id: "divider", purpose: "decor", label: "Divider", hint: "The small ornament under headings. Transparent PNG, about 520 × 44." },
 ];
@@ -332,7 +334,7 @@ function VisualsEditor({ value: c, onChange }: { value: VisualsConfig; onChange:
   const tile = "Transparent PNG, square, at least 512 × 512.";
   return (
     <>
-      <Section title="Backgrounds and decoration" description="What the Prayer and Jaap screens are drawn on. Leave a slot empty to keep the app's own drawing.">
+      <Section title="Backgrounds and decoration" description="What the Prayer, Jaap and Meditation screens are drawn on. Leave a slot empty to keep the app's own drawing.">
         <SlotGrid
           slots={sceneSlots}
           purpose="decor"
@@ -409,8 +411,8 @@ export const configEditors: Record<ConfigId, Editor> = {
     Editor: PujaEditor as Editor["Editor"],
   },
   visuals: {
-    title: "Prayer & Jaap visuals",
-    description: "Images for the Prayer and Jaap screens: backgrounds, the toran, the offering tray, flowers, garlands and bhog. Temples and jaap emblems are set on each deity (Deities). Saved images appear in the app on its next start.",
+    title: "Prayer, Jaap & Meditation visuals",
+    description: "Images for the Prayer, Jaap and Meditation screens: backgrounds, the meditation lamp, the toran, the offering tray, flowers, garlands and bhog. Temples and jaap emblems are set on each deity (Deities). Saved images appear in the app on its next start.",
     defaults: emptyVisualsConfig,
     normalize: (data) => ({ ...emptyVisualsConfig(), ...(data as object) }),
     Editor: VisualsEditor as Editor["Editor"],
