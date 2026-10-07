@@ -66,7 +66,7 @@ npm run admin:dev            # terminal 2: http://127.0.0.1:5173
 2. The app shows **No access** until the account has a role. Grant one with `npm run admin:grant-role -- --email you@example.com --role SUPER_ADMIN`. This targets the emulator by default, and `--create` adds the account if it has not signed in yet.
 3. Choose **Refresh access**. The app reads the new claim from a fresh ID token.
 
-**Memory:** the emulator scripts pass `--inspect-functions 9229`, which serves every function from one Node worker (about 180 MB). Without it the emulator starts a worker per function (about 180 MB each, about 6 GB for a full test run), and on the 7 GB development laptop `systemd-oomd` then kills the editor or the desktop session. Keep the flag, and do not run the emulators together with Metro, Gradle or a browser test run.
+**Memory:** the emulator scripts run through `scripts/firebase-emulators.sh`, which adds `--inspect-functions 9229` on developer machines so every function is served from one Node worker (about 180 MB). Without it the emulator starts a worker per function (about 180 MB each, about 6 GB for a full test run), and on the 7 GB development laptop `systemd-oomd` then kills the editor or the desktop session. In CI (`CI=true`) the default per-function workers are kept: one shared worker occasionally resets when the emulator mishandles a trigger event, failing other functions' in-flight requests (`internal`, `ECONNRESET`). Do not run the emulators together with Metro, Gradle or a browser test run.
 
 If the functions emulator logs `Cannot determine backend specification. Timeout after 10000`, the machine is too busy to load the bundle in time. Start it with `FUNCTIONS_DISCOVERY_TIMEOUT=90 npm run emulators:cms`.
 
