@@ -1,36 +1,92 @@
 import { useEffect, useState } from "react";
+import { contentTypes, type ContentType } from "../domain";
 
-// A tiny hash router: four screens do not need a routing library, and hash
-// URLs work on any static host (Firebase Hosting rewrites are still set).
+// A small hash router: hash URLs work on any static host (Firebase Hosting
+// rewrites are still set). Pages are flat; editors carry an ID.
+
+// One library section per content type (sidebar "Library").
+export const librarySections = {
+  bhajans: "BHAJAN",
+  aartis: "AARTI",
+  mantras: "MANTRA",
+  chalisas: "CHALISA",
+  wallpapers: "WALLPAPER",
+  ringtones: "RINGTONE",
+  "status-videos": "STATUS",
+} as const satisfies Record<string, ContentType>;
+export type LibrarySection = keyof typeof librarySections;
+export const sectionForType = (type: ContentType) =>
+  (Object.keys(librarySections) as LibrarySection[]).find((key) => librarySections[key] === type)!;
+
+export const pageNames = [
+  "dashboard",
+  "content",
+  "upload",
+  ...(Object.keys(librarySections) as LibrarySection[]),
+  "media",
+  "home",
+  "banners",
+  "collections",
+  "deities",
+  "categories",
+  "challenges",
+  "badges",
+  "puja",
+  "sadhana-config",
+  "gamification-config",
+  "festivals",
+  "mandir-offerings",
+  "users",
+  "roles",
+  "audit",
+] as const;
+export type PageName = (typeof pageNames)[number];
+
 export type Route =
-  | { name: "content" }
-  | { name: "content-new" }
+  | { name: PageName }
+  | { name: "content-new"; type?: ContentType }
+  | { name: "upload"; type?: ContentType }
   | { name: "content-edit"; id: string }
-  | { name: "banners" }
-  | { name: "audit" }
-  | { name: "home" }
+  | { name: "user"; uid: string }
+  | { name: "home-redirect" }
   | { name: "not-found" };
 
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
-  if (parts.length === 0) return { name: "home" };
-  if (parts[0] === "content") {
+  if (parts.length === 0) return { name: "home-redirect" };
+  const [head, second, third] = parts;
+  if (head === "content") {
     if (parts.length === 1) return { name: "content" };
-    if (parts[1] === "new" && parts.length === 2) return { name: "content-new" };
-    if (parts[1] === "edit" && parts.length === 3)
-      return { name: "content-edit", id: decodeURIComponent(parts[2]) };
+    if (second === "new" && parts.length === 2) return { name: "content-new" };
+    if (second === "new" && parts.length === 3 && (contentTypes as readonly string[]).includes(third))
+      return { name: "content-new", type: third as ContentType };
+    if (second === "edit" && third && parts.length === 3)
+      return { name: "content-edit", id: decodeURIComponent(third) };
+    return { name: "not-found" };
   }
-  if (parts.length === 1 && parts[0] === "banners") return { name: "banners" };
-  if (parts.length === 1 && parts[0] === "audit") return { name: "audit" };
+  if (head === "upload" && second && parts.length === 2)
+    return (contentTypes as readonly string[]).includes(second)
+      ? { name: "upload", type: second as ContentType }
+      : { name: "not-found" };
+  if (head === "users" && second && parts.length === 2)
+    return { name: "user", uid: decodeURIComponent(second) };
+  if (parts.length === 1 && (pageNames as readonly string[]).includes(head))
+    return { name: head as PageName };
   return { name: "not-found" };
 }
 
 export const paths = {
+  page: (name: PageName) => `#/${name}`,
+  dashboard: "#/dashboard",
   content: "#/content",
   contentNew: "#/content/new",
+  contentNewOf: (type: ContentType) => `#/content/new/${type}`,
+  upload: (type?: ContentType) => (type ? `#/upload/${type}` : "#/upload"),
   contentEdit: (id: string) => `#/content/edit/${encodeURIComponent(id)}`,
   banners: "#/banners",
   audit: "#/audit",
+  users: "#/users",
+  user: (uid: string) => `#/users/${encodeURIComponent(uid)}`,
 };
 
 export const navigate = (path: string) => {

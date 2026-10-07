@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import type { FirebaseServices } from "./firebase";
+import { withoutUndefined } from "./callable";
 import {
   BannerInput,
   ContentDraftInput,
@@ -25,6 +26,7 @@ import {
   TransitionInput,
   UploadMime,
 } from "./domain";
+import type { MediaVariant, MediaVariantName } from "../../src/domain/media";
 
 // Everything the screens need from Firebase, behind one interface so the
 // components can be tested with a fake. Reads go straight to Firestore
@@ -40,6 +42,10 @@ export type ContentRow = {
   title: Localized;
   updatedAt: string | null;
   scheduledAt: string | null;
+  // For previews in the library (absent on rows from older callers).
+  media?: Partial<Record<MediaVariantName, MediaVariant>>;
+  durationSeconds?: number | null;
+  deityIds?: string[];
 };
 
 export type ContentRecord = {
@@ -153,7 +159,8 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
   const call =
     <I, O>(name: string) =>
     async (input: I): Promise<O> =>
-      (await httpsCallable<I, O>(functions, name)(input)).data;
+      // Unset fields must stay absent: the client would send them as null.
+      (await httpsCallable<I, O>(functions, name)(withoutUndefined(input))).data;
 
   return {
     async listContent({ status, type, after, pageSize: requested }) {
@@ -178,6 +185,9 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
           title: localized(data.title),
           updatedAt: toIso(data.updatedAt),
           scheduledAt: toIso(data.scheduledAt),
+          media: (data.media ?? undefined) as ContentRow["media"],
+          durationSeconds: typeof data.durationSeconds === "number" ? data.durationSeconds : null,
+          deityIds: Array.isArray(data.deityIds) ? (data.deityIds as string[]) : [],
         };
       });
       const items = rows.slice(0, pageSize);

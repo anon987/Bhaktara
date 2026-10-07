@@ -41,10 +41,10 @@
       [
         "expo-video",
         {
-          "supportsBackgroundPlayback": false,
-          "supportsPictureInPicture": false
+          "supportsBackgroundPlayback": false
         }
-      ]
+      ],
+      "./plugins/withPictureInPicture"
     ],
     "scheme": "bhaktara",
     "splash": {

@@ -2,11 +2,13 @@ export type TimerState = {
   durationSeconds: number;
   remainingSeconds: number;
   endsAt: number | null;
+  sessionId: string | null;
 };
 export const createTimer = (seconds = 300): TimerState => ({
   durationSeconds: seconds,
   remainingSeconds: seconds,
   endsAt: null,
+  sessionId: null,
 });
 export function remainingAt(timer: TimerState, now: number): number {
   return timer.endsAt === null

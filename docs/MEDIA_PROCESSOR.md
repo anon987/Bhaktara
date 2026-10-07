@@ -62,9 +62,16 @@ MEDIA_STORE_DIR=/tmp/bhaktara-bucket LOCAL_DEV_TOKEN=<local-token> PORT=8090 \
 
 Put originals at `$MEDIA_STORE_DIR/staging/<contentId>/<uuid>.<ext>`. To drive the processor from the CMS emulator, start the emulator with `MEDIA_PROCESSOR_URL=http://127.0.0.1:8090 MEDIA_PROCESSOR_DEV_TOKEN=<local-token> npm run emulators:cms`. The emulator accepts only loopback processor URLs and uses the dev token in place of an OIDC token. `npm run test:functions` does the same against a stub processor on port 5098.
 
-## Deploy (needs the Blaze plan; not done yet)
+## Deployed on bhaktara-dev (2026-10-06)
 
-Cloud Run, Secret Manager, Artifact Registry and 2nd-gen Functions all need Blaze. The dev project is on Spark, so nothing below has been run. Use region `asia-south1`, with Firestore in the same region. Start with dev (`bhaktara-media-dev`). Staging and prod need owner approval (doc 23 §5).
+- Cloud Run `media-processor` in `asia-south1` (https://media-processor-83349652654.asia-south1.run.app), private, concurrency 1, 2 CPU / 2 GiB, timeout 900 s, max 3 instances, runtime account `media-processor@bhaktara-dev.iam.gserviceaccount.com` (secret accessor on the two R2 secrets only). The only invoker is the functions runtime account `83349652654-compute@developer.gserviceaccount.com`; `PROCESSOR_AUDIENCE` is the service URL.
+- Secrets `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` in Secret Manager; `functions/.env.bhaktara-dev` (Git-ignored) sets `R2_UPLOAD_SECRETS=true`, `R2_ACCOUNT_ID`, `R2_BUCKET` and `MEDIA_PROCESSOR_URL`. All functions were redeployed with the secrets bound.
+- Image `asia-south1-docker.pkg.dev/bhaktara-dev/bhaktara/media-processor:<git-sha>`, built with Cloud Build (no local Docker): copy the allow-listed paths from `Dockerfile.dockerignore` plus the Dockerfile into an empty folder, add a `cloudbuild.yaml` with one `docker build -f services/media-processor/Dockerfile -t <image> .` step and `images: [<image>]`, then `gcloud builds submit . --region asia-south1 --config cloudbuild.yaml`. The context is about 256 KB.
+- The bucket CORS allows PUT from the admin origins (applied 2026-10-06). Still to add: the R2 lifecycle rule that deletes `staging/` after 1 day (step 7).
+
+## Deploy steps
+
+Cloud Run, Secret Manager, Artifact Registry and 2nd-gen Functions all need Blaze (enabled on dev). Use region `asia-south1`, with Firestore in the same region. Start with dev (`bhaktara-media-dev`). Staging and prod need owner approval (doc 23 §5).
 
 1. Enable the APIs: `run`, `artifactregistry`, `secretmanager` and `iamcredentials` (`gcloud services enable … --project <project>`).
 2. Secrets in Secret Manager use the same names `requestUploadUrl` already binds: `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`. Use an R2 token with Object Read & Write scoped to the one bucket; it needs delete for staging cleanup. Create each secret from stdin without echoing it (`gcloud secrets create R2_ACCESS_KEY_ID --data-file=-`). Never put them in env files.
@@ -101,3 +108,8 @@ Cloud Run, Secret Manager, Artifact Registry and 2nd-gen Functions all need Blaz
 - Staging originals sit in the public media bucket under unguessable keys until they are processed. Consider a separate private staging bucket before launch.
 - Silence trimming and EXIF orientation, as for `media:publish`.
 - Banner and deity art go through `media:publish`. The processor supports both types, but no callable writes banner or deity documents yet.
+
+## Inputs per type (2026-10-06, D-056)
+
+At least one original is always needed. Audio types (bhajan, aarti, mantra, chalisa, ringtone) take audio, a cover image, or both: audio alone takes its cover from album art embedded in the file, or has no cover yet (a warning says so); a cover alone replaces just the thumb. Status takes a video, a poster image, or both (a poster alone replaces poster and thumb). Wallpaper, banner and deity art need their image. `processMedia` merges the produced variants into the item and keeps the others, which is how the admin panel replaces media.
+

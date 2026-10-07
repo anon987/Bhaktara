@@ -36,6 +36,9 @@ export interface RingtoneService {
   needsSystemPermission(): boolean;
   // Opens the system screen; resolves when the user returns, with the result.
   requestSystemPermission(): Promise<boolean>;
+  // A picture-in-picture guide can stay on screen while the user is in system
+  // settings, and Bhaktara returns by itself once the permission is on.
+  canGuideSystemPermission?(): boolean;
   setRingtone(
     request: MediaRequest & { target: RingtoneTarget },
   ): Promise<PlatformResult>;

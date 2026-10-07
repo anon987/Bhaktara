@@ -13,7 +13,7 @@ import {
   receiptKey,
 } from "../src/processor";
 import { fsStore } from "../src/store";
-import { gradient, scratch, stagingKey, testClip, tone } from "./fixtures";
+import { gradient, scratch, stagingKey, testClip, tone, withAlbumArt } from "./fixtures";
 
 let root: string;
 let sources: string;
@@ -55,6 +55,7 @@ before(async () => {
   await gradient(join(sources, "cover.png"), 400, 400);
   await tone(join(sources, "tone5.wav"), 5);
   await tone(join(sources, "tone10.wav"), 10);
+  await withAlbumArt(join(sources, "art5.mp3"), join(sources, "tone5.wav"), join(sources, "cover.png"));
   await testClip(join(sources, "clip16.mp4"), 16);
 });
 after(() => rm(root, { recursive: true, force: true }));
@@ -109,6 +110,44 @@ describe("processUpload", () => {
     assert.equal(result.media.thumb!.width, 320);
     assert.equal(await exists(audio), false);
     assert.equal(await exists(image), false);
+  });
+
+  test("bhajan: audio alone takes its cover from embedded album art", async () => {
+    const audio = await stage("bhajan-art", join(sources, "art5.mp3"), "mp3");
+    const result = await processUpload(
+      { contentId: "bhajan-art", type: "bhajan", inputs: { audio } },
+      deps(),
+    );
+    assert.deepEqual(Object.keys(result.media).sort(), ["stream", "thumb"]);
+    assert.equal(result.media.thumb!.width, 320);
+    assert.equal(result.warnings, undefined);
+  });
+
+  test("bhajan: audio without art has no cover yet; a cover alone adds it", async () => {
+    const audio = await stage("bhajan-2", join(sources, "tone5.wav"), "wav");
+    const first = await processUpload(
+      { contentId: "bhajan-2", type: "bhajan", inputs: { audio } },
+      deps(),
+    );
+    assert.deepEqual(Object.keys(first.media), ["stream"]);
+    assert.match(first.warnings!.join(" "), /No cover image yet/);
+    const image = await stage("bhajan-2", join(sources, "cover.png"), "png");
+    const second = await processUpload(
+      { contentId: "bhajan-2", type: "bhajan", inputs: { image } },
+      deps(),
+    );
+    assert.deepEqual(Object.keys(second.media), ["thumb"]);
+    assert.equal(second.durationSeconds, undefined);
+  });
+
+  test("status: a poster image alone replaces poster and thumb", async () => {
+    const image = await stage("status-2", join(sources, "cover.png"), "png");
+    const result = await processUpload(
+      { contentId: "status-2", type: "status", inputs: { image } },
+      deps(),
+    );
+    assert.deepEqual(Object.keys(result.media).sort(), ["poster", "thumb"]);
+    assert.equal(result.media.poster!.height, 1280);
   });
 
   test("status: 720p H.264 video, poster and thumb", async () => {

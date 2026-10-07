@@ -98,7 +98,7 @@ test("strict input validation", async () => {
     { ...valid, inputs: {} },
     { ...valid, type: "podcast" },
     { ...valid, contentId: "../wp" },
-    { ...valid, type: "bhajan" },
+    { ...valid, type: "status", inputs: { audio: image.replace(".png", ".mp3") } },
   ];
   for (const body of bad) {
     const response = await post(body);
@@ -106,10 +106,11 @@ test("strict input validation", async () => {
     assert.equal((await errorOf(response)).code, "INVALID_REQUEST");
   }
   const { issues } = await errorOf(
-    await post({ ...valid, type: "bhajan", inputs: { image } }),
+    await post({ ...valid, inputs: { audio: image.replace(".png", ".mp3") } }),
   );
   assert.deepEqual(issues, [
-    { path: "inputs.audio", message: "bhajan needs an uploaded audio file" },
+    { path: "inputs.image", message: "wallpaper needs an uploaded image file" },
+    { path: "inputs.audio", message: "wallpaper does not take an audio file" },
   ]);
   assert.equal(
     (await post(valid, { "Content-Type": "text/plain" })).status,

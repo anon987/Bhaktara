@@ -41,7 +41,25 @@ export const permissions = {
   "home.read": ["SUPER_ADMIN", "CONTENT_ADMIN"],
   "home.write": ["SUPER_ADMIN", "CONTENT_ADMIN"],
   "audit.read": ["SUPER_ADMIN", "CONTENT_ADMIN"],
+  "role.read": ["SUPER_ADMIN"],
   "role.write": ["SUPER_ADMIN"],
+  // Admin panel v2 (doc 09 §1): dashboard, users, catalogue and config.
+  "dashboard.read": [
+    "SUPER_ADMIN",
+    "CONTENT_ADMIN",
+    "EDITOR",
+    "MODERATOR",
+    "ANALYST",
+  ],
+  "user.read": ["SUPER_ADMIN", "MODERATOR"],
+  "user.moderate": ["SUPER_ADMIN", "MODERATOR"],
+  "user.manage": ["SUPER_ADMIN"],
+  "catalog.read": ["SUPER_ADMIN", "CONTENT_ADMIN", "EDITOR", "ANALYST"],
+  "catalog.write": ["SUPER_ADMIN", "CONTENT_ADMIN"],
+  "asset.read": ["SUPER_ADMIN", "CONTENT_ADMIN", "EDITOR"],
+  "asset.write": ["SUPER_ADMIN", "CONTENT_ADMIN", "EDITOR"],
+  "config.read": ["SUPER_ADMIN", "CONTENT_ADMIN", "ANALYST"],
+  "config.write": ["SUPER_ADMIN"],
 } as const satisfies Record<string, readonly AdminRole[]>;
 export type Permission = keyof typeof permissions;
 export const can = (

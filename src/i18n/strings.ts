@@ -231,10 +231,33 @@ export const strings = {
     "Allow Bhaktara to set ringtones",
     "भक्तारा को रिंगटोन लगाने दें",
   ],
-  systemPermissionText: [
-    "To change your ringtone, your phone asks you to turn on “Modify system settings” for Bhaktara. Turn it on on the next screen, then come back. Bhaktara only changes the sound you choose.",
-    "रिंगटोन बदलने के लिए आपका फ़ोन भक्तारा के लिए “सिस्टम सेटिंग बदलें” चालू करने को कहता है। अगली स्क्रीन पर इसे चालू करें और वापस आएँ। भक्तारा केवल वही ध्वनि बदलेगा जो आप चुनेंगे।",
+  permissionStepOpen: [
+    "Your phone's settings screen will open.",
+    "आपके फ़ोन की सेटिंग वाली स्क्रीन खुलेगी।",
   ],
+  permissionStepSwitch: [
+    "Turn ON the switch next to Bhaktara.",
+    "भक्तारा के आगे वाला स्विच चालू करें।",
+  ],
+  permissionStepAutoReturn: [
+    "Bhaktara will come back by itself and set your ringtone.",
+    "भक्तारा अपने आप वापस आकर आपकी रिंगटोन लगा देगा।",
+  ],
+  permissionStepBack: [
+    "Then press Back to return to Bhaktara.",
+    "फिर भक्तारा पर लौटने के लिए बैक दबाएँ।",
+  ],
+  permissionReassure: [
+    "Bhaktara only changes the sound you choose.",
+    "भक्तारा केवल वही ध्वनि बदलेगा जो आप चुनेंगे।",
+  ],
+  notNow: ["Not now", "अभी नहीं"],
+  guideTurnOn: ["Turn ON the switch", "स्विच चालू करें"],
+  guideAutoReturn: [
+    "Bhaktara will come back by itself",
+    "भक्तारा अपने आप लौट आएगा",
+  ],
+  switchOn: ["ON", "चालू"],
   systemPermissionDenied: [
     "Ringtone permission is off. Turn on “Modify system settings” for Bhaktara in Settings, then try again.",
     "रिंगटोन की अनुमति बंद है। सेटिंग्स में भक्तारा के लिए “सिस्टम सेटिंग बदलें” चालू करें, फिर प्रयास करें।",
@@ -300,8 +323,8 @@ export const strings = {
     "आपकी सहेजी गई प्रगति लोड नहीं हो सकी। फिर प्रयास करें। आपका सहेजा गया डेटा बदला नहीं गया है।",
   ],
   emulatorConnected: [
-    "Development guest connected · local test catalog. Favorites are saved to this guest account; practice stays on this device.",
-    "डेवलपमेंट अतिथि जुड़ा है · स्थानीय टेस्ट सामग्री। पसंदीदा इस अतिथि खाते में सहेजे जाते हैं; अभ्यास इसी डिवाइस पर रहता है।",
+    "Development guest connected · local test catalog. Favorites and practice are saved to this guest account.",
+    "डेवलपमेंट अतिथि जुड़ा है · स्थानीय टेस्ट सामग्री। पसंदीदा और साधना इस अतिथि खाते में सहेजे जाते हैं।",
   ],
   emulatorGuest: ["Guest · development account", "अतिथि · डेवलपमेंट खाता"],
   emulatorPrivacy: [
@@ -313,8 +336,8 @@ export const strings = {
     "भक्तारा से कनेक्ट नहीं हो सका। अपना इंटरनेट कनेक्शन जाँचें और फिर प्रयास करें।",
   ],
   cloudConnected: [
-    "Development guest connected · Bhaktara dev service. Favorites are saved to this guest account; practice stays on this device.",
-    "डेवलपमेंट अतिथि जुड़ा है · भक्तारा डेव सेवा। पसंदीदा इस अतिथि खाते में सहेजे जाते हैं; अभ्यास इसी डिवाइस पर रहता है।",
+    "Development guest connected · Bhaktara dev service. Favorites and practice are saved to this guest account.",
+    "डेवलपमेंट अतिथि जुड़ा है · भक्तारा डेव सेवा। पसंदीदा और साधना इस अतिथि खाते में सहेजे जाते हैं।",
   ],
   cloudPrivacy: [
     "An anonymous account is created in Bhaktara's development service (Firebase, Mumbai region). Its session is kept on this device. Favorites are saved to that account and cached on this device; preferences and practice remain device-only; analytics are not sent. Clearing app data removes local records and the session, so a guest's favorites can no longer be reached.",
@@ -334,6 +357,116 @@ export const strings = {
     "This video isn’t available yet.",
     "यह वीडियो अभी उपलब्ध नहीं है।",
   ],
+  // ---- Sadhana: server practice and devotional screens (M2) ----
+  akhandJyoti: ["Your unbroken lamp", "अखंड ज्योति"],
+  streakDays: ["days in a row", "दिन लगातार"],
+  streakStart: [
+    "Light today’s lamp — begin with one practice.",
+    "आज का दीप जलाएँ — एक साधना से शुरुआत करें।",
+  ],
+  streakLongest: ["Longest", "सबसे लंबी"],
+  daysUnit: ["days", "दिन"],
+  points: ["XP", "अंक"],
+  pointsToday: ["Today’s XP", "आज के अंक"],
+  toNextLevel: ["to the next level", "अगले स्तर तक"],
+  threeLamps: ["Today’s three lamps", "आज के तीन दीप"],
+  jaapShort: ["Jaap", "जाप"],
+  dhyanShort: ["Meditation", "ध्यान"],
+  prarthanaShort: ["Prayer", "प्रार्थना"],
+  taskDone: ["Done", "पूर्ण"],
+  taskBegin: ["Begin", "शुरू करें"],
+  fullSadhanaToday: [
+    "Full Sadhana complete today. Jai ho!",
+    "आज की पूर्ण साधना हो गई। जय हो!",
+  ],
+  earnOnline: [
+    "XP, your streak and sankalps are counted when you are online.",
+    "अंक, लगातार दिन और संकल्प इंटरनेट से जुड़ने पर ही गिने जाते हैं।",
+  ],
+  deviceOnly: [
+    "Practice is saved on this phone only.",
+    "साधना केवल इस फ़ोन पर सहेजी जा रही है।",
+  ],
+  offlinePractice: [
+    "No internet. Keep practising — this time won’t earn XP.",
+    "इंटरनेट नहीं है। साधना जारी रखें — इस बार अंक नहीं मिलेंगे।",
+  ],
+  tooShort: [
+    "That mala was very quick. Chant slowly, with feeling — at least one minute per mala.",
+    "यह माला बहुत जल्दी पूरी हुई। धीरे-धीरे, मन से जाप करें — एक माला में कम से कम 1 मिनट।",
+  ],
+  practiceError: [
+    "This practice couldn’t be recorded. Please try again.",
+    "यह साधना दर्ज नहीं हो सकी। कृपया फिर कोशिश करें।",
+  ],
+  // Jaap
+  tapAnywhere: ["Tap anywhere for each bead", "हर मनके पर कहीं भी छुएँ"],
+  malasToday: ["malas today", "माला आज"],
+  chantFor: ["Whose name will you chant?", "किसका जाप करेंगे?"],
+  malaComplete: ["Mala complete", "माला पूर्ण"],
+  restartMala: ["Start this mala again", "यह माला फिर से शुरू करें"],
+  restartQuestion: ["Start this mala again?", "यह माला फिर से शुरू करें?"],
+  restartHint: [
+    "The beads of this mala go back to zero. Finished malas stay.",
+    "इस माला के मनके शून्य हो जाएँगे। पूरी हुई मालाएँ बनी रहेंगी।",
+  ],
+  beadsLabel: ["beads", "मनके"],
+  // Meditation
+  dhyanChoose: ["How long would you like to sit?", "कितनी देर ध्यान करेंगे?"],
+  dhyanHint: [
+    "Sit comfortably, close your eyes and rest with the flame within.",
+    "आराम से बैठें, आँखें बंद करें और भीतर की ज्योति पर मन टिकाएँ।",
+  ],
+  lightLamp: ["Light the lamp and begin", "दीप जलाएँ, ध्यान शुरू करें"],
+  breatheIn: ["Breathe in…", "साँस लें…"],
+  breatheOut: ["Breathe out…", "साँस छोड़ें…"],
+  endDhyan: ["End meditation", "ध्यान समाप्त करें"],
+  dhyanDone: ["Meditation complete. Om shanti.", "ध्यान पूर्ण। ॐ शांति।"],
+  // Prayer
+  // Blessing sheet
+  blessMala: ["Mala complete", "माला पूर्ण"],
+  blessDhyan: ["Meditation complete", "ध्यान पूर्ण"],
+  blessPrayer: ["Prayer offered", "प्रार्थना अर्पित"],
+  blessFull: ["Full Sadhana today!", "आज की पूर्ण साधना!"],
+  blessEarned: ["You earned", "आपको मिले"],
+  newMilestone: ["New milestone", "नया पड़ाव"],
+  sankalpFulfilled: ["Sankalp fulfilled", "संकल्प पूरा हुआ"],
+  reachedLevel: ["You reached level", "आप पहुँचे स्तर"],
+  newRank: ["Your new rank", "आपकी नई श्रेणी"],
+  capped: [
+    "Today’s XP limit is reached. Your practice still counts for your streak.",
+    "आज के अंकों की सीमा पूरी हुई। आपकी साधना लगातार दिनों में फिर भी गिनी गई।",
+  ],
+  jaiHo: ["Jai ho", "जय हो"],
+  // Sankalp (challenges)
+  sankalpTitle: ["Sankalps for you", "आपके संकल्प"],
+  sankalpHint: [
+    "Small vows that keep the lamp burning.",
+    "छोटे संकल्प, जो दीप को जलाए रखें।",
+  ],
+  untilTonight: ["Until 4 am", "सुबह 4 बजे तक"],
+  untilMonday: ["Until Monday 4 am", "सोमवार सुबह 4 बजे तक"],
+  sankalpDone: ["Fulfilled", "पूरा हुआ"],
+  noSankalp: [
+    "No sankalp right now. New ones come soon.",
+    "अभी कोई संकल्प नहीं है। नए जल्द आएँगे।",
+  ],
+  sankalpOffline: [
+    "Connect to the internet to see your sankalps.",
+    "अपने संकल्प देखने के लिए इंटरनेट से जुड़ें।",
+  ],
+  // History
+  sadhanaCalendar: ["Your Sadhana calendar", "आपका साधना कैलेंडर"],
+  legendLit: ["Lamp lit", "दीप जला"],
+  legendFull: ["Full Sadhana", "पूर्ण साधना"],
+  legendRest: ["Rest day", "विश्राम"],
+  totalMalas: ["Malas", "माला"],
+  totalMinutes: ["Minutes of meditation", "मिनट ध्यान"],
+  longestStreak: ["Longest streak", "सबसे लंबी लगातार"],
+  milestones: ["Milestones", "पड़ाव"],
+  notYet: ["Not yet", "अभी नहीं"],
+  // Puja (prayer task, D-053)
+  pujaChoose: ["Whom will you worship today?", "आज किनकी पूजा करेंगे?"],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {

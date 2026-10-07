@@ -34,6 +34,8 @@ const ids = {
   published: "admin-rules-published",
   banner: "admin-rules-inactive-banner",
   audit: "admin-rules-audit",
+  festival: "admin-rules-festival",
+  asset: "admin-rules-asset",
 };
 
 before(async () => {
@@ -64,6 +66,11 @@ before(async () => {
       action: "content.create",
       createdAt: new Date(),
     });
+    await setDoc(doc(db, "festivals", ids.festival), { isPublished: false });
+    await setDoc(doc(db, "deities", "admin-rules-inactive"), { isActive: false });
+    await setDoc(doc(db, "mediaAssets", ids.asset), { purpose: "banner", createdAt: new Date() });
+    await setDoc(doc(db, "appConfig", "puja"), { version: 1 });
+    await setDoc(doc(db, "appConfig", "puja", "versions", "1"), { savedAt: new Date() });
   });
 });
 
@@ -75,6 +82,11 @@ after(async () => {
     await deleteDoc(doc(db, "contentPrivate", ids.draft));
     await deleteDoc(doc(db, "banners", ids.banner));
     await deleteDoc(doc(db, "auditLogs", ids.audit));
+    await deleteDoc(doc(db, "festivals", ids.festival));
+    await deleteDoc(doc(db, "deities", "admin-rules-inactive"));
+    await deleteDoc(doc(db, "mediaAssets", ids.asset));
+    await deleteDoc(doc(db, "appConfig", "puja", "versions", "1"));
+    await deleteDoc(doc(db, "appConfig", "puja"));
   });
   await env?.cleanup();
 });
@@ -129,6 +141,41 @@ test("staff reads follow the role table; everyone else is denied", async () => {
     await assertFails(getDocs(collection(db, "content")));
     await assertFails(getDocs(query(collection(db, "auditLogs"), limit(101))));
   }
+});
+
+test("panel v2 reads: catalogue, config history and the media library", async () => {
+  for (const role of [...adminRoles, null]) {
+    const db = as(role);
+    const expect = (allowed: boolean, operation: Promise<unknown>) =>
+      allowed ? assertSucceeds(operation) : assertFails(operation);
+    const catalog = can(role, "catalog.read");
+    const config = can(role, "config.read");
+    const assets = can(role, "asset.read");
+    // Unpublished and inactive catalogue documents are staff-only.
+    await expect(catalog, getDoc(doc(db, "festivals", ids.festival)));
+    await expect(catalog, getDoc(doc(db, "deities", "admin-rules-inactive")));
+    await expect(catalog, getDocs(query(collection(db, "festivals"), limit(200))));
+    await expect(config, getDoc(doc(db, "appConfig", "puja")));
+    await expect(
+      config,
+      getDocs(query(collection(db, "appConfig", "puja", "versions"), orderBy("savedAt", "desc"), limit(50))),
+    );
+    await expect(assets, getDoc(doc(db, "mediaAssets", ids.asset)));
+    await expect(
+      assets,
+      getDocs(query(collection(db, "mediaAssets"), where("purpose", "==", "banner"), limit(100))),
+    );
+    // Lists stay bounded, and nothing is written directly.
+    await assertFails(getDocs(query(collection(db, "festivals"), limit(201))));
+    await assertFails(getDocs(collection(db, "mediaAssets")));
+    await assertFails(setDoc(doc(db, "festivals", "forged"), { isPublished: true }));
+    await assertFails(setDoc(doc(db, "appConfig", "puja"), { version: 9 }));
+    await assertFails(setDoc(doc(db, "mediaAssets", "forged"), { purpose: "banner" }));
+  }
+  // A forged role on a guest session grants nothing.
+  const forged = as("SUPER_ADMIN", "anonymous");
+  await assertFails(getDoc(doc(forged, "festivals", ids.festival)));
+  await assertFails(getDoc(doc(forged, "mediaAssets", ids.asset)));
 });
 
 test("role claims on anonymous or signed-out sessions grant nothing", async () => {

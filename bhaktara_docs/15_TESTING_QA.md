@@ -32,7 +32,7 @@ Critical flows:
 4. Home loading and banner navigation (internal targets only)
 5. Play bhajan, background playback, lock-screen controls
 6. Wallpaper: preview → rewarded ad → set/save (and the no-fill fallback)
-7. Ringtone: preview → rewarded ad → set (WRITE_SETTINGS permission flow)
+7. Ringtone: preview → rewarded ad → set (WRITE_SETTINGS guided flow: explainer, picture-in-picture guide over Settings, automatic return; and the fallback with picture-in-picture switched off) (D-049)
 8. Status: play → free WhatsApp share; rewarded save
 9. Mandir: choose deity, diya/flowers/bell, aarti, special offering via rewarded ad
 10. Sadhana: jaap mala, meditation, prayer checklist, full Sadhana bonus

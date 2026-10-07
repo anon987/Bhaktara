@@ -194,7 +194,9 @@ test("set ringtone explains the system settings permission before opening it", a
   );
   expect(mockServices.ringtone.setRingtone).not.toHaveBeenCalled();
   mockServices.ringtone.needsSystemPermission.mockReturnValue(false);
-  fireEvent.press(screen.getByText("Open settings"));
+  // The explainer walks through the three steps before leaving the app.
+  expect(screen.getByText("Turn ON the switch next to Bhaktara.")).toBeTruthy();
+  fireEvent.press(screen.getByText("Continue"));
   await waitFor(() =>
     expect(screen.getByText("Your new sound is set.")).toBeTruthy(),
   );
@@ -220,12 +222,27 @@ test("a refused system settings permission leaves a path back to settings", asyn
   await waitFor(() => expect(screen.getByText("Set as ringtone")).toBeTruthy());
   fireEvent.press(screen.getByText("Set as ringtone"));
   fireEvent.press(screen.getByText("Alarm sound"));
-  await waitFor(() => expect(screen.getByText("Open settings")).toBeTruthy());
-  fireEvent.press(screen.getByText("Open settings"));
+  await waitFor(() => expect(screen.getByText("Continue")).toBeTruthy());
+  fireEvent.press(screen.getByText("Continue"));
   await waitFor(() =>
     expect(screen.getByText(/Ringtone permission is off/)).toBeTruthy(),
   );
   expect(screen.getByText("Open settings")).toBeTruthy();
+  expect(mockServices.ringtone.setRingtone).not.toHaveBeenCalled();
+});
+
+test("not now closes the explainer without asking for the permission", async () => {
+  mockServices.ringtone.needsSystemPermission.mockReturnValue(true);
+  const screen = renderActions(ringtone);
+  await waitFor(() => expect(screen.getByText("Set as ringtone")).toBeTruthy());
+  fireEvent.press(screen.getByText("Set as ringtone"));
+  fireEvent.press(screen.getByText("Phone ringtone"));
+  await waitFor(() => expect(screen.getByText("Not now")).toBeTruthy());
+  fireEvent.press(screen.getByText("Not now"));
+  await waitFor(() =>
+    expect(screen.queryByText("Allow Bhaktara to set ringtones")).toBeNull(),
+  );
+  expect(mockServices.ringtone.requestSystemPermission).not.toHaveBeenCalled();
   expect(mockServices.ringtone.setRingtone).not.toHaveBeenCalled();
 });
 

@@ -5,10 +5,19 @@ import {
   getFirestore,
   initializeFirestore,
 } from "firebase/firestore";
+import {
+  connectFunctionsEmulator,
+  getFunctions,
+  httpsCallable,
+} from "firebase/functions";
 import { BackendConfig } from "../backend/config";
 import { createSessionService } from "../auth/session";
 import { createFirestoreRepository } from "../../repositories/firestoreRepository";
 import { createFirestoreFavoritesRepository } from "../../repositories/favoritesRepository";
+import {
+  Callable,
+  createProgressionRepository,
+} from "../../repositories/progressionRepository";
 import { authPersistence } from "./persistence";
 import { jsFirestoreApi } from "./jsFirestoreApi";
 
@@ -37,12 +46,17 @@ export async function createFirebaseClient(config: FirebaseConfig) {
     ? getAuth(app)
     : initializeAuth(app, { persistence: authPersistence });
   const db = existing ? getFirestore(app) : initializeFirestore(app, {});
+  const functions = getFunctions(app, "asia-south1");
   if (!existing && config.mode === "emulator") {
     connectAuthEmulator(auth, `http://${config.host}:9099`, {
       disableWarnings: true,
     });
     connectFirestoreEmulator(db, config.host, 8080);
+    connectFunctionsEmulator(functions, config.host, 5001);
   }
+  const call: Callable = async (name, data) =>
+    (await httpsCallable(functions, name, { timeout: 20_000 })(data))
+      .data as never;
   const session = createSessionService({
     ready: () => auth.authStateReady(),
     current: () =>
@@ -60,5 +74,6 @@ export async function createFirebaseClient(config: FirebaseConfig) {
     session,
     content: createFirestoreRepository(db, session, jsFirestoreApi),
     favorites: createFirestoreFavoritesRepository(db, session, jsFirestoreApi),
+    progression: createProgressionRepository(db, session, jsFirestoreApi, call),
   };
 }

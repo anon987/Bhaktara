@@ -107,3 +107,41 @@ jest.mock("expo-video", () => {
     VideoView: (props: object) => React.createElement(View, props),
   };
 });
+
+// Haptics need a native module; practice screens only fire and forget.
+jest.mock("expo-haptics", () => ({
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: "light" },
+  NotificationFeedbackType: { Success: "success" },
+}));
+
+// expo-audio needs its native module; the Sadhana bell only plays and seeks.
+// Player tests install their own richer fake.
+jest.mock("expo-audio", () => ({
+  createAudioPlayer: () => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+    remove: jest.fn(),
+    replace: jest.fn(),
+    addListener: jest.fn(),
+    playing: false,
+  }),
+  setAudioModeAsync: jest.fn(async () => undefined),
+}));
+
+// Reanimated and Worklets official mocks (the puja scene animates with them).
+jest.mock("react-native-worklets", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("react-native-worklets/src/mock"),
+);
+jest.mock("react-native-reanimated", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("react-native-reanimated/mock"),
+);
+
+// The Skia light/smoke layer needs native Skia; unit tests skip drawing it.
+jest.mock("../src/features/sadhana/puja/Effects", () => ({
+  PujaEffects: () => null,
+}));

@@ -401,3 +401,15 @@ jobState/buildHomeFeed       [server]  dirty, dirtyAt, dirtyReason, claimId, cla
 - Banners in the feed are active, for that language (all languages when `languages` is absent), inside their `startAt`/`endAt` window at build time, by `priority` desc then ID, at most 10.
 - New composite indexes for the NEW pools: `content (status, publishedAt desc)` and `content (status, type, publishedAt desc)`. The POPULAR pools reuse the existing catalog indexes.
 - The seed also writes `homeLayout/{hi,en}` (revision 1), the published `collections/aarti-sangrah`, and fixed `publishedAt` values, so a server rebuild of the seeded sources reproduces the seeded feeds exactly.
+
+## Implementation checkpoint — 2026-10-05 (habit layer)
+
+Differences from the sections above, as built:
+
+- `userChallenges/{uid}_{challengeId}_{periodKey}`: the period key (`day-YYYY-MM-DD` in the user's practice day, or `week-YYYY-MM-DD` for the Monday 04:00 IST week) is part of the ID, so one challenge document can run as a daily or weekly challenge over many periods. Fields add `periodKey`, `metric` and `expiresAt`. Owners may `get` by ID (also absent documents) and `list` their own (≤ 50).
+- `userStats` adds `badgeIds[]` (unlocked badges, used inside the transaction), `counters.sadhanaTasks` and `counters.brahmaMuhurtaDays`, `malaWindow` (impossible-progress flag), `rate` (session starts per day) and `activeSessions { JAAP?, MEDITATION? }`.
+- `users/{uid}/days/{bhaktiDay}` adds `malasRewarded`, `meditationSessionsRewarded`, `brahmaMuhurta` and `day`.
+- `users/{uid}/sessions/{sessionId}` adds `bhaktiDay` (at start), `deityId`, `reason` (when REJECTED) and `result` (the stored `PracticeResult`).
+- `rewardTransactions` adds `requestedXp`; `type` is one of TASK, FULL_SADHANA, MALA, MEDITATION, CHALLENGE, BADGE, MANDIR. Not readable by clients.
+- `users/{uid}` adds `timezoneChangedAt` (server).
+- `challenges` and `badges` are readable by any session while `isActive` (≤ 50 per list). `appConfig/gamification` and `appConfig/sadhana` are readable; other `appConfig` documents are not.

@@ -36,11 +36,12 @@ import {
 } from "./draftForm";
 import { MediaUpload } from "./MediaUpload";
 import { TransitionPanel } from "./TransitionPanel";
+import { ContentPreview } from "../components/panel/preview";
 
-type Props = { id?: string };
+type Props = { id?: string; type?: ContentType };
 
-export function ContentEditor({ id }: Props) {
-  if (!id) return <EditorForm record={null} onMoved={() => {}} />;
+export function ContentEditor({ id, type }: Props) {
+  if (!id) return <EditorForm record={null} initialType={type} onMoved={() => {}} />;
   return <ExistingContent id={id} />;
 }
 
@@ -83,6 +84,10 @@ function ExistingContent({ id }: { id: string }) {
         setFlash(`Moved from ${from} to ${to}.`);
         setVersion((value) => value + 1);
       }}
+      onMediaProcessed={() => {
+        setFlash("Media rendered and saved.");
+        setVersion((value) => value + 1);
+      }}
     />
   );
 }
@@ -91,14 +96,17 @@ type FormProps = {
   record: ContentRecord | null;
   flash?: string | null;
   onMoved: (from: ContentStatus, to: ContentStatus) => void;
+  onMediaProcessed?: () => void;
+  // The type a new item starts as (a library section's "New" button).
+  initialType?: ContentType;
 };
 
-export function EditorForm({ record, flash, onMoved }: FormProps) {
+export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialType }: FormProps) {
   const { api, role } = useAdmin();
   const isNew = record === null;
   const initial = useMemo(
-    () => (record ? formFromDraft(record.draft) : emptyForm()),
-    [record],
+    () => (record ? formFromDraft(record.draft) : emptyForm(initialType)),
+    [record, initialType],
   );
   const [form, setForm] = useState<DraftForm>(initial);
   const [saved, setSaved] = useState<DraftForm>(initial);
@@ -516,6 +524,12 @@ export function EditorForm({ record, flash, onMoved }: FormProps) {
             </section>
           ) : (
             <>
+              <ContentPreview
+                type={record.draft.type}
+                title={record.draft.title.en || record.draft.title.hi}
+                media={record.draft.media}
+                duration={record.draft.durationSeconds}
+              />
               <TransitionPanel
                 contentId={record.id}
                 status={status}
@@ -524,7 +538,18 @@ export function EditorForm({ record, flash, onMoved }: FormProps) {
                 dirty={dirty}
                 onMoved={(to) => onMoved(status, to)}
               />
-              {can(role, "content.upload") && <MediaUpload contentId={record.id} />}
+              {can(role, "content.upload") && editable && (
+                <MediaUpload contentId={record.id} type={form.type} onProcessed={() => onMediaProcessed?.()} />
+              )}
+              {can(role, "content.upload") && !editable && (
+                <section className="panel" aria-labelledby="replace-heading">
+                  <h2 id="replace-heading">Replace media</h2>
+                  <p className="muted">
+                    Media can be changed while the item is a Draft. Move it back to Draft above, replace the files,
+                    then send it through READY again.
+                  </p>
+                </section>
+              )}
             </>
           )}
         </aside>

@@ -12,6 +12,9 @@ import {
 import { AppProvider, useApp } from "./src/app/providers/AppProvider";
 import { AppNavigator } from "./src/app/navigation/AppNavigator";
 import { PlayerProvider } from "./src/features/player/PlayerProvider";
+import { ProgressionProvider } from "./src/features/sadhana/ProgressionProvider";
+import { BlessingSheet } from "./src/features/sadhana/BlessingSheet";
+import { SettingsGuideOverlay } from "./src/features/content/SettingsGuideOverlay";
 import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { colors } from "./src/theme/tokens";
 import { Button, Txt } from "./src/components/ui";
@@ -39,7 +42,13 @@ export function AppContent() {
     </View>
   ) : local.onboarded ? (
     <PlayerProvider>
-      <AppNavigator />
+      <ProgressionProvider>
+        <AppNavigator />
+        {/* XP, streak and milestones after a recorded practice. */}
+        <BlessingSheet />
+      </ProgressionProvider>
+      {/* Fills Bhaktara's picture-in-picture window during the ringtone permission. */}
+      <SettingsGuideOverlay />
     </PlayerProvider>
   ) : (
     <OnboardingScreen />

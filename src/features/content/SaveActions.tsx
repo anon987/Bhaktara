@@ -20,6 +20,7 @@ import {
   WallpaperTarget,
 } from "../../services/platform/contracts";
 import { colors } from "../../theme/tokens";
+import { SystemPermissionSheet } from "./SystemPermissionSheet";
 
 // Doc 22 §A3: the master files used for Save/Set.
 const setups: Partial<
@@ -87,6 +88,11 @@ const ringtoneTargets: [RingtoneTarget, StringKey][] = [
 export function SaveActions({ item }: { item: Content }) {
   const { t, local } = useApp();
   const showDialog = useDialog();
+  // The pending "Set as ringtone" waiting on the system-settings explainer.
+  const [permissionAsk, setPermissionAsk] = useState<{
+    action: Action;
+    via?: SaveVia;
+  } | null>(null);
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
   const mounted = useRef(true);
   // Guards against a double tap before the busy state renders.
@@ -159,13 +165,7 @@ export function SaveActions({ item }: { item: Content }) {
       action.kind === "set-ringtone" &&
       services.ringtone.needsSystemPermission()
     ) {
-      showDialog(t("systemPermissionTitle"), t("systemPermissionText"), [
-        {
-          text: t("openSettings"),
-          onPress: () => void requestSystemPermission(action, via),
-        },
-        { text: t("cancel"), style: "cancel" },
-      ]);
+      setPermissionAsk({ action, via });
       return;
     }
     let unlockedVia = via;
@@ -366,6 +366,17 @@ export function SaveActions({ item }: { item: Content }) {
           </>
         )}
       </View>
+      <SystemPermissionSheet
+        visible={!!permissionAsk}
+        guided={services.ringtone.canGuideSystemPermission?.() ?? false}
+        onContinue={() => {
+          const pending = permissionAsk;
+          setPermissionAsk(null);
+          if (pending)
+            void requestSystemPermission(pending.action, pending.via);
+        }}
+        onCancel={() => setPermissionAsk(null)}
+      />
     </Card>
   );
 }

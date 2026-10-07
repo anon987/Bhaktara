@@ -70,3 +70,24 @@ export const stagingKey = (contentId: string, ext: string) =>
   `staging/${contentId}/${randomUUID()}.${ext}`;
 
 export const bytesOf = (path: string) => readFile(path);
+
+// An MP3 carrying album art, as music files often do.
+export const withAlbumArt = (output: string, audio: string, art: string) =>
+  lavfi(output, [
+    "-i",
+    audio,
+    "-i",
+    art,
+    "-map",
+    "0:a",
+    "-map",
+    "1:v",
+    "-c:a",
+    "libmp3lame",
+    "-c:v",
+    "mjpeg",
+    "-disposition:v",
+    "attached_pic",
+    "-id3v2_version",
+    "3",
+  ]);

@@ -194,3 +194,15 @@ Rewards are cosmetic and unlocked by achievement. There is no shop.
 
 - `appConfig/gamification` holds: XP table, caps, level curve, rank thresholds, league rules, session minimums.
 - The config is versioned. Every change is audit-logged (doc 09).
+
+## Implementation checkpoint — 2026-10-06 (puja offerings, D-054)
+
+The prayer task is a puja (D-053, D-054). Offerings per deity live in `src/domain/puja.ts`; the tray items and which of them are required live in `appConfig/sadhana.prayerItems` (`kind`, `required`, `label`, optional Sanskrit `line`). Only the required items (pushp, dhoop, naivedya, deep, shankh) are sent to `completePrayerChecklist`.
+
+Sources used for the order and the offerings:
+- Panchopachar order (gandha, pushpa, dhoop, deep, naivedya, then aarti): [panditsnearme](https://panditsnearme.com/blog/panchopchar-puja-vidhi-and-mantra), [The Sanatan Tales](https://thesanatantales.com/panchopchar-pujan/), [Hindu Janajagruti Samiti](https://www.hindujagruti.org/hinduism/daily-puja-vidhi).
+- Flowers by deity: [AstroVed](https://www.astroved.com/articles/10-hindu-gods-and-their-favorite-flowers), [FlowerAura](https://www.floweraura.com/blog/10-divine-flowers-which-are-favorites-hindu-gods); flowers not offered: [The Conversation](https://theconversation.com/why-some-flowers-are-so-pleasing-for-hindu-gods-and-goddesses-235153), [mPanchang on ketaki](https://www.mpanchang.com/articles/astrology/ketaki-flower/).
+- Bhog by deity: [VedicFeed](https://vedicfeed.com/naivedhya-favorite-food-offerings-to-gods/), [AstroVed](https://www.astroved.com/blogs/top-10-hindu-gods-and-their-favorite-foods).
+- Ghanti and shankh: [Bhakti Marga](https://bhaktimarga.ie/why-do-we-ring-the-ghanta-in-puja/), [Hindu Janajagruti Samiti](https://www.hindujagruti.org/hinduism/knowledge/article/why-is-shankh-blown-before-start-of-puja.html); aarti movement: [ramshyam](https://ramshyam.in/2023/10/12/how-and-how-many-times-should-we-rotate-the-aarti/).
+
+These are content choices made by the operator's direction and should be reviewed when the canonical deity list (P-11) is fixed.
