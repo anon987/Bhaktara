@@ -93,7 +93,11 @@ export interface AdminApi {
   listContent(query: ContentQuery): Promise<Page<ContentRow, string>>;
   getContent(id: string): Promise<ContentRecord | null>;
   listDeities(): Promise<DeityOption[]>;
-  createContent(id: string, draft: ContentDraftInput): Promise<SaveResult>;
+  // Omit the ID (or pass "") to have the server generate one from the title.
+  createContent(
+    id: string | undefined,
+    draft: ContentDraftInput,
+  ): Promise<SaveResult>;
   updateContent(id: string, draft: ContentDraftInput): Promise<SaveResult>;
   transitionContent(
     input: TransitionInput,
@@ -229,7 +233,7 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
     },
 
     createContent: (id, draft) =>
-      call<{ id: string; draft: ContentDraftInput }, SaveResult>(
+      call<{ id?: string; draft: ContentDraftInput }, SaveResult>(
         "createContent",
       )({ id, draft }),
     updateContent: (id, draft) =>
