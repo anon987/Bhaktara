@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminApi, ContentRecord } from "../api";
 import { AdminProvider } from "../app/context";
-import type { AdminRole, ContentStatus } from "../domain";
+import type { AdminRole, ContentStatus, ContentType } from "../domain";
+import type { PanelApi } from "../panelApi";
 import { callableError, fakeApi } from "../test/fakeApi";
 import { ContentEditor } from "./ContentEditor";
 
@@ -29,35 +30,175 @@ const record = (status: ContentStatus = "DRAFT"): ContentRecord => ({
   },
 });
 
-function renderEditor(api: AdminApi, role: AdminRole, id?: string) {
+type PanelStub = Partial<Record<keyof PanelApi, unknown>>;
+const fakePanel = (overrides: PanelStub = {}) =>
+  ({
+    listCatalog: vi.fn(async (kind: string) =>
+      kind === "deity"
+        ? [
+            { id: "hanuman", data: { name: { en: "Hanuman", hi: "हनुमान" } }, updatedAt: null },
+            { id: "shiva", data: { name: { en: "Shiva", hi: "शिव" } }, updatedAt: null },
+          ]
+        : [{ id: "festival", data: { name: { en: "Festival", hi: "त्योहार" } }, updatedAt: null }],
+    ),
+    listContentTags: vi.fn(async () => ["aarti", "om"]),
+    saveCatalogItem: vi.fn(async () => ({ id: "ganesha" })),
+    ...overrides,
+  }) as unknown as PanelApi;
+
+function renderEditor(
+  api: AdminApi,
+  role: AdminRole,
+  id?: string,
+  panel?: PanelApi,
+  type?: ContentType,
+) {
   render(
-    <AdminProvider api={api} role={role}>
-      <ContentEditor id={id} />
+    <AdminProvider api={api} panel={panel} role={role}>
+      <ContentEditor id={id} type={type} />
     </AdminProvider>,
   );
 }
 
-describe("ContentEditor validation", () => {
-  it("shows the shared readiness rules for a new draft", async () => {
-    renderEditor(fakeApi(), "EDITOR");
+const openPicker = async (name: string) =>
+  userEvent.click(await screen.findByRole("combobox", { name: new RegExp(`^${name}`) }));
+const searchPicker = (name: string, text: string) =>
+  userEvent.type(screen.getByRole("combobox", { name: `Search ${name.toLowerCase()}` }), text);
+
+describe("ContentEditor form", () => {
+  it("shows what still blocks READY for a new draft, in plain words", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, undefined, "WALLPAPER");
     const status = await screen.findByRole("complementary", { name: "Status and media" });
     expect(within(status).getByText(/Needed before READY/)).toBeInTheDocument();
     expect(within(status).getByText(/Hindi title is required/)).toBeInTheDocument();
     expect(within(status).getByText(/At least one deity is required/)).toBeInTheDocument();
+    expect(within(status).getByText(/Upload the wallpaper image/)).toBeInTheDocument();
+    expect(within(status).queryByText(/media key/)).not.toBeInTheDocument();
+  });
+
+  it("has no ID, media key, provenance or checklist fields", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "WALLPAPER");
+    await screen.findByLabelText("Name");
+    expect(screen.queryByLabelText(/ID/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Media keys")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Provenance/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Checklist/)).not.toBeInTheDocument();
+    // Audio-only fields are hidden for a wallpaper.
+    expect(screen.queryByLabelText("Language of the audio")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Duration/)).not.toBeInTheDocument();
+    // The app never shows a wallpaper's name or description.
+    expect(screen.queryByLabelText(/^Title in/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Description in/)).not.toBeInTheDocument();
+  });
+
+  it("asks for Hindi first on titled types", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "BHAJAN");
+    await screen.findByLabelText("Title in Hindi");
+    const titles = screen.getAllByLabelText(/^Title in/);
+    expect(titles.map((input) => input.getAttribute("lang"))).toEqual(["hi", null]);
+  });
+
+  it("points a new item at the uploader", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "WALLPAPER");
+    const media = await screen.findByRole("region", { name: "Media" });
+    expect(media).toHaveTextContent("after you press “Create draft”");
+    expect(within(media).getByRole("link", { name: /Upload files/ })).toHaveAttribute(
+      "href",
+      "#/upload/WALLPAPER",
+    );
+  });
+
+  it("creates a draft with a generated ID", async () => {
+    const api = fakeApi();
+    renderEditor(api, "EDITOR", undefined, fakePanel(), "WALLPAPER");
+    await userEvent.type(await screen.findByLabelText("Name"), "Hanuman Gold");
+    await openPicker("Deities");
+    await userEvent.click(await screen.findByRole("option", { name: /Hanuman/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Create draft" }));
+    expect(api.createContent).toHaveBeenCalledWith(
+      expect.stringMatching(/^hanuman-gold-[a-z0-9]{4}$/),
+      expect.objectContaining({
+        type: "WALLPAPER",
+        deityIds: ["hanuman"],
+        title: { hi: "", en: "Hanuman Gold" },
+      }),
+    );
   });
 
   it("flags invalid fields instantly and does not call the server", async () => {
     const api = fakeApi();
     renderEditor(api, "EDITOR");
-    const thumb = await screen.findByLabelText("thumb (required)");
-    await userEvent.type(thumb, "https://cdn.example.com/a.webp");
-    expect(thumb).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getAllByText("Media must use asset keys").length).toBeGreaterThan(0);
-    expect(screen.getByRole("alert")).toHaveTextContent("Fix these fields before saving");
+    const title = await screen.findByLabelText("Title in English");
+    await userEvent.click(title);
+    await userEvent.paste("x".repeat(121));
+    expect(title).toHaveAttribute("aria-invalid", "true");
+    const summary = screen.getByRole("alert");
+    expect(summary).toHaveTextContent("Fix these fields before saving");
 
     await userEvent.click(screen.getByRole("button", { name: "Create draft" }));
     expect(api.createContent).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("ID: Use a lowercase slug");
+    expect(summary).toHaveFocus();
+  });
+
+  it("keeps stored provenance, checklist and media when saving", async () => {
+    const stored = record();
+    stored.draft.private = {
+      aiTool: "Suno",
+      aiPlan: "Pro",
+      sourceTextRef: "Tulsidas",
+      checklist: { titleChecked: true },
+    };
+    const api = fakeApi({ getContent: vi.fn(async () => stored) });
+    renderEditor(api, "EDITOR", "hanuman-chalisa", fakePanel());
+    await openPicker("Tags");
+    await userEvent.click(await screen.findByRole("option", { name: "om" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(api.updateContent).toHaveBeenCalledWith(
+      "hanuman-chalisa",
+      expect.objectContaining({
+        tags: ["om"],
+        media: stored.draft.media,
+        private: expect.objectContaining({
+          aiTool: "Suno",
+          aiPlan: "Pro",
+          sourceTextRef: "Tulsidas",
+          checklist: { titleChecked: true },
+        }),
+      }),
+    );
+  });
+
+  it("creates a deity from the picker when the role can edit the catalogue", async () => {
+    const panel = fakePanel();
+    renderEditor(fakeApi(), "CONTENT_ADMIN", undefined, panel);
+    await openPicker("Deities");
+    await searchPicker("Deities", "Ganesha");
+    await userEvent.click(await screen.findByRole("option", { name: "Create “Ganesha”" }));
+    await userEvent.type(screen.getByLabelText("Name in Hindi (optional)"), "गणेश");
+    await userEvent.click(screen.getByRole("button", { name: "Create deity" }));
+    expect(panel.saveCatalogItem).toHaveBeenCalledWith({
+      kind: "deity",
+      id: "ganesha",
+      create: true,
+      data: expect.objectContaining({
+        name: { en: "Ganesha", hi: "गणेश" },
+        isActive: false,
+      }),
+    });
+    const chips = await screen.findByRole("list", { name: "Selected deities" });
+    expect(chips).toHaveTextContent("Ganesha");
+  });
+
+  it("only offers to create tags, not deities, to an editor", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel());
+    await openPicker("Deities");
+    await searchPicker("Deities", "Ganesha");
+    expect(screen.queryByRole("option", { name: /Create/ })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await openPicker("Tags");
+    await searchPicker("Tags", "navratri");
+    await userEvent.click(screen.getByRole("option", { name: "Create “navratri”" }));
+    expect(await screen.findByRole("list", { name: "Selected tags" })).toHaveTextContent("navratri");
   });
 
   it("shows server field errors from a rejected save", async () => {
@@ -70,7 +211,7 @@ describe("ContentEditor validation", () => {
       }),
     });
     renderEditor(api, "EDITOR", "hanuman-chalisa");
-    await userEvent.type(await screen.findByLabelText("Tags"), "aarti");
+    await userEvent.type(await screen.findByLabelText("Title in English"), "!");
     await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Some fields are invalid");
@@ -154,7 +295,7 @@ describe("ContentEditor status transitions", () => {
 
   it("blocks status moves while there are unsaved edits", async () => {
     renderEditor(fakeApi({ getContent: vi.fn(async () => record()) }), "EDITOR", "hanuman-chalisa");
-    await userEvent.type(await screen.findByLabelText("Tags"), "x");
+    await userEvent.type(await screen.findByLabelText("Title in English"), "x");
     expect(screen.getByRole("button", { name: "Move to READY" })).toBeDisabled();
     expect(screen.getByText(/Save your changes before changing the status/)).toBeInTheDocument();
   });
