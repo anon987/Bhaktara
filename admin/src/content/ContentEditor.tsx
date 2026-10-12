@@ -273,7 +273,7 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
           </div>
 
           <fieldset disabled={!editable || saving}>
-            <legend>Titles and description</legend>
+            <legend>{form.type === "WALLPAPER" ? "Wallpaper" : "Titles and description"}</legend>
             <div className="field">
               <label htmlFor="content-type">What is this?</label>
               <select
@@ -288,36 +288,47 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                 ))}
               </select>
             </div>
-            <div className="two-col">
+            {form.type === "WALLPAPER" ? (
+              // The app shows wallpapers as images only: the file name is all it needs.
               <TextField
-                label="Title in Hindi"
-                lang="hi"
-                value={form.title.hi}
-                onChange={(hi) => update("title", { ...form.title, hi })}
-                error={fieldErrors["title.hi"]}
+                label="Name"
+                value={form.title.en || form.title.hi}
+                onChange={(en) => update("title", { hi: form.title.hi, en })}
+                hint="Taken from the file name. Only used here in the admin panel; the app never shows it."
+                error={fieldErrors["title.en"] ?? fieldErrors["title.hi"]}
               />
-              <TextField
-                label="Title in English"
-                value={form.title.en}
-                onChange={(en) => update("title", { ...form.title, en })}
-                error={fieldErrors["title.en"]}
-              />
-              <TextField
-                label="Description in Hindi"
-                lang="hi"
-                multiline
-                value={form.description.hi}
-                onChange={(hi) => update("description", { ...form.description, hi })}
-                error={fieldErrors["description.hi"]}
-              />
-              <TextField
-                label="Description in English"
-                multiline
-                value={form.description.en}
-                onChange={(en) => update("description", { ...form.description, en })}
-                error={fieldErrors["description.en"]}
-              />
-            </div>
+            ) : (
+              <div className="two-col">
+                <TextField
+                  label="Title in Hindi"
+                  lang="hi"
+                  value={form.title.hi}
+                  onChange={(hi) => update("title", { ...form.title, hi })}
+                  error={fieldErrors["title.hi"]}
+                />
+                <TextField
+                  label="Title in English"
+                  value={form.title.en}
+                  onChange={(en) => update("title", { ...form.title, en })}
+                  error={fieldErrors["title.en"]}
+                />
+                <TextField
+                  label="Description in Hindi"
+                  lang="hi"
+                  multiline
+                  value={form.description.hi}
+                  onChange={(hi) => update("description", { ...form.description, hi })}
+                  error={fieldErrors["description.hi"]}
+                />
+                <TextField
+                  label="Description in English"
+                  multiline
+                  value={form.description.en}
+                  onChange={(en) => update("description", { ...form.description, en })}
+                  error={fieldErrors["description.en"]}
+                />
+              </div>
+            )}
           </fieldset>
 
           <fieldset disabled={!editable || saving}>

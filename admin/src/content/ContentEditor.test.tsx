@@ -78,7 +78,7 @@ describe("ContentEditor form", () => {
 
   it("has no ID, media key, provenance or checklist fields", async () => {
     renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "WALLPAPER");
-    await screen.findByLabelText("Title in Hindi");
+    await screen.findByLabelText("Name");
     expect(screen.queryByLabelText(/ID/)).not.toBeInTheDocument();
     expect(screen.queryByText("Media keys")).not.toBeInTheDocument();
     expect(screen.queryByText(/Provenance/)).not.toBeInTheDocument();
@@ -86,7 +86,14 @@ describe("ContentEditor form", () => {
     // Audio-only fields are hidden for a wallpaper.
     expect(screen.queryByLabelText("Language of the audio")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Duration/)).not.toBeInTheDocument();
-    // Hindi comes first.
+    // The app never shows a wallpaper's name or description.
+    expect(screen.queryByLabelText(/^Title in/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Description in/)).not.toBeInTheDocument();
+  });
+
+  it("asks for Hindi first on titled types", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "BHAJAN");
+    await screen.findByLabelText("Title in Hindi");
     const titles = screen.getAllByLabelText(/^Title in/);
     expect(titles.map((input) => input.getAttribute("lang"))).toEqual(["hi", null]);
   });
@@ -104,7 +111,7 @@ describe("ContentEditor form", () => {
   it("creates a draft with a generated ID", async () => {
     const api = fakeApi();
     renderEditor(api, "EDITOR", undefined, fakePanel(), "WALLPAPER");
-    await userEvent.type(await screen.findByLabelText("Title in English"), "Hanuman Gold");
+    await userEvent.type(await screen.findByLabelText("Name"), "Hanuman Gold");
     await openPicker("Deities");
     await userEvent.click(await screen.findByRole("option", { name: /Hanuman/ }));
     await userEvent.click(screen.getByRole("button", { name: "Create draft" }));
