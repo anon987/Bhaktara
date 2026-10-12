@@ -19,7 +19,7 @@ import { usePlayer } from "../player/PlayerProvider";
 import { PetalShower } from "./art/PetalShower";
 import { beadTick, malaPulse, useSound } from "./feedback";
 import { useProgression } from "./ProgressionProvider";
-import { HandItem, PlacedFlower, PujaScene } from "./puja/PujaScene";
+import { FLOWER_LIMIT, HandItem, PlacedFlower, PujaScene } from "./puja/PujaScene";
 import { Drawer, PujaTray } from "./puja/PujaTray";
 import { EarningNote } from "./Sanctum";
 import { FlankLines, LotusDivider, SerifText } from "./shrine/Ornaments";
@@ -276,8 +276,9 @@ export function PrayerScreen({
           onItem={onItem}
           onFlower={(kind: FlowerKind) => {
             beadTick();
-            flowerId.current += 1;
-            setFlowers((values) => [...values, { id: flowerId.current, kind }]);
+            // Read the ID now: the updater may run after later taps.
+            const id = (flowerId.current += 1);
+            setFlowers((values) => [...values, { id, kind }].slice(-FLOWER_LIMIT));
             mark("pushp");
           }}
           onGarland={(kind) => {

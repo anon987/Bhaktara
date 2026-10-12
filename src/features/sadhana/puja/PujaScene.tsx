@@ -59,17 +59,14 @@ export function sceneLayout(width: number, height: number) {
   };
 }
 
-const FLOWER_SLOTS = 14;
-// Flower pile positions around the deity's feet, front row first.
-const slot = (i: number) => {
-  const row = i < 8 ? 0 : 1;
-  const k = row === 0 ? i : i - 8;
-  const n = row === 0 ? 8 : 6;
-  return {
-    dx: (k - (n - 1) / 2) * (row === 0 ? 15 : 13),
-    dy: row === 0 ? 0 : -10,
-  };
-};
+// At most this many flowers rest at the deity's feet; a new one replaces the
+// oldest, so the altar never fills up.
+export const FLOWER_LIMIT = 7;
+// One row at the deity's feet, centred on however many flowers there are.
+const slot = (i: number, count: number) => ({
+  dx: (i - (count - 1) / 2) * 15,
+  dy: 0,
+});
 
 export function PujaScene({
   width,
@@ -329,8 +326,8 @@ export function PujaScene({
           </View>
         )}
         {/* Flowers at the deity's feet */}
-        {flowers.slice(-FLOWER_SLOTS).map((flower, i) => {
-          const p = slot(i);
+        {flowers.slice(-FLOWER_LIMIT).map((flower, i, shown) => {
+          const p = slot(i, shown.length);
           return (
             <Drop
               key={flower.id}
