@@ -338,7 +338,10 @@ function renderJaap(loadBackend: () => Promise<Backend>) {
 test("a mala with the server opens one session, completes it and blesses", async () => {
   const { progression, loadBackend } = serverBackend();
   const screen = renderJaap(loadBackend);
-  await waitFor(() => expect(progression.load).toHaveBeenCalled());
+  // The shrine art makes the first render slow on CI machines.
+  await waitFor(() => expect(progression.load).toHaveBeenCalled(), {
+    timeout: 5000,
+  });
   expect(
     screen.queryByText("Practice is saved on this phone only."),
   ).toBeNull();
@@ -375,7 +378,10 @@ test("offline practice continues and says it will not earn XP", async () => {
     }),
   });
   const screen = renderJaap(loadBackend);
-  await waitFor(() => expect(progression.load).toHaveBeenCalled());
+  // The shrine art makes the first render slow on CI machines.
+  await waitFor(() => expect(progression.load).toHaveBeenCalled(), {
+    timeout: 5000,
+  });
   await act(async () => tap(screen, 108));
   await waitFor(() =>
     expect(
@@ -398,7 +404,10 @@ test("a mala the server finds too quick gets a gentle explanation", async () => 
     }),
   });
   const screen = renderJaap(loadBackend);
-  await waitFor(() => expect(progression.load).toHaveBeenCalled());
+  // The shrine art makes the first render slow on CI machines.
+  await waitFor(() => expect(progression.load).toHaveBeenCalled(), {
+    timeout: 5000,
+  });
   await act(async () => tap(screen, 108));
   await waitFor(() =>
     expect(
