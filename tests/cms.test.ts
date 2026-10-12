@@ -114,6 +114,13 @@ describe("readiness (doc 09 §3)", () => {
         }),
       ),
     ).toEqual([]);
+    // The app never shows a wallpaper's name: the file name alone is enough.
+    const fromFile = (title: { hi: string; en: string }) =>
+      readinessProblems(
+        draft({ type: "WALLPAPER", title, description: { hi: "", en: "" }, media: wallpaperMedia }),
+      ).map((problem) => problem.field);
+    expect(fromFile({ hi: "", en: "Hanuman 04" })).toEqual([]);
+    expect(fromFile({ hi: "", en: "" })).toEqual(["title.en"]);
     for (const type of ["RINGTONE", "STATUS"] as const)
       expect(
         readinessProblems(draft({ type, description: { hi: "", en: "" } })).map(

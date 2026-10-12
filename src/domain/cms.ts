@@ -252,6 +252,10 @@ export const descriptionRequiredTypes: readonly ContentType[] = [
   "CHALISA",
 ];
 
+// Types the app shows without a title or description (wallpapers are images
+// only): the name from the file is enough, in either language.
+export const nameOnlyTypes: readonly ContentType[] = ["WALLPAPER"];
+
 // Everything that blocks DRAFT → READY (doc 09 §3). The editor shows the same
 // list that transitionContentStatus returns. Provenance (AI tool/plan, licence,
 // source text) and the doc 12 §5 checklist are optional notes, never gates.
@@ -260,8 +264,12 @@ export function readinessProblems(draft: ContentDraft): ReadinessProblem[] {
   const need = (ok: unknown, field: string, message: string) => {
     if (!ok) problems.push({ field, message });
   };
-  need(draft.title.hi, "title.hi", "Hindi title is required");
-  need(draft.title.en, "title.en", "English title is required");
+  if (nameOnlyTypes.includes(draft.type)) {
+    need(draft.title.en || draft.title.hi, "title.en", "A name is required");
+  } else {
+    need(draft.title.hi, "title.hi", "Hindi title is required");
+    need(draft.title.en, "title.en", "English title is required");
+  }
   if (descriptionRequiredTypes.includes(draft.type)) {
     need(
       draft.description.hi,
