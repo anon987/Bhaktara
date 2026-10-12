@@ -1,22 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { ContentRecord, DeityOption } from "../api";
+import { UploadCloud } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ContentRecord } from "../api";
 import { useLoad } from "../useLoad";
 import { useAdmin } from "../app/context";
 import { navigate, paths } from "../app/router";
 import {
-  applicableChecks,
   can,
-  checkLabels,
   ContentStatus,
   ContentType,
   contentTypes,
   defaultSaveGate,
   editableStatuses,
-  mediaVariantNames,
   readinessProblems,
-  requiredVariants,
-  sacredTypes,
-  slugSchema,
 } from "../domain";
 import { readableError, ReadableError } from "../errors";
 import {
@@ -28,15 +24,20 @@ import {
   TextField,
 } from "../ui";
 import {
+  audioTypes,
   DraftForm,
   draftFromForm,
+  editorReadiness,
   emptyForm,
   formFromDraft,
+  generateContentId,
   validateForm,
 } from "./draftForm";
 import { MediaUpload } from "./MediaUpload";
 import { TransitionPanel } from "./TransitionPanel";
 import { ContentPreview } from "../components/panel/preview";
+import { CreatableMultiSelect } from "../components/panel/CreatableMultiSelect";
+import { useCategoryPicker, useDeityPicker, useTagPicker } from "./taxonomy";
 
 type Props = { id?: string; type?: ContentType };
 
@@ -101,6 +102,35 @@ type FormProps = {
   initialType?: ContentType;
 };
 
+const typeNames: Record<ContentType, { one: string; many: string }> = {
+  BHAJAN: { one: "Bhajan", many: "bhajans" },
+  AARTI: { one: "Aarti", many: "aartis" },
+  MANTRA: { one: "Mantra", many: "mantras" },
+  CHALISA: { one: "Chalisa", many: "chalisas" },
+  WALLPAPER: { one: "Wallpaper", many: "wallpapers" },
+  RINGTONE: { one: "Ringtone", many: "ringtones" },
+  STATUS: { one: "Status video", many: "status videos" },
+};
+
+const audioLanguages = [
+  { value: "", label: "Not set" },
+  { value: "hi", label: "Hindi" },
+  { value: "sa", label: "Sanskrit" },
+  { value: "bho", label: "Bhojpuri" },
+  { value: "pa", label: "Punjabi" },
+  { value: "en", label: "English" },
+];
+
+const formatDuration = (value: string) => {
+  const seconds = Math.round(Number(value));
+  if (!value || !Number.isFinite(seconds) || seconds <= 0) return null;
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+};
+
+// The first error for a list field and its items (e.g. "tags.3").
+const listError = (errors: Record<string, string>, field: string) =>
+  Object.entries(errors).find(([key]) => key === field || key.startsWith(`${field}.`))?.[1];
+
 export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialType }: FormProps) {
   const { api, role } = useAdmin();
   const isNew = record === null;
@@ -110,33 +140,29 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
   );
   const [form, setForm] = useState<DraftForm>(initial);
   const [saved, setSaved] = useState<DraftForm>(initial);
-  const [newId, setNewId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<ReadableError | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  const [attempted, setAttempted] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
-  const loadDeities = useCallback(() => api.listDeities(), [api]);
-  const { data: deityData, error: deityError } = useLoad(loadDeities);
-  const deities: DeityOption[] = deityData ?? [];
+  const deities = useDeityPicker();
+  const categories = useCategoryPicker();
+  const tags = useTagPicker();
 
   const status: ContentStatus = record?.status ?? "DRAFT";
   const editable =
     can(role, "content.edit") && (isNew || editableStatuses.includes(status));
   const validation = useMemo(() => validateForm(form), [form]);
   const fieldErrors = issuesByField(validation.issues);
-  const idError =
-    isNew && (attempted || newId !== "")
-      ? slugSchema.safeParse(newId).success
-        ? undefined
-        : "Use a lowercase slug: a–z, 0–9, _ or -, starting with a letter or digit."
-      : undefined;
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
   // Readiness of what is stored, which is what a status move checks.
   const savedReadiness = useMemo(() => {
     const result = validateForm(saved);
-    return result.draft ? readinessProblems(result.draft) : result.issues;
+    return editorReadiness(
+      saved.type,
+      result.draft ? readinessProblems(result.draft) : result.issues,
+    );
   }, [saved]);
+  const newReadiness = editorReadiness(form.type, validation.readiness);
 
   const update = <K extends keyof DraftForm>(key: K, value: DraftForm[K]) => {
     setSavedMessage(null);
@@ -154,10 +180,9 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
     }));
 
   const save = async () => {
-    setAttempted(true);
     setSaveError(null);
     setSavedMessage(null);
-    if (validation.issues.length || idError || (isNew && !newId)) {
+    if (validation.issues.length) {
       summaryRef.current?.focus();
       return;
     }
@@ -165,7 +190,7 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
     try {
       const draft = draftFromForm(form);
       if (isNew) {
-        const result = await api.createContent(newId, draft);
+        const result = await api.createContent(generateContentId(form), draft);
         navigate(paths.contentEdit(result.id));
         return;
       }
@@ -179,26 +204,31 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
     }
   };
 
-  const required = new Set(requiredVariants(form.type));
-  const checks = applicableChecks(form.type);
-  const knownDeities = new Set(deities.map((deity) => deity.id));
-  const deityChoices = [
-    ...deities,
-    ...form.deityIds
-      .filter((deityId) => !knownDeities.has(deityId))
-      .map((deityId) => ({ id: deityId, name: { en: deityId, hi: "" } })),
-  ];
-  const showSummary = validation.issues.length > 0 || (attempted && !!idError);
+  const isAudio = audioTypes.includes(form.type);
+  const duration = formatDuration(form.durationSeconds);
+  const showSummary = validation.issues.length > 0;
+  const names = typeNames[form.type];
+  const hasMedia = !!record && Object.keys(record.draft.media ?? {}).length > 0;
+  const uploadBox = record && can(role, "content.upload") && editable && (
+    <MediaUpload
+      contentId={record.id}
+      type={form.type}
+      hasMedia={hasMedia}
+      onProcessed={() => onMediaProcessed?.()}
+    />
+  );
 
   return (
     <div className="editor">
       <div className="page-header">
-        <h1 tabIndex={-1}>{isNew ? "New content" : record.draft.title.en || record.id}</h1>
+        <h1 tabIndex={-1}>
+          {isNew ? `New ${names.one.toLowerCase()}` : record.draft.title.hi || record.draft.title.en || record.id}
+        </h1>
         <a href={paths.content}>Back to content</a>
       </div>
       {!isNew && (
         <p className="muted">
-          <code>{record.id}</code> · updated {formatDate(record.updatedAt)}
+          {names.one} · updated {formatDate(record.updatedAt)}
           {record.publishedAt && <> · first published {formatDate(record.publishedAt)}</>}
         </p>
       )}
@@ -237,30 +267,15 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                 <p>
                   <strong>Fix these fields before saving.</strong>
                 </p>
-                <ProblemList
-                  problems={[
-                    ...(idError ? [{ field: "id", message: idError }] : []),
-                    ...validation.issues,
-                  ]}
-                />
+                <ProblemList problems={validation.issues} />
               </>
             )}
           </div>
 
           <fieldset disabled={!editable || saving}>
-            <legend>Basics</legend>
-            {isNew && (
-              <TextField
-                label="ID (slug)"
-                value={newId}
-                onChange={(value) => setNewId(value.trim())}
-                error={idError}
-                required
-                hint="Permanent. Lowercase letters, digits, _ or -, e.g. hanuman-chalisa-v1."
-              />
-            )}
+            <legend>Titles and description</legend>
             <div className="field">
-              <label htmlFor="content-type">Type</label>
+              <label htmlFor="content-type">What is this?</label>
               <select
                 id="content-type"
                 value={form.type}
@@ -268,27 +283,27 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
               >
                 {contentTypes.map((type) => (
                   <option key={type} value={type}>
-                    {type}
+                    {typeNames[type].one}
                   </option>
                 ))}
               </select>
             </div>
             <div className="two-col">
               <TextField
-                label="Title (Hindi)"
+                label="Title in Hindi"
                 lang="hi"
                 value={form.title.hi}
                 onChange={(hi) => update("title", { ...form.title, hi })}
                 error={fieldErrors["title.hi"]}
               />
               <TextField
-                label="Title (English)"
+                label="Title in English"
                 value={form.title.en}
                 onChange={(en) => update("title", { ...form.title, en })}
                 error={fieldErrors["title.en"]}
               />
               <TextField
-                label="Description (Hindi)"
+                label="Description in Hindi"
                 lang="hi"
                 multiline
                 value={form.description.hi}
@@ -296,7 +311,7 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                 error={fieldErrors["description.hi"]}
               />
               <TextField
-                label="Description (English)"
+                label="Description in English"
                 multiline
                 value={form.description.en}
                 onChange={(en) => update("description", { ...form.description, en })}
@@ -306,94 +321,76 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
           </fieldset>
 
           <fieldset disabled={!editable || saving}>
-            <legend>Taxonomy</legend>
-            <div className="field" role="group" aria-labelledby="deities-label">
-              <span id="deities-label" className="label">
-                Deities
-              </span>
-              <ErrorNotice error={deityError} />
-              <div className="choices">
-                {deityChoices.map((deity) => (
-                  <Checkbox
-                    key={deity.id}
-                    label={
-                      <>
-                        {deity.name.en}{" "}
-                        {deity.name.hi && <span lang="hi">({deity.name.hi})</span>}
-                        {!knownDeities.has(deity.id) && deities.length > 0 && (
-                          <span className="field-error"> unknown</span>
-                        )}
-                      </>
-                    }
-                    checked={form.deityIds.includes(deity.id)}
-                    onChange={(checked) =>
-                      update(
-                        "deityIds",
-                        checked
-                          ? [...form.deityIds, deity.id]
-                          : form.deityIds.filter((item) => item !== deity.id),
-                      )
-                    }
-                  />
-                ))}
-                {!deityChoices.length && !deityError && (
-                  <p className="muted">No active deities found.</p>
-                )}
-              </div>
-              {fieldErrors.deityIds && <p className="field-error">{fieldErrors.deityIds}</p>}
-            </div>
-            <TextField
-              label="Categories"
-              value={form.categoryIds}
-              onChange={(value) => update("categoryIds", value)}
-              hint="Comma-separated category IDs."
-              error={Object.entries(fieldErrors).find(([key]) => key.startsWith("categoryIds"))?.[1]}
+            <legend>Deities, categories and tags</legend>
+            {deities.error && <p className="field-error">Could not load deities: {deities.error}</p>}
+            <CreatableMultiSelect
+              label="Deities"
+              noun="deity"
+              options={deities.options}
+              value={form.deityIds}
+              onChange={(deityIds) => update("deityIds", deityIds)}
+              onCreate={deities.create}
+              askHindi
+              max={10}
+              disabled={!editable || saving}
+              error={fieldErrors.deityIds}
+              hint={
+                deities.create
+                  ? "Not in the list? Type the name and choose “Create”."
+                  : "Ask an admin to add a deity that is missing."
+              }
             />
-            <TextField
+            <CreatableMultiSelect
+              label="Categories"
+              noun="category"
+              options={categories.options}
+              value={form.categoryIds}
+              onChange={(categoryIds) => update("categoryIds", categoryIds)}
+              onCreate={categories.create}
+              askHindi
+              max={10}
+              disabled={!editable || saving}
+              error={listError(fieldErrors, "categoryIds")}
+            />
+            <CreatableMultiSelect
               label="Tags"
+              noun="tag"
+              options={tags.options}
               value={form.tags}
               onChange={(value) => update("tags", value)}
-              hint="Comma-separated, any language."
-              error={Object.entries(fieldErrors).find(([key]) => key.startsWith("tags"))?.[1]}
+              onCreate={tags.create}
+              max={40}
+              disabled={!editable || saving}
+              error={listError(fieldErrors, "tags")}
+              hint="Words people might search for, in any language."
             />
-            <TextField
-              label="Audio language"
-              value={form.audioLanguage}
-              onChange={(value) => update("audioLanguage", value)}
-              hint="Language code such as hi or sa. Leave empty for images."
-              error={fieldErrors.audioLanguage}
-            />
+            {isAudio && (
+              <div className="field">
+                <label htmlFor="audio-language">Language of the audio</label>
+                <select
+                  id="audio-language"
+                  value={form.audioLanguage}
+                  aria-invalid={fieldErrors.audioLanguage ? true : undefined}
+                  onChange={(event) => update("audioLanguage", event.target.value)}
+                >
+                  {audioLanguages.map((language) => (
+                    <option key={language.value} value={language.value}>
+                      {language.label}
+                    </option>
+                  ))}
+                  {!audioLanguages.some((language) => language.value === form.audioLanguage) && (
+                    <option value={form.audioLanguage}>{form.audioLanguage}</option>
+                  )}
+                </select>
+                {fieldErrors.audioLanguage && <p className="field-error">{fieldErrors.audioLanguage}</p>}
+              </div>
+            )}
           </fieldset>
 
           <fieldset disabled={!editable || saving}>
-            <legend>Media keys</legend>
-            <p className="hint">
-              Asset keys from the media pipeline, never URLs. Required for {form.type}:{" "}
-              {[...required].join(", ")}.
-            </p>
-            <div className="two-col">
-              {mediaVariantNames.map((name) => (
-                <TextField
-                  key={name}
-                  label={`${name}${required.has(name) ? " (required)" : ""}`}
-                  value={form.media[name]?.key ?? ""}
-                  onChange={(key) =>
-                    update("media", {
-                      ...form.media,
-                      [name]: { key, original: form.media[name]?.original },
-                    })
-                  }
-                  placeholder={`${form.type.toLowerCase()}/id/${name}.hash.ext`}
-                  error={fieldErrors[`media.${name}.key`] ?? fieldErrors[`media.${name}`]}
-                />
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset disabled={!editable || saving}>
-            <legend>Flags and schedule</legend>
+            <legend>Options</legend>
             <div className="field">
-              <label htmlFor="save-gate">Save policy</label>
+              <label htmlFor="save-gate">Saving to the phone</label>
               <select
                 id="save-gate"
                 value={form.saveGate}
@@ -401,97 +398,36 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                   update("saveGate", event.target.value as DraftForm["saveGate"])
                 }
               >
-                <option value="REWARDED">REWARDED (rewarded ad before saving)</option>
-                <option value="FREE">FREE</option>
+                <option value="REWARDED">After a short ad</option>
+                <option value="FREE">Free</option>
               </select>
             </div>
             <Checkbox
-              label="Featured"
+              label="Featured (shown first)"
               checked={form.isFeatured}
               onChange={(value) => update("isFeatured", value)}
             />
             <Checkbox
-              label="Shareable"
+              label="People can share it"
               checked={form.isShareable}
               onChange={(value) => update("isShareable", value)}
             />
             <Checkbox
-              label="Ad-eligible"
+              label="Ads can be shown with it"
               checked={form.adEligible}
               onChange={(value) => update("adEligible", value)}
             />
-            <div className="two-col">
-              <TextField
-                label="Duration (seconds)"
-                type="number"
-                value={form.durationSeconds}
-                onChange={(value) => update("durationSeconds", value)}
-                error={fieldErrors.durationSeconds}
-              />
-              <TextField
-                label="Expiry (your local time)"
-                type="datetime-local"
-                value={form.expireAt}
-                onChange={(value) => update("expireAt", value)}
-                hint="Optional. Published items are archived after this time."
-                error={fieldErrors.expireAt}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset disabled={!editable || saving}>
-            <legend>Provenance (private)</legend>
-            <div className="two-col">
-              <TextField
-                label="AI tool"
-                value={form.aiTool}
-                onChange={(value) => update("aiTool", value)}
-                error={fieldErrors["private.aiTool"]}
-              />
-              <TextField
-                label="AI plan"
-                value={form.aiPlan}
-                onChange={(value) => update("aiPlan", value)}
-                error={fieldErrors["private.aiPlan"]}
-              />
-              <TextField
-                label="License record"
-                value={form.licenseRecordId}
-                onChange={(value) => update("licenseRecordId", value)}
-                error={fieldErrors["private.licenseRecordId"]}
-              />
-              <TextField
-                label="Source reference"
-                value={form.sourceTextRef}
-                onChange={(value) => update("sourceTextRef", value)}
-                hint={sacredTypes.includes(form.type) ? "Required for this type." : undefined}
-                error={fieldErrors["private.sourceTextRef"]}
-              />
-            </div>
             <TextField
-              label="Source text (Devanagari)"
-              lang="hi"
-              multiline
-              rows={6}
-              value={form.sourceText}
-              onChange={(value) => update("sourceText", value)}
-              hint={sacredTypes.includes(form.type) ? "Required for this type." : undefined}
-              error={fieldErrors["private.sourceText"]}
+              label="Remove from the app after (optional)"
+              type="datetime-local"
+              value={form.expireAt}
+              onChange={(value) => update("expireAt", value)}
+              hint="Your local time. Leave empty to keep it."
+              error={fieldErrors.expireAt}
             />
-          </fieldset>
-
-          <fieldset disabled={!editable || saving}>
-            <legend>Checklist (doc 12 §5)</legend>
-            {checks.map((item) => (
-              <Checkbox
-                key={item}
-                label={checkLabels[item]}
-                checked={form.checklist[item] === true}
-                onChange={(value) =>
-                  update("checklist", { ...form.checklist, [item]: value })
-                }
-              />
-            ))}
+            {form.type !== "WALLPAPER" && duration && (
+              <p className="muted">Length: {duration} (set from the uploaded file)</p>
+            )}
           </fieldset>
 
           {editable && (
@@ -510,20 +446,41 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
 
         <aside className="editor-side" aria-label="Status and media">
           {isNew ? (
-            <section className="panel">
-              <h2>Status</h2>
-              <p>New items start as DRAFT.</p>
-              {validation.readiness.length > 0 && (
-                <>
-                  <p>
-                    <strong>Needed before READY ({validation.readiness.length})</strong>
+            <>
+              <section className="panel">
+                <h2>Status</h2>
+                <p>New items start as a draft.</p>
+                {newReadiness.length > 0 && (
+                  <>
+                    <p>
+                      <strong>Needed before READY ({newReadiness.length})</strong>
+                    </p>
+                    <ProblemList problems={newReadiness} />
+                  </>
+                )}
+              </section>
+              {can(role, "content.upload") && (
+                <section className="panel space-y-3" aria-labelledby="media-heading">
+                  <h2 id="media-heading">Media</h2>
+                  <p className="muted">
+                    The upload box appears here after you press “Create draft”.
                   </p>
-                  <ProblemList problems={validation.readiness} />
-                </>
+                  <p className="muted">
+                    Have many {names.many}? Upload them all at once: a draft is made for each file, titled from the
+                    file name.
+                  </p>
+                  <Button asChild className="w-full">
+                    <a href={paths.upload(form.type)}>
+                      <UploadCloud /> Upload files
+                    </a>
+                  </Button>
+                </section>
               )}
-            </section>
+            </>
           ) : (
             <>
+              {/* No files yet: the upload box comes first. */}
+              {!hasMedia && uploadBox}
               <ContentPreview
                 type={record.draft.type}
                 title={record.draft.title.en || record.draft.title.hi}
@@ -538,9 +495,7 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                 dirty={dirty}
                 onMoved={(to) => onMoved(status, to)}
               />
-              {can(role, "content.upload") && editable && (
-                <MediaUpload contentId={record.id} type={form.type} onProcessed={() => onMediaProcessed?.()} />
-              )}
+              {hasMedia && uploadBox}
               {can(role, "content.upload") && !editable && (
                 <section className="panel" aria-labelledby="replace-heading">
                   <h2 id="replace-heading">Replace media</h2>

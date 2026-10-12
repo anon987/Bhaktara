@@ -32,7 +32,8 @@ import { navigate, paths, sectionForType } from "../../app/router";
 import { can, type ContentType, contentTypes } from "../../domain";
 import { MultiDrop } from "../../components/panel/drop";
 import { planItems, rolesFor, type Plan } from "../../components/panel/files";
-import { ChipSelect, SelectField, useDeityOptions } from "../../components/panel/inputs";
+import { SelectField, useDeityOptions } from "../../components/panel/inputs";
+import { CreatableMultiSelect } from "../../components/panel/CreatableMultiSelect";
 import { EmptyState, PageHeader } from "../../components/panel/page";
 import { MediaThumb } from "../../components/panel/media";
 import { AudioPlayer, audioVariant, isAudio, VisualTile } from "../../components/panel/preview";
@@ -225,7 +226,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 grid gap-4 md:grid-cols-2">
-              <ChipSelect label="Deity" options={deityOptions} value={defaults.deityIds} onChange={(deityIds) => setDefaults({ ...defaults, deityIds })} hint="Applied to every item in this batch." />
+              <CreatableMultiSelect label="Deity" noun="deity" options={deityOptions} value={defaults.deityIds} onChange={(deityIds) => setDefaults({ ...defaults, deityIds })} max={10} hint="Applied to every item in this batch." />
               {isAudio(type) && (
                 <SelectField id="batch-language" label="Language of the audio" value={defaults.audioLanguage} options={languages} onChange={(audioLanguage) => setDefaults({ ...defaults, audioLanguage })} />
               )}

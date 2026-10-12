@@ -138,6 +138,8 @@ export type HomeLayoutState = {
 export interface PanelApi {
   getDashboard(force?: boolean): Promise<DashboardData>;
   listCatalog<T = Record<string, unknown>>(kind: CatalogKind): Promise<CatalogRow<T>[]>;
+  // Distinct tags on recently edited content, most used first.
+  listContentTags(): Promise<string[]>;
   saveCatalogItem(input: { kind: CatalogKind; id?: string; create: boolean; data: unknown }): Promise<{ id: string }>;
   deleteCatalogItem(input: { kind: CatalogKind; id: string }): Promise<{ id: string }>;
   getConfig<T = Record<string, unknown>>(id: ConfigId): Promise<{ data: T | null; version: number }>;
@@ -179,6 +181,13 @@ export function firebasePanelApi({ db, functions }: FirebaseServices): PanelApi 
         data: item.data() as T,
         updatedAt: toIso(item.data().updatedAt),
       }));
+    },
+    async listContentTags() {
+      // One bounded read (staff rules allow 100) of the latest content.
+      const snapshot = await getDocs(
+        query(collection(db, "content"), orderBy("updatedAt", "desc"), limit(100)),
+      );
+      return distinctTags(snapshot.docs.map((item) => item.get("tags")));
     },
     saveCatalogItem: call("saveCatalogItem"),
     deleteCatalogItem: call("deleteCatalogItem"),
@@ -239,6 +248,25 @@ export function firebasePanelApi({ db, functions }: FirebaseServices): PanelApi 
     updateHomeLayout: call("updateHomeLayout"),
     rebuildHomeFeed: () => call("rebuildHomeFeed", 120_000)({}),
   };
+}
+
+// Tags from many items, deduplicated case-insensitively, most used first.
+export function distinctTags(lists: unknown[]): string[] {
+  const counts = new Map<string, { tag: string; count: number }>();
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const raw of list) {
+      if (typeof raw !== "string" || !raw.trim()) continue;
+      const tag = raw.trim();
+      const key = tag.toLocaleLowerCase();
+      const entry = counts.get(key);
+      if (entry) entry.count += 1;
+      else counts.set(key, { tag, count: 1 });
+    }
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+    .map((entry) => entry.tag);
 }
 
 export { withoutUndefined };
