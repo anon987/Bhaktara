@@ -82,8 +82,8 @@ before(async () => {
   const common = `,सुबह,"Dawn, gently",विवरण,Description`;
   const rows = [
     `import-wallpaper,WALLPAPER${common},hanuman,bajrang|anjaneya,,wall.png,Tool,Pro,${yes(visual)}`,
-    // Bhajan listen-through checks are missing, so it must stay a draft.
-    `import-bhajan,BHAJAN${common},krishna,shyam,song.wav,thumb.png,Tool,Pro,${yes(visual)}`,
+    // No provenance or checklist: these are optional and never gate READY.
+    `import-bhajan,BHAJAN${common},krishna,shyam,song.wav,thumb.png,,,${visual.map(() => "").join(",")}`,
     `import-unknown-deity,WALLPAPER${common},zeus,,,wall.png,Tool,Pro,${yes(visual)}`,
     `import-missing-file,WALLPAPER${common},hanuman,,,nope.png,Tool,Pro,${yes(visual)}`,
   ];
@@ -125,11 +125,7 @@ test("manifest import validates rows, writes content, and is idempotent", async 
     "created",
     byKey["import-bhajan"].errors.join("; "),
   );
-  assert.equal(byKey["import-bhajan"].status, "DRAFT");
-  assert.deepEqual(byKey["import-bhajan"].missingChecks, [
-    "listenThrough",
-    "noUnintendedLyrics",
-  ]);
+  assert.equal(byKey["import-bhajan"].status, "PUBLISHED");
   assert.match(
     byKey["import-unknown-deity"].errors.join(),
     /unknown deity zeus/,
@@ -148,7 +144,7 @@ test("manifest import validates rows, writes content, and is idempotent", async 
   const published = await assertSucceeds(
     getDoc(doc(user, "content", "import-wallpaper")),
   );
-  await assertFails(getDoc(doc(user, "content", "import-bhajan")));
+  await assertSucceeds(getDoc(doc(user, "content", "import-bhajan")));
   await assertFails(getDoc(doc(user, "contentPrivate", "import-wallpaper")));
   const data = published.data()!;
   assert.equal(data.title.en, "Dawn, gently");

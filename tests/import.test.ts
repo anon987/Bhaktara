@@ -85,29 +85,29 @@ test("rows report every problem with its field", () => {
     importKey: "Bad Key",
     type: "MANTRA",
     deityIds: "",
-    aiPlan: "",
+    description_en: "",
     image: "",
   });
   const text = errors.join("\n");
   for (const fragment of [
     "importKey: must be a lowercase slug",
     "deityIds: needs at least one deity",
-    "aiPlan:",
-    "sourceText: sacred text types need the canonical source text",
-    "sourceTextRef:",
+    "description_en: MANTRA needs an English description",
     "audio: MANTRA needs an audio file",
     "image: MANTRA needs a thumbnail image",
   ])
     expect(text).toContain(fragment);
+  // Provenance and source text are optional notes, never errors.
+  for (const field of ["aiTool", "aiPlan", "sourceText", "sourceTextRef"])
+    expect(text).not.toContain(`${field}:`);
   expect(parseRow({ ...wallpaper, type: "SCRIPTURE" }).errors[0]).toMatch(
     /^type:/,
   );
 });
 
-test("a complete checklist lands in READY; gaps stay in DRAFT", () => {
-  const complete = parseRow(wallpaper).row!;
+test("valid rows land in READY without checklist or provenance columns", () => {
   const ready = buildDocuments({
-    row: complete,
+    row: parseRow(wallpaper).row!,
     media,
     deities,
     existing: null,
@@ -116,34 +116,46 @@ test("a complete checklist lands in READY; gaps stay in DRAFT", () => {
   });
   expect(ready.status).toBe("READY");
   expect(ready.content).not.toHaveProperty("publishedAt");
-  const draft = buildDocuments({
-    row: parseRow({ ...wallpaper, check_noDistortions: "" }).row!,
-    media,
-    deities,
-    existing: null,
-    publishReady: true,
-    now: "NOW",
+  const bare = Object.fromEntries(
+    Object.entries(wallpaper).filter(
+      ([key]) => !key.startsWith("check_") && !key.startsWith("ai"),
+    ),
+  );
+  // Wallpapers need no description; a partial checklist is just a note.
+  const minimal = parseRow({
+    ...bare,
+    description_hi: "",
+    description_en: "",
+    check_noDistortions: "",
   });
-  expect(draft.status).toBe("DRAFT");
-  expect(draft.missing).toEqual(["noDistortions"]);
-  // Sacred text audio needs its extra listen-through checks.
-  const mantra = parseRow({
-    ...wallpaper,
-    type: "MANTRA",
-    audio: "a.wav",
-    sourceText: "ॐ",
-    sourceTextRef: "Edition",
-  }).row!;
+  expect(minimal.errors).toEqual([]);
   expect(
     buildDocuments({
-      row: mantra,
+      row: minimal.row!,
       media,
       deities,
       existing: null,
       publishReady: false,
+      now: "NOW",
+    }).status,
+  ).toBe("READY");
+  // Sacred text audio needs no source text or extra checks.
+  const mantra = parseRow({
+    ...bare,
+    type: "MANTRA",
+    audio: "a.wav",
+  });
+  expect(mantra.errors).toEqual([]);
+  expect(
+    buildDocuments({
+      row: mantra.row!,
+      media,
+      deities,
+      existing: null,
+      publishReady: true,
       now: 1,
-    }).missing,
-  ).toEqual(checklist.sacredAudio);
+    }).status,
+  ).toBe("PUBLISHED");
 });
 
 test("published items are never moved backwards and keep server fields", () => {
@@ -167,7 +179,8 @@ test("published items are never moved backwards and keep server fields", () => {
     publishedAt: "EARLIER",
   });
   expect(kept.privateRecord).not.toHaveProperty("createdAt");
-  expect(() =>
+  // An unticked checklist no longer blocks re-importing a live item.
+  expect(
     buildDocuments({
       row: parseRow({ ...wallpaper, check_titleChecked: "no" }).row!,
       media,
@@ -175,8 +188,8 @@ test("published items are never moved backwards and keep server fields", () => {
       existing,
       publishReady: false,
       now: "NOW",
-    }),
-  ).toThrow(/is PUBLISHED; its checklist must stay complete/);
+    }).status,
+  ).toBe("PUBLISHED");
 });
 
 test("documents carry derived fields and parse as app content", () => {
@@ -185,7 +198,6 @@ test("documents carry derived fields and parse as app content", () => {
     importKey: "bhajan-1",
     type: "BHAJAN",
     audio: "a.wav",
-    ...allChecks([...checklist.all, ...checklist.bhajan]),
   }).row!;
   const built = buildDocuments({
     row: audio,

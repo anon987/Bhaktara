@@ -5,12 +5,7 @@ import {
   mediaVariantSchema,
   MediaVariantName,
 } from "./media";
-import {
-  checkItems,
-  checkLabels,
-  checklistState,
-  sacredTypes,
-} from "./checklist";
+import { checkItems } from "./checklist";
 import { homeLanguages, homeLayoutSectionsSchema } from "./home";
 
 // Admin CMS domain rules (doc 09), shared by the Cloud Functions that enforce
@@ -94,7 +89,7 @@ export const transitions: Record<
   PUBLISHED: { DRAFT: "content.publish", ARCHIVED: "content.publish" },
   ARCHIVED: { DRAFT: "content.publish" },
 };
-// Entering these states needs a complete checklist and required fields.
+// Entering these states needs the required fields (readinessProblems).
 export const gatedStatuses: readonly ContentStatus[] = [
   "READY",
   "SCHEDULED",
@@ -146,6 +141,8 @@ export const draftMediaSchema = z
   .strict();
 export type DraftMedia = z.infer<typeof draftMediaSchema>;
 
+// Optional provenance notes. None of these gate READY any more; they are kept
+// so existing documents and the bulk importer still round-trip.
 export const contentPrivateInputSchema = z
   .object({
     sourceText: optionalText(20000),
@@ -153,7 +150,7 @@ export const contentPrivateInputSchema = z
     aiTool: optionalText(100),
     aiPlan: optionalText(100),
     licenseRecordId: optionalText(100),
-    checklist: z.partialRecord(z.enum(checkItems), z.boolean()),
+    checklist: z.partialRecord(z.enum(checkItems), z.boolean()).default({}),
   })
   .strict();
 
@@ -188,8 +185,34 @@ export const contentDraftSchema = z
 export type ContentDraft = z.infer<typeof contentDraftSchema>;
 export type ContentDraftInput = z.input<typeof contentDraftSchema>;
 
+// Callers may omit the private panel entirely; it is optional data.
+const draftInputSchema = z.preprocess(
+  (value) =>
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).private === undefined
+      ? { ...value, private: {} }
+      : value,
+  contentDraftSchema,
+);
+
 export const saveContentSchema = z
-  .object({ id: slugSchema, draft: contentDraftSchema })
+  .object({ id: slugSchema, draft: draftInputSchema })
+  .strict();
+// createContent: the ID is generated server-side when it is missing or blank
+// (operators never type IDs); the bulk uploader still sends explicit ones.
+export const createContentSchema = z
+  .object({
+    id: z.preprocess(
+      (value) =>
+        value === null || (typeof value === "string" && value.trim() === "")
+          ? undefined
+          : value,
+      slugSchema.optional(),
+    ),
+    draft: draftInputSchema,
+  })
   .strict();
 export const transitionSchema = z
   .object({
@@ -220,8 +243,18 @@ export function requiredVariants(type: ContentType): MediaVariantName[] {
 
 export type ReadinessProblem = { field: string; message: string };
 
-// Everything that blocks DRAFT → READY (doc 09 §3, doc 12 §3–§5). The editor
-// shows the same list that transitionContentStatus returns.
+// Devotional audio types whose listing shows a description; wallpapers,
+// ringtones and status videos may go live with titles alone.
+export const descriptionRequiredTypes: readonly ContentType[] = [
+  "BHAJAN",
+  "AARTI",
+  "MANTRA",
+  "CHALISA",
+];
+
+// Everything that blocks DRAFT → READY (doc 09 §3). The editor shows the same
+// list that transitionContentStatus returns. Provenance (AI tool/plan, licence,
+// source text) and the doc 12 §5 checklist are optional notes, never gates.
 export function readinessProblems(draft: ContentDraft): ReadinessProblem[] {
   const problems: ReadinessProblem[] = [];
   const need = (ok: unknown, field: string, message: string) => {
@@ -229,12 +262,18 @@ export function readinessProblems(draft: ContentDraft): ReadinessProblem[] {
   };
   need(draft.title.hi, "title.hi", "Hindi title is required");
   need(draft.title.en, "title.en", "English title is required");
-  need(draft.description.hi, "description.hi", "Hindi description is required");
-  need(
-    draft.description.en,
-    "description.en",
-    "English description is required",
-  );
+  if (descriptionRequiredTypes.includes(draft.type)) {
+    need(
+      draft.description.hi,
+      "description.hi",
+      "Hindi description is required",
+    );
+    need(
+      draft.description.en,
+      "description.en",
+      "English description is required",
+    );
+  }
   need(draft.deityIds.length, "deityIds", "At least one deity is required");
   for (const variant of requiredVariants(draft.type))
     need(
@@ -242,26 +281,6 @@ export function readinessProblems(draft: ContentDraft): ReadinessProblem[] {
       `media.${variant}`,
       `${draft.type} needs a "${variant}" media key`,
     );
-  need(draft.private.aiTool, "private.aiTool", "AI tool must be recorded");
-  need(draft.private.aiPlan, "private.aiPlan", "AI plan must be recorded");
-  if (sacredTypes.includes(draft.type)) {
-    need(
-      draft.private.sourceText,
-      "private.sourceText",
-      "Sacred text audio needs the canonical source text",
-    );
-    need(
-      draft.private.sourceTextRef,
-      "private.sourceTextRef",
-      "Sacred text audio needs a source reference",
-    );
-  }
-  for (const item of checklistState(draft.type, draft.private.checklist)
-    .missing)
-    problems.push({
-      field: `checklist.${item}`,
-      message: `Checklist: ${checkLabels[item]}`,
-    });
   return problems;
 }
 
@@ -364,6 +383,8 @@ export const requestUploadSchema = z
 
 // Details attached to failed-precondition errors so the CMS can show exactly
 // what blocks a transition.
+// CHECKLIST_INCOMPLETE is a legacy name kept for existing clients: it now
+// means "required fields are missing" (see readinessProblems).
 export type TransitionErrorDetails = {
   reason: "CHECKLIST_INCOMPLETE" | "INVALID_TRANSITION" | "SCHEDULE_REQUIRED";
   problems?: ReadinessProblem[];
