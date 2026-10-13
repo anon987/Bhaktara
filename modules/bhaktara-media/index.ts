@@ -66,6 +66,11 @@ export interface BhaktaraMediaModule {
     packageName: string,
     text?: string | null,
   ): Promise<boolean>;
+  /**
+   * The app is installed and visible to Bhaktara (declared under <queries>).
+   * Missing in dev clients built before it was added.
+   */
+  isAppInstalled?(packageName: string): boolean;
 }
 
 // Null on iOS, web, Jest and dev clients built before this module existed.

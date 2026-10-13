@@ -17,6 +17,7 @@ import {
   ShareResult,
   WallpaperTarget,
   SocialApp,
+  WhatsAppApp,
 } from "../../services/platform/contracts";
 import { SystemPermissionSheet } from "./SystemPermissionSheet";
 
@@ -59,7 +60,7 @@ export type SaveAction =
   // System share sheet (status videos).
   | { kind: "share" }
   // Straight into WhatsApp, falling back to the share sheet (wallpapers).
-  | { kind: "share-whatsapp" }
+  | { kind: "share-whatsapp"; app?: WhatsAppApp }
   // Straight into Instagram or Facebook (status videos), same fallback.
   | { kind: "share-app"; app: SocialApp };
 export type SavePhase =
@@ -86,6 +87,10 @@ const ringtoneTargets: [RingtoneTarget, StringKey][] = [
   ["alarm", "targetAlarm"],
 ];
 
+const whatsappTargets: [WhatsAppApp, StringKey][] = [
+  ["whatsapp", "whatsappApp"],
+  ["business", "whatsappBusiness"],
+];
 const socialTargets: [SocialApp, StringKey][] = [
   ["instagram", "instagram"],
   ["facebook", "facebook"],
@@ -172,7 +177,10 @@ export function useSaveActions(item: Content) {
       case "share":
         return services.share.shareStatus(request);
       case "share-whatsapp":
-        return services.share.shareToWhatsApp({ ...request, text: caption() });
+        return services.share.shareToWhatsApp(
+          { ...request, text: caption() },
+          action.app,
+        );
       case "share-app":
         return services.share.shareToApp(
           { ...request, text: caption() },
@@ -316,7 +324,19 @@ export function useSaveActions(item: Content) {
     canShare: services.share.canShare,
     save: () => void run({ kind: "save" }),
     share: () => void run({ kind: "share" }),
-    shareToWhatsApp: () => void run({ kind: "share-whatsapp" }),
+    // Both WhatsApp apps installed: ask which. Otherwise straight to the
+    // one there is (or WhatsApp, then Business, when it can't be known).
+    shareToWhatsApp: () => {
+      const apps = services.share.installedWhatsApps();
+      if (apps.length > 1)
+        return choose(
+          "whatsappTarget",
+          "whatsappTargetHint",
+          whatsappTargets,
+          (app) => void run({ kind: "share-whatsapp", app }),
+        );
+      void run({ kind: "share-whatsapp", app: apps[0] });
+    },
     // Instagram or Facebook chooser; free like WhatsApp (D-041).
     shareToSocial: () =>
       choose(

@@ -227,6 +227,13 @@ export const strings = {
     "The app opens with this video. Choose Story there.",
     "ऐप इस वीडियो के साथ खुलेगा। वहाँ स्टोरी चुनें।",
   ],
+  whatsappTarget: ["Send with", "किससे भेजें?"],
+  whatsappTargetHint: [
+    "You have both WhatsApp apps. Choose one.",
+    "आपके फ़ोन में दोनों WhatsApp हैं। एक चुनें।",
+  ],
+  whatsappApp: ["WhatsApp", "WhatsApp"],
+  whatsappBusiness: ["WhatsApp Business", "WhatsApp Business"],
   instagram: ["Instagram", "Instagram"],
   facebook: ["Facebook", "Facebook"],
   swipeForMoreStatus: ["Swipe up for more", "ऊपर स्वाइप करें — और स्टेटस"],

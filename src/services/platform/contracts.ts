@@ -49,6 +49,8 @@ export interface MediaSaveService {
 }
 // Doc 13 `content_share` channel: where the share actually opened.
 export type ShareChannel = "whatsapp" | "instagram" | "facebook" | "other";
+// The two WhatsApp apps; a phone can have both.
+export type WhatsAppApp = "whatsapp" | "business";
 // Apps a status video can go to besides WhatsApp.
 export type SocialApp = "instagram" | "facebook";
 export type ShareResult = PlatformResult & { channel?: ShareChannel };
@@ -62,7 +64,13 @@ export interface ShareService {
   // channel that opened.
   shareToWhatsApp(
     request: MediaRequest & { text?: string },
+    // Just this app (the user's pick when both are installed); otherwise
+    // WhatsApp, then WhatsApp Business.
+    app?: WhatsAppApp,
   ): Promise<ShareResult>;
+  // Which WhatsApp apps are installed, WhatsApp first. Empty when unknown
+  // (older builds); sharing then tries WhatsApp, then Business.
+  installedWhatsApps(): WhatsAppApp[];
   // The same, straight to Instagram or Facebook (the user picks Story or
   // Feed there); without the app it falls back to the system share sheet.
   shareToApp(

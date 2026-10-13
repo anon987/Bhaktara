@@ -33,6 +33,7 @@ const mockServices = {
     shareStatus: jest.fn(),
     shareToWhatsApp: jest.fn(),
     shareToApp: jest.fn(),
+    installedWhatsApps: jest.fn((): ("whatsapp" | "business")[] => []),
   },
   notifications: { canRequest: false, request: jest.fn() },
 };

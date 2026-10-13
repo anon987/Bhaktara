@@ -11,6 +11,7 @@ import {
   ShareChannel,
   ShareResult,
   SocialApp,
+  WhatsAppApp,
 } from "./contracts";
 import { stubServices } from "./stub";
 import { settingsGuide } from "./settingsGuide";
@@ -24,7 +25,14 @@ const SAVE_FOLDER = "bhaktara-media";
 // after the share sheet closes.
 const SHARE_FOLDER = "bhaktara-share";
 // WhatsApp, then WhatsApp Business (doc 13 `content_share` channel "whatsapp").
-export const WHATSAPP_PACKAGES = ["com.whatsapp", "com.whatsapp.w4b"];
+export const WHATSAPP_APPS: Record<WhatsAppApp, string> = {
+  whatsapp: "com.whatsapp",
+  business: "com.whatsapp.w4b",
+};
+export const WHATSAPP_PACKAGES = [
+  WHATSAPP_APPS.whatsapp,
+  WHATSAPP_APPS.business,
+];
 // Tried in order; each must also be listed under <queries> in the module manifest.
 export const SOCIAL_PACKAGES: Record<SocialApp, string[]> = {
   instagram: ["com.instagram.android"],
@@ -339,8 +347,23 @@ export function createAndroidServices(
           { keepFile: true },
         );
       },
-      shareToWhatsApp: (request) =>
-        shareVia(request, WHATSAPP_PACKAGES, "whatsapp"),
+      shareToWhatsApp: (request, app) =>
+        shareVia(
+          request,
+          app ? [WHATSAPP_APPS[app]] : WHATSAPP_PACKAGES,
+          "whatsapp",
+        ),
+      installedWhatsApps: () => {
+        const isInstalled = native?.isAppInstalled;
+        if (!isInstalled) return [];
+        return (Object.keys(WHATSAPP_APPS) as WhatsAppApp[]).filter((app) => {
+          try {
+            return isInstalled.call(native, WHATSAPP_APPS[app]);
+          } catch {
+            return false;
+          }
+        });
+      },
       shareToApp: (request, app) =>
         shareVia(request, SOCIAL_PACKAGES[app], app),
     },
