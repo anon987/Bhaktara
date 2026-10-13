@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
-import { Pressable, ScrollView, View } from "react-native";
 import {
-  ChevronRight,
-  Flame,
-  Flower2,
-  LucideIcon,
-  Sparkles,
-} from "lucide-react-native";
+  Image,
+  ImageSourcePropType,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import { ChevronRight, Sparkles } from "lucide-react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -20,7 +21,6 @@ import { useApp } from "../../app/providers/AppProvider";
 import { useStats } from "../sadhana/SadhanaParts";
 import { rankNames } from "../../domain/progression";
 import {
-  Card,
   DataBoundary,
   Page,
   Progress,
@@ -30,25 +30,47 @@ import {
 } from "../../components/ui";
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { ContentCard } from "../../components/ContentCard";
-import { contentTypeIcons } from "../../components/contentTypeIcons";
-import { colors } from "../../theme/tokens";
+import { categoryArt } from "../../components/categoryArt";
+import { resolveMediaUrl } from "../../services/media/config";
+import { colors, sanctum, shrine } from "../../theme/tokens";
 import { localPracticeDay } from "../../domain/practice";
-import { Banner, CatalogMode } from "../../domain/models";
+import { Banner, CatalogMode, contentTypes } from "../../domain/models";
 import { HomeFeed, HomeSection, HomeTarget } from "../../domain/home";
+import { DarshanKey, darshanFor, greetingFor } from "../../domain/darshan";
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Home">,
   NativeStackScreenProps<RootParams>
 >;
 type Navigation = Props["navigation"];
-// CMS shortcuts name an icon key; unknown keys fall back to a neutral icon.
-const shortcutIcons: Record<string, LucideIcon> = {
+// 3D art (made with Gemini on Vertex). CMS shortcuts name an icon key: a
+// content type in lower case or "mandir"; unknown keys fall back to an icon.
+const shortcutArt: Record<string, ImageSourcePropType> = {
   ...Object.fromEntries(
-    Object.entries(contentTypeIcons).map(([type, icon]) => [
-      type.toLowerCase(),
-      icon,
-    ]),
+    contentTypes.map((type) => [type.toLowerCase(), categoryArt[type]]),
   ),
-  mandir: Flower2,
+  mandir: require("../../../assets/home/mandir.webp"),
+};
+const art = {
+  toran: require("../../../assets/home/toran.webp"),
+  diya: require("../../../assets/home/diya.webp"),
+  lotus: require("../../../assets/home/lotus.webp"),
+  kalash: require("../../../assets/home/kalash.webp"),
+  mala: require("../../../assets/home/mala.webp"),
+};
+// By the tab a banner opens (its target is CMS data, validated there).
+const bannerArt: Record<string, ImageSourcePropType> = {
+  Mandir: shortcutArt.mandir,
+  Sadhana: art.mala,
+  Explore: art.lotus,
+};
+const darshanArt: Record<DarshanKey, ImageSourcePropType> = {
+  sun: require("../../../assets/home/darshan-sun.webp"),
+  mon: require("../../../assets/home/darshan-mon.webp"),
+  tue: require("../../../assets/home/darshan-tue.webp"),
+  wed: require("../../../assets/home/darshan-wed.webp"),
+  thu: require("../../../assets/home/darshan-thu.webp"),
+  fri: require("../../../assets/home/darshan-fri.webp"),
+  sat: require("../../../assets/home/darshan-sat.webp"),
 };
 function openTarget(navigation: Navigation, target: HomeTarget) {
   if (target.route === "mandir") navigation.navigate("Mandir");
@@ -99,11 +121,83 @@ function useHomeFeed() {
 export function HomeScreen({ navigation }: Props) {
   const { t } = useApp();
   return (
-    <Page title={`${t("greeting")} 🙏`} subtitle={t("homeSubtitle")}>
+    <Page bare title={t("home")}>
+      <Greeting />
+      <DarshanHero onPress={() => navigation.navigate("Mandir")} />
       <DataBoundary>
         <HomeFeedView navigation={navigation} />
       </DataBoundary>
     </Page>
+  );
+}
+// A marigold toran across the top, then the greeting for the hour.
+function Greeting() {
+  const { t } = useApp();
+  const now = new Date();
+  return (
+    <View style={styles.greeting}>
+      <Image
+        source={art.toran}
+        style={styles.toran}
+        resizeMode="contain"
+        accessible={false}
+      />
+      <View style={{ paddingHorizontal: 22 }}>
+        <Txt bold size={30} accessibilityRole="header">
+          {`${t(greetingFor(now))} 🙏`}
+        </Txt>
+        <Txt muted size={15}>
+          {t("homeSubtitle")}
+        </Txt>
+      </View>
+    </View>
+  );
+}
+// Today's deity, painted large; the whole card opens the Mandir to light a diya.
+function DarshanHero({ onPress }: { onPress: () => void }) {
+  const { local, t } = useApp();
+  const language = local.language;
+  const today = darshanFor(new Date());
+  const deity = today.deity[language];
+  const day = language === "hi" ? `${deity} का दिन` : `${deity}’s day`;
+  return (
+    <Pressable
+      testID="darshan-hero"
+      accessibilityRole="button"
+      accessibilityLabel={`${t("todaysDarshan")}: ${deity}. ${t("lightDiya")}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
+    >
+      <Image
+        source={darshanArt[today.key]}
+        style={styles.heroImage}
+        resizeMode="cover"
+        accessible={false}
+      />
+      <LinearGradient
+        colors={["#1E110D00", "#1E110D99", "#1E110DEE"]}
+        locations={[0.42, 0.68, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.heroText}>
+        <Txt bold size={14} style={{ color: sanctum.brassLight }}>
+          {t("todaysDarshan")}
+        </Txt>
+        <Txt bold size={30} style={{ color: sanctum.text }}>
+          {deity}
+        </Txt>
+        <Txt size={15} style={{ color: sanctum.textMuted }}>
+          {`${today.weekday[language]} · ${day}`}
+        </Txt>
+        <View style={styles.heroCta}>
+          <Image source={art.diya} style={{ width: 34, height: 34 }} />
+          <Txt bold size={17} style={{ color: colors.white }}>
+            {t("lightDiya")}
+          </Txt>
+          <ChevronRight size={20} color={colors.white} />
+        </View>
+      </View>
+    </Pressable>
   );
 }
 function HomeFeedView({ navigation }: { navigation: Navigation }) {
@@ -121,7 +215,7 @@ function HomeFeedView({ navigation }: { navigation: Navigation }) {
             <View
               key={section.id}
               testID={`home-section-${section.id}`}
-              style={{ gap: 20 }}
+              style={{ gap: 16 }}
             >
               <HomeSectionView section={section} navigation={navigation} />
             </View>
@@ -147,75 +241,81 @@ function HomeSectionView({
   switch (section.type) {
     case "PROGRESS":
       return (
-        <Card style={{ padding: 16 }}>
-          <Row style={{ justifyContent: "space-between" }}>
+        <View>
+          <Row style={{ gap: 10 }}>
             {[
               {
-                icon: Flame,
+                image: art.diya,
                 value: `${stats.currentStreak}`,
                 label: t("streak"),
               },
               {
-                icon: Sparkles,
+                image: art.lotus,
                 value: `${stats.totalXp}`,
                 label: t("points"),
               },
               {
-                icon: Flower2,
+                image: art.kalash,
                 value: stats.real ? rankNames[stats.rank][language] : t("rank"),
                 label: `${t("level")} ${stats.level}`,
               },
             ].map((stat) => (
-              <View
-                key={stat.label}
-                style={{ flex: 1, alignItems: "center", gap: 2 }}
-              >
-                <stat.icon size={18} color={colors.primary} />
-                <Txt bold size={17}>
+              <View key={stat.label} style={styles.stat}>
+                <Image source={stat.image} style={{ width: 44, height: 44 }} />
+                <Txt
+                  bold
+                  size={19}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={{ color: shrine.maroon }}
+                >
                   {stat.value}
                 </Txt>
-                <Txt size={10} muted>
+                <Txt size={13} muted numberOfLines={1} adjustsFontSizeToFit>
                   {stat.label}
                 </Txt>
               </View>
             ))}
           </Row>
           {!stats.real && (
-            <Txt size={10} muted style={{ textAlign: "center" }}>
+            <Txt size={11} muted style={{ textAlign: "center", marginTop: 6 }}>
               {t("sample")}
             </Txt>
           )}
-        </Card>
+        </View>
       );
     case "SHORTCUTS":
       return (
         <>
           <Section title={section.title?.[language] ?? t("quick")} />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: 20 }}>
+          <View style={styles.shortcuts}>
             {section.items.map((item, index) => {
-              const Icon = shortcutIcons[item.iconKey] ?? Sparkles;
+              const image = shortcutArt[item.iconKey];
               return (
                 <Pressable
                   key={`${item.iconKey}-${index}`}
                   accessibilityRole="button"
+                  accessibilityLabel={item.label[language]}
                   onPress={() => openTarget(navigation, item.target)}
-                  style={{
-                    width: "25%",
-                    alignItems: "center",
-                    gap: 8,
-                    minHeight: 76,
-                  }}
+                  style={({ pressed }) => [
+                    styles.shortcut,
+                    pressed && styles.pressed,
+                  ]}
                 >
-                  <View
-                    style={{
-                      backgroundColor: colors.pale,
-                      padding: 16,
-                      borderRadius: 20,
-                    }}
-                  >
-                    <Icon color={colors.primary} size={24} />
+                  <View style={styles.shortcutTile}>
+                    {image ? (
+                      <Image source={image} style={{ width: 54, height: 54 }} />
+                    ) : (
+                      <Sparkles size={30} color={colors.primary} />
+                    )}
                   </View>
-                  <Txt size={11} bold>
+                  <Txt
+                    bold
+                    size={14}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={{ textAlign: "center" }}
+                  >
                     {item.label[language]}
                   </Txt>
                 </Pressable>
@@ -268,19 +368,26 @@ function HomeSectionView({
     }
     case "QUOTE":
       return (
-        <Card
-          style={{ backgroundColor: colors.pale, borderColor: colors.pale }}
-        >
-          {section.title && <Txt bold>{section.title[language]}</Txt>}
-          <Txt bold size={18} style={{ color: colors.dark }}>
+        <View style={styles.quote}>
+          <Image source={art.lotus} style={{ width: 48, height: 48 }} />
+          {section.title && (
+            <Txt bold style={{ color: shrine.goldDeep }}>
+              {section.title[language]}
+            </Txt>
+          )}
+          <Txt
+            bold
+            size={20}
+            style={{ color: shrine.maroon, textAlign: "center" }}
+          >
             “{section.text[language]}”
           </Txt>
           {section.attribution && (
-            <Txt size={12} muted>
+            <Txt size={13} muted>
               — {section.attribution[language]}
             </Txt>
           )}
-        </Card>
+        </View>
       );
     default:
       // Section types this app version does not know are skipped.
@@ -293,32 +400,29 @@ function SadhanaCard({ onPress }: { onPress: () => void }) {
     Boolean,
   ).length;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
-      <Card
-        style={{
-          backgroundColor: colors.greenPale,
-          borderColor: "#DCE5D7",
-        }}
-      >
-        <Row>
-          <View style={{ flex: 1 }}>
-            <Txt bold size={19}>
-              {t("dailyHint")}
-            </Txt>
-            <Txt muted size={12} style={{ marginTop: 8 }}>
-              {done}/3 {t("tasks")}
-            </Txt>
-          </View>
-          <Flower2 size={36} color={colors.green} />
-        </Row>
-        <Progress value={done / 3} label={t("daily")} />
-        <Row style={{ justifyContent: "space-between" }}>
-          <Txt bold size={13} style={{ color: colors.green }}>
-            {t("startPractice")}
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.sadhana, pressed && styles.pressed]}
+    >
+      <Row style={{ alignItems: "flex-start" }}>
+        <View style={{ flex: 1, gap: 6 }}>
+          <Txt bold size={19} style={{ color: shrine.maroon }}>
+            {t("dailyHint")}
           </Txt>
-          <ChevronRight size={20} color={colors.green} />
-        </Row>
-      </Card>
+          <Txt muted size={14}>
+            {done}/3 {t("tasks")}
+          </Txt>
+        </View>
+        <Image source={art.mala} style={{ width: 84, height: 84 }} />
+      </Row>
+      <Progress value={done / 3} label={t("daily")} />
+      <View style={styles.sadhanaCta}>
+        <Txt bold size={16} style={{ color: colors.white }}>
+          {t("startPractice")}
+        </Txt>
+        <ChevronRight size={20} color={colors.white} />
+      </View>
     </Pressable>
   );
 }
@@ -350,62 +454,52 @@ function BannerCarousel({
             onPress={() =>
               navigation.navigate(resolveBannerTarget(banner.target))
             }
-            style={{
-              width,
-              backgroundColor: colors.pale,
-              borderRadius: 24,
-              overflow: "hidden",
-              minHeight: 258,
-            }}
+            style={({ pressed }) => [
+              styles.banner,
+              { width },
+              pressed && styles.pressed,
+            ]}
           >
-            <View
-              style={{
-                position: "absolute",
-                right: -36,
-                top: 0,
-                width: "63%",
-                height: "100%",
-                opacity: 0.85,
-              }}
-            >
-              <DevotionalArt assetKey={banner.artKey} size={300} />
-            </View>
-            <LinearGradient
-              colors={[colors.pale, colors.pale, "#F6E8D800"]}
-              locations={[0, 0.43, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
-            />
-            <View style={{ padding: 24, width: "75%", gap: 13 }}>
-              <Txt
-                size={10}
-                bold
-                style={{ color: colors.primary, letterSpacing: 2 }}
-              >
-                B H A K T A R A
-              </Txt>
-              <Txt bold size={27}>
+            {/* Uploaded banner art on the right; without it, 3D art for where
+                the banner leads. */}
+            {resolveMediaUrl(banner.artKey) ? (
+              <>
+                <View style={styles.bannerArt}>
+                  <DevotionalArt assetKey={banner.artKey} size={300} />
+                </View>
+                <LinearGradient
+                  colors={[shrine.parchment, shrine.parchment, "#FBF1DF00"]}
+                  locations={[0, 0.43, 1]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </>
+            ) : (
+              <Image
+                source={
+                  bannerArt[resolveBannerTarget(banner.target)] ?? art.lotus
+                }
+                style={styles.bannerIcon}
+                accessible={false}
+              />
+            )}
+            <View style={{ padding: 22, width: "68%", gap: 10 }}>
+              <Txt bold size={24} style={{ color: shrine.maroon }}>
                 {banner.title[local.language]}
               </Txt>
-              <Txt size={13} style={{ maxWidth: 185 }}>
+              <Txt size={15} style={{ color: shrine.ink }}>
                 {banner.subtitle[local.language]}
               </Txt>
-              <Row style={{ gap: 2, maxWidth: 200 }}>
+              <Row style={{ gap: 2 }}>
                 <Txt
-                  size={12}
+                  size={15}
                   bold
                   style={{ color: colors.primary, flexShrink: 1 }}
                 >
                   {banner.cta[local.language]}
                 </Txt>
-                <ChevronRight size={17} color={colors.primary} />
+                <ChevronRight size={18} color={colors.primary} />
               </Row>
             </View>
           </Pressable>
@@ -428,3 +522,120 @@ function BannerCarousel({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  greeting: { marginHorizontal: -22, marginTop: -4, gap: 8 },
+  // The toran is 1080 x 217: full width, hanging from the top edge.
+  toran: { width: "100%", height: undefined, aspectRatio: 1080 / 217 },
+  hero: {
+    width: "100%",
+    aspectRatio: 0.8,
+    borderRadius: 28,
+    overflow: "hidden",
+    justifyContent: "flex-end",
+    backgroundColor: sanctum.night,
+    borderWidth: 2,
+    borderColor: shrine.goldLight,
+  },
+  // Explicit size: a bundled image with only absoluteFill draws at its pixel size.
+  heroImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+  },
+  heroText: { padding: 22, gap: 2 },
+  heroCta: {
+    marginTop: 14,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 52,
+    paddingLeft: 10,
+    paddingRight: 16,
+    borderRadius: 26,
+    backgroundColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: sanctum.brass,
+  },
+  stat: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 22,
+    backgroundColor: shrine.card,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  shortcuts: { flexDirection: "row", flexWrap: "wrap", rowGap: 16 },
+  shortcut: {
+    width: "25%",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 3,
+  },
+  shortcutTile: {
+    width: 74,
+    height: 74,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  sadhana: {
+    padding: 20,
+    gap: 14,
+    borderRadius: 24,
+    backgroundColor: shrine.card,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  sadhanaCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 50,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+  },
+  quote: {
+    alignItems: "center",
+    gap: 8,
+    padding: 22,
+    borderRadius: 24,
+    backgroundColor: shrine.parchment,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  banner: {
+    minHeight: 200,
+    justifyContent: "center",
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: shrine.parchment,
+    borderWidth: 1.5,
+    borderColor: shrine.line,
+  },
+  bannerArt: {
+    position: "absolute",
+    right: -36,
+    top: 0,
+    width: "63%",
+    height: "100%",
+    opacity: 0.85,
+  },
+  bannerIcon: {
+    position: "absolute",
+    right: 12,
+    width: 112,
+    height: 112,
+    alignSelf: "center",
+  },
+  pressed: { opacity: 0.8 },
+});

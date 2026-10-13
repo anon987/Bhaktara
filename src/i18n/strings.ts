@@ -14,6 +14,12 @@ export const strings = {
   ],
   continue: ["Continue", "आगे बढ़ें"],
   greeting: ["Namaste", "नमस्ते"],
+  greetMorning: ["Good morning", "शुभ प्रभात"],
+  greetAfternoon: ["Good afternoon", "शुभ दोपहर"],
+  greetEvening: ["Good evening", "शुभ संध्या"],
+  greetNight: ["Good night", "शुभ रात्रि"],
+  todaysDarshan: ["Today’s darshan", "आज के दर्शन"],
+  lightDiya: ["Light a diya", "दीया जलाएँ"],
   homeSubtitle: [
     "Make a little space for peace.",
     "मन की शांति के लिए कुछ पल।",
