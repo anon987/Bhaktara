@@ -1,12 +1,18 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams, TabParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
 import { Page, Txt } from "../../components/ui";
-import { contentTypeIcons } from "../../components/contentTypeIcons";
+import { categoryArt } from "../../components/categoryArt";
 import { ContentType, contentTypes } from "../../domain/models";
 import { StringKey } from "../../i18n/strings";
 import { colors, sanctum } from "../../theme/tokens";
@@ -79,7 +85,6 @@ function CategoryTile({
   onPress: () => void;
 }) {
   const { t } = useApp();
-  const Icon = contentTypeIcons[type];
   const label = t(typeLabel(type));
   return (
     <Pressable
@@ -93,9 +98,12 @@ function CategoryTile({
         pressed && styles.pressed,
       ]}
     >
-      <View style={styles.tileIcon}>
-        <Icon size={30} color={colors.primary} />
-      </View>
+      <Image
+        source={categoryArt[type]}
+        style={styles.tileArt}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
       <Txt
         bold
         size={17}
@@ -124,14 +132,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
   },
-  tileIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.pale,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  tileArt: { width: 72, height: 72 },
   tileText: { textAlign: "center", color: colors.ink },
   pressed: { opacity: 0.72 },
 });
