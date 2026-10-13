@@ -6,6 +6,7 @@ import { AppProvider } from "../src/app/providers/AppProvider";
 import { DialogProvider } from "../src/components/Dialog";
 import { setRuntimeMediaBaseUrl } from "../src/services/media/config";
 import { Catalog, Content, ContentType } from "../src/domain/models";
+import { ChooseDeityScreen } from "../src/features/explore/ChooseDeityScreen";
 import { DeityContentScreen } from "../src/features/explore/DeityContentScreen";
 import { ExploreScreen } from "../src/features/explore/ExploreScreen";
 import { Backend } from "../src/services/backend";
@@ -102,27 +103,31 @@ const exploreRoute = (category?: string) =>
     name: "Explore",
     params: category ? { category } : undefined,
   }) as never;
-function renderExplore(backend = backendWith(), category?: string) {
-  const screen = render(
-    <Providers backend={backend}>
+function renderExplore(category?: string) {
+  return render(
+    <Providers backend={backendWith()}>
       <ExploreScreen
         navigation={navigation as never}
         route={exploreRoute(category)}
       />
     </Providers>,
   );
-  return {
-    ...screen,
-    showCategory: (next: string) =>
-      screen.rerender(
-        <Providers backend={backend}>
-          <ExploreScreen
-            navigation={navigation as never}
-            route={exploreRoute(next)}
-          />
-        </Providers>,
-      ),
-  };
+}
+function renderChoose(type: ContentType, backend = backendWith()) {
+  return render(
+    <Providers backend={backend}>
+      <ChooseDeityScreen
+        navigation={navigation as never}
+        route={
+          {
+            key: "ChooseDeity",
+            name: "ChooseDeity",
+            params: { type, source: "explore" },
+          } as never
+        }
+      />
+    </Providers>,
+  );
 }
 function renderDeity(
   deityId: string,
@@ -151,26 +156,57 @@ const shownDeities = (screen: ReturnType<typeof render>) =>
 const tracked = (event: string) =>
   (analytics.track as jest.Mock).mock.calls.filter(([name]) => name === event);
 
-test("Explore has no search box, no item list and no favourite buttons", async () => {
+test("Explore shows only the categories: no gods, search box, item list or favourites", async () => {
   const screen = renderExplore();
-  await waitFor(() => expect(screen.getByText("Choose a god")).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByText("What would you like?")).toBeTruthy(),
+  );
+  expect(screen.queryByText("Choose a god")).toBeNull();
+  expect(shownDeities(screen)).toEqual([]);
   expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(0);
   expect(screen.queryByLabelText("Search bhajans, deities & more")).toBeNull();
   expect(screen.queryByLabelText("Add to favorites")).toBeNull();
   // Content names are file names and never shown here.
   expect(screen.queryByText("A golden sanctuary")).toBeNull();
-  expect(screen.queryByText("Lotus light")).toBeNull();
 });
 
-test("Wallpapers is the default and only gods with wallpapers are shown, each with image and name", async () => {
+test("tapping a category opens the next screen to choose a god", async () => {
   const screen = renderExplore();
+  const tiles: [string, ContentType][] = [
+    ["Wallpapers", "WALLPAPER"],
+    ["Bhajan", "BHAJAN"],
+    ["Aarti", "AARTI"],
+    ["Mantra", "MANTRA"],
+    ["Chalisa", "CHALISA"],
+    ["Ringtones", "RINGTONE"],
+    ["Status", "STATUS"],
+  ];
+  await waitFor(() => expect(screen.getByLabelText("Wallpapers")).toBeTruthy());
+  for (const [label, type] of tiles) {
+    fireEvent.press(screen.getByLabelText(label));
+    expect(navigation.navigate).toHaveBeenLastCalledWith("ChooseDeity", {
+      type,
+      source: "explore",
+    });
+  }
+});
+
+test("a link naming a category goes straight to its gods", async () => {
+  renderExplore("BHAJAN");
+  await waitFor(() =>
+    expect(navigation.navigate).toHaveBeenCalledWith("ChooseDeity", {
+      type: "BHAJAN",
+      source: "explore",
+    }),
+  );
+  expect(navigation.setParams).toHaveBeenCalledWith({ category: undefined });
+});
+
+test("choosing a god shows only gods with that category, each with image and name", async () => {
+  const screen = renderChoose("WALLPAPER");
   await waitFor(() => expect(shownDeities(screen)).toHaveLength(2));
-  expect(
-    screen.getByTestId("category-WALLPAPER").props.accessibilityState,
-  ).toEqual({ selected: true });
-  expect(
-    screen.getByTestId("category-BHAJAN").props.accessibilityState,
-  ).toEqual({ selected: false });
+  expect(screen.getByText("Wallpapers")).toBeTruthy();
+  expect(screen.getByText("Choose a god")).toBeTruthy();
   // Catalog order (deity sortOrder), only those with a published wallpaper.
   expect(shownDeities(screen)).toEqual(["ganesha", "durga"]);
   for (const [id, name] of [
@@ -182,43 +218,31 @@ test("Wallpapers is the default and only gods with wallpapers are shown, each wi
     expect(screen.getByText(name)).toBeTruthy();
   }
   expect(screen.queryByText("Shiva")).toBeNull();
+  screen.unmount();
+  for (const [type, ids] of [
+    ["BHAJAN", ["krishna", "hanuman"]],
+    ["CHALISA", ["hanuman"]],
+  ] as [ContentType, string[]][]) {
+    const next = renderChoose(type);
+    await waitFor(() => expect(shownDeities(next)).toEqual(ids));
+    next.unmount();
+  }
+  const aarti = renderChoose("AARTI");
+  await waitFor(() => expect(shownDeities(aarti)).toHaveLength(5));
+  fireEvent.press(aarti.getByLabelText("Close"));
+  expect(navigation.goBack).toHaveBeenCalled();
 });
 
-test("category tiles select the category, honouring route.params.category", async () => {
-  const screen = renderExplore(backendWith(), "BHAJAN");
-  await waitFor(() =>
-    expect(shownDeities(screen)).toEqual(["krishna", "hanuman"]),
-  );
-  expect(
-    screen.getByTestId("category-BHAJAN").props.accessibilityState,
-  ).toEqual({ selected: true });
-  // Every category has a big labelled tile.
-  for (const label of [
-    "Wallpapers",
-    "Bhajan",
-    "Aarti",
-    "Mantra",
-    "Chalisa",
-    "Ringtones",
-    "Status",
-  ])
-    expect(screen.getByLabelText(label)).toBeTruthy();
-  fireEvent.press(screen.getByLabelText("Aarti"));
-  expect(navigation.setParams).toHaveBeenLastCalledWith({ category: "AARTI" });
-  screen.showCategory("AARTI");
-  await waitFor(() => expect(shownDeities(screen)).toHaveLength(5));
-  screen.showCategory("CHALISA");
-  await waitFor(() => expect(shownDeities(screen)).toEqual(["hanuman"]));
-});
-
-test("gods missing from the catalog are checked with one small type + deity query each, cached per category", async () => {
+test("gods missing from the catalog are checked with one small type + deity query each", async () => {
   // The cloud catalog holds only a few items: here none at all.
   const search = jest.fn<
     ReturnType<ContentRepository["search"]>,
     Parameters<ContentRepository["search"]>
   >(async (query) => ({ items: filterContent(query).slice(0, query.limit) }));
-  const backend = backendWith({ search }, { content: [] });
-  const screen = renderExplore(backend);
+  const screen = renderChoose(
+    "WALLPAPER",
+    backendWith({ search }, { content: [] }),
+  );
   await waitFor(() =>
     expect(shownDeities(screen)).toEqual(["ganesha", "durga"]),
   );
@@ -229,15 +253,6 @@ test("gods missing from the catalog are checked with one small type + deity quer
       deityId: deity.id,
       limit: 1,
     });
-  screen.showCategory("STATUS");
-  await waitFor(() => expect(shownDeities(screen)).toEqual(["krishna"]));
-  const asked = search.mock.calls.length;
-  // Back to Wallpapers: answered from the cache, no new requests.
-  screen.showCategory("WALLPAPER");
-  await waitFor(() =>
-    expect(shownDeities(screen)).toEqual(["ganesha", "durga"]),
-  );
-  expect(search).toHaveBeenCalledTimes(asked);
 });
 
 test("a category with no content shows a friendly empty state", async () => {
@@ -245,17 +260,19 @@ test("a category with no content shows a friendly empty state", async () => {
     { search: async () => ({ items: [] }) },
     { content: [] },
   );
-  const screen = renderExplore(backend, "RINGTONE");
+  const screen = renderChoose("RINGTONE", backend);
   await waitFor(() =>
     expect(
-      screen.getByText("Nothing here yet. Please choose another one above."),
+      screen.getByText(
+        "Nothing here yet. Please go back and choose something else.",
+      ),
     ).toBeTruthy(),
   );
   expect(shownDeities(screen)).toEqual([]);
 });
 
 test("tapping a god on Wallpapers opens the full-screen viewer on that god's wallpapers, from the first", async () => {
-  const screen = renderExplore();
+  const screen = renderChoose("WALLPAPER");
   await waitFor(() => expect(screen.getByLabelText("Durga")).toBeTruthy());
   fireEvent.press(screen.getByLabelText("Durga"));
   expect(navigation.navigate).toHaveBeenLastCalledWith("DeityContent", {

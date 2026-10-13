@@ -53,11 +53,13 @@ const shortcutIcons: Record<string, LucideIcon> = {
 function openTarget(navigation: Navigation, target: HomeTarget) {
   if (target.route === "mandir") navigation.navigate("Mandir");
   else if (target.route === "sadhana") navigation.navigate("Sadhana");
-  else
-    navigation.navigate(
-      "Explore",
-      target.params ? { category: target.params.category } : undefined,
-    );
+  // A category goes straight to choosing the god (Explore's second step).
+  else if (target.params)
+    navigation.navigate("ChooseDeity", {
+      type: target.params.category,
+      source: "explore",
+    });
+  else navigation.navigate("Explore");
 }
 // One read of the precomputed feed for the current language. Results are
 // keyed by language and attempt, so a late response never shows stale data.

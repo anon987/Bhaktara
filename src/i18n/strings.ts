@@ -54,8 +54,8 @@ export const strings = {
     "इनके लिए अभी यहाँ कुछ नहीं है।",
   ],
   noDeitiesForType: [
-    "Nothing here yet. Please choose another one above.",
-    "अभी यहाँ कुछ नहीं है। ऊपर से कुछ और चुनें।",
+    "Nothing here yet. Please go back and choose something else.",
+    "अभी यहाँ कुछ नहीं है। पीछे जाकर कुछ और चुनें।",
   ],
   noResults: ["No content found", "कोई सामग्री नहीं मिली"],
   noResultsHint: [

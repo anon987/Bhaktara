@@ -16,6 +16,8 @@ export type RootParams = {
   Player: undefined;
   // `source` feeds the doc 13 analytics parameter of the same name.
   Content: { contentId: string; source?: PlaySource };
+  // Explore, second step: the gods with published items of the chosen type.
+  ChooseDeity: { type: ContentType; source?: PlaySource };
   // Explore: one deity's published items of one type (wallpaper and status
   // viewers open on the first; audio types list them).
   DeityContent: { deityId: string; type: ContentType; source?: PlaySource };

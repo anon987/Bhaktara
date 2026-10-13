@@ -72,8 +72,9 @@ test("renders banners first, then CMS sections in the configured order", async (
   expect(screen.queryByText("Bhajans")).toBeNull();
   expect(screen.getByLabelText(/Begin with a little bhakti\./)).toBeTruthy();
   fireEvent.press(screen.getByText("Aarti"));
-  expect(navigation.navigate).toHaveBeenLastCalledWith("Explore", {
-    category: "AARTI",
+  expect(navigation.navigate).toHaveBeenLastCalledWith("ChooseDeity", {
+    type: "AARTI",
+    source: "explore",
   });
   fireEvent.press(screen.getAllByLabelText("Durga aarti")[0]);
   expect(navigation.navigate).toHaveBeenLastCalledWith("Content", {
