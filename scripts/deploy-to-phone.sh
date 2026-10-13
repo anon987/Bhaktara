@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Installs a release APK of a pushed branch on the connected phone. The APK is
 # built in GitHub Actions (.github/workflows/android-apk.yml), never on this
-# machine; an existing build of the same commit and ABI is reused.
+# machine; an existing build of the same commit, ABI and variant is reused.
 #
-# Usage: scripts/deploy-to-phone.sh [branch]   (default: the current branch)
+# Usage: scripts/deploy-to-phone.sh [--dev] [branch]   (default: the current branch)
+#   --dev  installs the Expo dev client instead: it loads JS from Metro
+#          (npx expo start --dev-client), so JS-only changes need no new build.
 # With several devices connected, set ANDROID_SERIAL to choose one.
 set -euo pipefail
 
@@ -11,6 +13,8 @@ WORKFLOW=android-apk.yml
 ABIS="arm64-v8a armeabi-v7a x86_64 x86"
 
 die() { echo "error: $*" >&2; exit 1; }
+variant=release
+if [ "${1:-}" = "--dev" ]; then variant=debug; shift; fi
 for tool in adb gh git; do command -v "$tool" >/dev/null || die "$tool is not installed"; done
 cd "$(git rev-parse --show-toplevel)"
 gh auth status >/dev/null 2>&1 || die "gh is not logged in (run: gh auth login)"
@@ -42,8 +46,12 @@ sha=$(git ls-remote --exit-code origin "refs/heads/$branch" 2>/dev/null | cut -f
 if [ "$branch" = "$(git branch --show-current)" ] && [ "$(git rev-parse HEAD)" != "$sha" ]; then
   echo "note:    local $branch differs from origin; building the pushed commit"
 fi
-artifact="app-$abi-$sha"
-echo "commit:  $branch @ ${sha:0:12}"
+if [ "$variant" = debug ]; then
+  artifact="app-dev-$abi-$sha"; title="APK $abi dev @"; dispatch=(-f variant=debug)
+else
+  artifact="app-$abi-$sha"; title="APK $abi @"; dispatch=()
+fi
+echo "commit:  $branch @ ${sha:0:12} ($variant)"
 
 # ---- Find or make the build ---------------------------------------------------
 run_id=$(gh api -X GET "repos/{owner}/{repo}/actions/artifacts" -f name="$artifact" -f per_page=20 \
@@ -56,14 +64,14 @@ else
   find_run() {
     gh run list --workflow "$WORKFLOW" --branch "$branch" --event workflow_dispatch --limit 30 \
       --json databaseId,headSha,displayTitle,status,createdAt \
-      --jq "[.[] | select(.headSha == \"$sha\" and (.displayTitle | startswith(\"APK $abi @\")) $1)] | first | .databaseId // empty"
+      --jq "[.[] | select(.headSha == \"$sha\" and (.displayTitle | startswith(\"$title\")) $1)] | first | .databaseId // empty"
   }
   run_id=$(find_run 'and (.status != "completed")')
   if [ -n "$run_id" ]; then
     echo "build:   run $run_id is already building this commit"
   else
     since=$(date -u -d "-1 min" +%Y-%m-%dT%H:%M:%SZ)  # margin for clock skew
-    gh workflow run "$WORKFLOW" --ref "$branch" -f abi="$abi" >/dev/null
+    gh workflow run "$WORKFLOW" --ref "$branch" -f abi="$abi" "${dispatch[@]}" >/dev/null
     echo -n "build:   started; waiting for the run to appear"
     for _ in $(seq 30); do
       run_id=$(find_run "and (.createdAt >= \"$since\")")
