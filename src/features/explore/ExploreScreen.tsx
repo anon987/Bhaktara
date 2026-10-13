@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
-import { ChevronRight } from "lucide-react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -30,7 +29,7 @@ const categories: ContentType[] = [
 // Page padding (22 each side) and the widest page (ui.tsx Page).
 const PAGE_PADDING = 44;
 const PAGE_MAX = 640;
-const TILE_GAP = 12;
+const TILE_GAP = 10;
 
 const typeLabel = (type: ContentType) => type.toLowerCase() as StringKey;
 
@@ -61,7 +60,7 @@ export function ExploreScreen({ navigation, route }: Props) {
           <CategoryTile
             key={type}
             type={type}
-            width={Math.floor((width - TILE_GAP) / 2)}
+            width={Math.floor((width - 2 * TILE_GAP) / 3)}
             onPress={() => choose(type)}
           />
         ))}
@@ -95,20 +94,17 @@ function CategoryTile({
       ]}
     >
       <View style={styles.tileIcon}>
-        <Icon size={34} color={colors.primary} />
+        <Icon size={30} color={colors.primary} />
       </View>
-      <View style={styles.tileLabel}>
-        <Txt
-          bold
-          size={19}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          style={styles.tileText}
-        >
-          {label}
-        </Txt>
-        <ChevronRight size={20} color={sanctum.brass} />
-      </View>
+      <Txt
+        bold
+        size={17}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={styles.tileText}
+      >
+        {label}
+      </Txt>
     </Pressable>
   );
 }
@@ -117,26 +113,25 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP },
   // A brass-edged tile like a decorated thali; the whole tile opens the gods.
   tile: {
-    minHeight: 132,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+    minHeight: 120,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderRadius: 24,
     borderWidth: 2,
     borderColor: sanctum.brassLight,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 10,
   },
   tileIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.pale,
     alignItems: "center",
     justifyContent: "center",
   },
-  tileLabel: { flexDirection: "row", alignItems: "center", gap: 4 },
-  tileText: { textAlign: "center", color: colors.ink, flexShrink: 1 },
+  tileText: { textAlign: "center", color: colors.ink },
   pressed: { opacity: 0.72 },
 });
