@@ -86,8 +86,12 @@ const ringtoneTargets: [RingtoneTarget, StringKey][] = [
 const isShare = (action: SaveAction) =>
   action.kind === "share" || action.kind === "share-whatsapp";
 
-// WhatsApp gets the large master (doc 22 §A3), or the phone-sized copy.
-const whatsappVariant = (item: Content) => item.media.full ?? item.media.mobile;
+// WhatsApp gets the large master (doc 22 §A3), or the phone-sized copy;
+// status videos send their 720p video.
+const whatsappVariant = (item: Content) =>
+  item.type === "STATUS"
+    ? item.media.video720
+    : (item.media.full ?? item.media.mobile);
 
 // Save / Set / Share logic shared by the content card (SaveActions) and the
 // full-screen wallpaper viewer: the rewarded gate (D-038), permissions,
@@ -156,7 +160,9 @@ export function useSaveActions(item: Content) {
       case "share-whatsapp":
         return services.share.shareToWhatsApp({
           ...request,
-          text: t("shareCaption"),
+          text: t(
+            item.type === "STATUS" ? "shareCaptionStatus" : "shareCaption",
+          ),
         });
     }
   };
@@ -284,7 +290,8 @@ export function useSaveActions(item: Content) {
     busy,
     // The Save/Set master exists and resolves to the CDN.
     mediaReady,
-    // The WhatsApp copy (full, else mobile) exists and resolves to the CDN.
+    // The WhatsApp copy (full, else mobile; video720 for status) exists and
+    // resolves to the CDN.
     shareReady,
     gated: saveGateFor(item) === "rewarded",
     canSave: services.mediaSave.canSave,

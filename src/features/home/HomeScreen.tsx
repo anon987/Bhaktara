@@ -2,17 +2,11 @@ import React, { useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, ScrollView, View } from "react-native";
 import {
-  AudioLines,
-  Bell,
   ChevronRight,
   Flame,
   Flower2,
-  Headphones,
-  Image,
   LucideIcon,
-  Music2,
   Sparkles,
-  Video,
 } from "lucide-react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -36,6 +30,7 @@ import {
 } from "../../components/ui";
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { ContentCard } from "../../components/ContentCard";
+import { contentTypeIcons } from "../../components/contentTypeIcons";
 import { colors } from "../../theme/tokens";
 import { localPracticeDay } from "../../domain/practice";
 import { Banner, CatalogMode } from "../../domain/models";
@@ -47,13 +42,12 @@ type Props = CompositeScreenProps<
 type Navigation = Props["navigation"];
 // CMS shortcuts name an icon key; unknown keys fall back to a neutral icon.
 const shortcutIcons: Record<string, LucideIcon> = {
-  bhajan: Headphones,
-  aarti: Flame,
-  mantra: AudioLines,
-  chalisa: Music2,
-  wallpaper: Image,
-  ringtone: Bell,
-  status: Video,
+  ...Object.fromEntries(
+    Object.entries(contentTypeIcons).map(([type, icon]) => [
+      type.toLowerCase(),
+      icon,
+    ]),
+  ),
   mandir: Flower2,
 };
 function openTarget(navigation: Navigation, target: HomeTarget) {
@@ -103,11 +97,7 @@ function useHomeFeed() {
 export function HomeScreen({ navigation }: Props) {
   const { t } = useApp();
   return (
-    <Page
-      title={`${t("greeting")} 🙏`}
-      subtitle={t("homeSubtitle")}
-      onSearch={() => navigation.navigate("Explore")}
-    >
+    <Page title={`${t("greeting")} 🙏`} subtitle={t("homeSubtitle")}>
       <DataBoundary>
         <HomeFeedView navigation={navigation} />
       </DataBoundary>

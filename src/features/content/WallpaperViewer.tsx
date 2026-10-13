@@ -38,23 +38,26 @@ import { SaveActionsController, useSaveActions } from "./useSaveActions";
 import { WhatsAppGlyph } from "./WhatsAppGlyph";
 
 const useNativeDriver = Platform.OS !== "web";
-const WHATSAPP_GREEN = "#25D366";
+export const WHATSAPP_GREEN = "#25D366";
 const SWIPE_HINT = "wallpaperSwipe";
 const FAB = 64;
 // Room the FAB column (button + label) needs on the right of the toast.
-const FAB_COLUMN = 120;
+export const FAB_COLUMN = 120;
 
 // Full-bleed wallpaper preview: the picture fills the phone edge to edge,
 // behind the status and navigation bars. Swipe up for the next wallpaper of
 // the same deity (reels-style paging). WhatsApp share (free, D-041) and Set
 // wallpaper float bottom-right; Save to gallery (rewarded, D-038) sits in the
-// top bar next to the favourite heart.
+// top bar next to the favourite heart. Explore opens it by deity and passes
+// that deity's `pages` itself, starting at the first.
 export function WallpaperViewer({
   item,
+  pages: given,
   source,
   onBack,
 }: {
   item: Content;
+  pages?: Content[];
   source: PlaySource;
   onBack: () => void;
 }) {
@@ -67,7 +70,7 @@ export function WallpaperViewer({
   });
   // Fixed on opening, so a catalog refresh never moves the page underneath.
   const [pages] = useState(() =>
-    deityWallpapers(catalog?.content ?? [item], item),
+    given?.length ? given : deityWallpapers(catalog?.content ?? [item], item),
   );
   const [index, setIndex] = useState(0);
   const current = pages[index] ?? item;
@@ -303,7 +306,7 @@ function WallpaperPage({
   );
 }
 
-function RoundButton({
+export function RoundButton({
   icon: Icon,
   label,
   onPress,
@@ -344,7 +347,7 @@ function RoundButton({
 
 // A large round action with its name underneath on a soft scrim; the whole
 // stack is the touch target.
-function Fab({
+export function Fab({
   label,
   color,
   onPress,
@@ -396,7 +399,7 @@ function Badge({ text }: { text: string }) {
 }
 
 // Progress, success and errors of Save / Set / Share as a snackbar.
-function Toast({ actions }: { actions: SaveActionsController }) {
+export function Toast({ actions }: { actions: SaveActionsController }) {
   const { t } = useApp();
   const { phase, dismiss } = actions;
   // Good news and "not supported" fade on their own; problems wait for the user.
@@ -465,7 +468,7 @@ function Toast({ actions }: { actions: SaveActionsController }) {
 }
 
 // A gently rising double chevron with the words, so the gesture is never hidden.
-function SwipeHint({
+export function SwipeHint({
   label,
   bottom,
   onPress,

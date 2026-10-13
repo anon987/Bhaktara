@@ -18,7 +18,6 @@ export const strings = {
     "Make a little space for peace.",
     "मन की शांति के लिए कुछ पल।",
   ],
-  search: ["Search bhajans, deities & more", "भजन, देवी-देवता और अधिक खोजें"],
   sample: ["Sample progress", "उदाहरण प्रगति"],
   demo: ["UI preview · sample content", "UI प्रीव्यू · उदाहरण सामग्री"],
   localOnly: [
@@ -47,17 +46,22 @@ export const strings = {
   wallpaper: ["Wallpapers", "वॉलपेपर"],
   ringtone: ["Ringtones", "रिंगटोन"],
   status: ["Status", "स्टेटस"],
-  all: ["All", "सभी"],
   discover: ["Find your kind of peace", "अपने मन का सुकून खोजें"],
-  browseDeity: ["By deity", "देवी-देवता के अनुसार"],
-  library: ["Devotional library", "भक्ति संग्रह"],
-  results: ["Results", "परिणाम"],
+  chooseCategory: ["What would you like?", "क्या देखें, क्या सुनें?"],
+  chooseGod: ["Choose a god", "भगवान चुनें"],
+  deityEmpty: [
+    "Nothing here yet for this god.",
+    "इनके लिए अभी यहाँ कुछ नहीं है।",
+  ],
+  noDeitiesForType: [
+    "Nothing here yet. Please choose another one above.",
+    "अभी यहाँ कुछ नहीं है। ऊपर से कुछ और चुनें।",
+  ],
   noResults: ["No content found", "कोई सामग्री नहीं मिली"],
   noResultsHint: [
     "Try another search or clear your filters.",
     "दूसरा शब्द खोजें या फ़िल्टर हटाएँ।",
   ],
-  clear: ["Clear filters", "फ़िल्टर हटाएँ"],
   loadMore: ["Load more", "और देखें"],
   chooseDeity: ["Choose your deity", "अपने आराध्य चुनें"],
   deityHint: [
@@ -211,7 +215,12 @@ export const strings = {
     "A divine wallpaper for you, from the Bhaktara app.",
     "भक्तारा ऐप से आपके लिए एक दिव्य वॉलपेपर।",
   ],
+  shareCaptionStatus: [
+    "A devotional status for you, from the Bhaktara app.",
+    "भक्तारा ऐप से आपके लिए एक भक्ति स्टेटस।",
+  ],
   swipeForMore: ["Swipe up for more", "ऊपर स्वाइप करें — और वॉलपेपर"],
+  swipeForMoreStatus: ["Swipe up for more", "ऊपर स्वाइप करें — और स्टेटस"],
   // Marks the Save / Set buttons that play one rewarded ad (doc 11 §4).
   adBadge: ["Ad", "विज्ञापन"],
   saveRingtone: ["Save ringtone", "रिंगटोन सहेजें"],

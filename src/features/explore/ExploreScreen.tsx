@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
-  FlatList,
-  ScrollView,
-  TextInput,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
-import { Search } from "lucide-react-native";
+import { Flower2 } from "lucide-react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -15,256 +15,244 @@ import { useApp } from "../../app/providers/AppProvider";
 import {
   Button,
   Card,
-  Chip,
   DataBoundary,
   Page,
   Row,
-  Section,
   Txt,
 } from "../../components/ui";
-import { ContentCard } from "../../components/ContentCard";
-import { colors, fonts } from "../../theme/tokens";
-import { Content, ContentType, contentTypes } from "../../domain/models";
+import { contentTypeIcons } from "../../components/contentTypeIcons";
+import { ContentType, contentTypes, Deity } from "../../domain/models";
 import { StringKey } from "../../i18n/strings";
-import { ContentQuery, ContentRepository } from "../../repositories/contracts";
-// Text and deity filters are applied within each bounded server page, so a page
-// can come back empty while later pages still match. Skip a few such pages.
-async function searchNonEmpty(
-  search: ContentRepository["search"],
-  input: ContentQuery,
-) {
-  let result = await search(input);
-  let pages = 1;
-  while (!result.items.length && result.nextCursor && pages++ < 5)
-    result = await search({ ...input, cursor: result.nextCursor });
-  return result;
-}
+import { colors, sanctum } from "../../theme/tokens";
+import { DeityCircle } from "./DeityCircle";
+import { useDeitiesWithContent } from "./useDeityContent";
+
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Explore">,
   NativeStackScreenProps<RootParams>
 >;
+
+// Wallpapers first: the most looked-at; then the audio, ringtones, statuses.
+const categories: ContentType[] = [
+  "WALLPAPER",
+  "BHAJAN",
+  "AARTI",
+  "MANTRA",
+  "CHALISA",
+  "RINGTONE",
+  "STATUS",
+];
+const DEFAULT_CATEGORY: ContentType = "WALLPAPER";
+// Page padding (22 each side) and the widest page (ui.tsx Page).
+const PAGE_PADDING = 44;
+const PAGE_MAX = 640;
+const TILE_GAP = 10;
+const DEITY_GAP = 14;
+
+const typeLabel = (type: ContentType) => type.toLowerCase() as StringKey;
+
+// Browse by category, then by god: pick what you want (wallpapers, bhajans…),
+// then tap a god to see only theirs. Nothing is listed by name here.
 export function ExploreScreen({ navigation, route }: Props) {
-  const { local, t, catalog, searchContent, connection } = useApp();
-  const [query, setQuery] = useState("");
-  const category = route.params?.category;
-  const type = contentTypes.includes(category as ContentType)
-    ? (category as ContentType)
-    : undefined;
-  const setType = (value: ContentType | undefined) =>
-    navigation.setParams({ category: value });
-  const [deity, setDeity] = useState<string>();
-  const [items, setItems] = useState<Content[]>([]);
-  const [nextOffset, setNextOffset] = useState<number>();
-  const [nextCursor, setNextCursor] = useState<string>();
-  const generation = useRef(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [reload, setReload] = useState(0);
-  // Results (and their cursor/offset) belong to the filters that produced them.
-  // During the debounce they are stale and must not be paginated or reported empty.
-  const filters = JSON.stringify([query, type ?? null, deity ?? null]);
-  const [resultFilters, setResultFilters] = useState<string>();
-  const stale = resultFilters !== filters;
-  useEffect(() => {
-    let active = true;
-    const requestGeneration = ++generation.current;
-    if (connection === "loading" || connection === "error") return;
-    const timeout = setTimeout(() => {
-      setItems([]);
-      setNextOffset(undefined);
-      setNextCursor(undefined);
-      setLoading(true);
-      setError(false);
-      searchNonEmpty(searchContent, { query, type, deityId: deity })
-        .then((result) => {
-          if (active) {
-            setResultFilters(filters);
-            setItems(result.items);
-            setNextOffset(result.nextOffset);
-            setNextCursor(result.nextCursor);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError(true);
-            setLoading(false);
-          }
-        });
-    }, 180);
-    return () => {
-      active = false;
-      generation.current = requestGeneration + 1;
-      clearTimeout(timeout);
-    };
-  }, [query, type, deity, filters, reload, searchContent, connection]);
-  const more = () => {
-    if (loading || stale) return;
-    const requestGeneration = generation.current;
-    setLoading(true);
-    searchNonEmpty(searchContent, {
-      query,
-      type,
-      deityId: deity,
-      offset: nextOffset,
-      cursor: nextCursor,
-    })
-      .then((result) => {
-        if (requestGeneration !== generation.current) return;
-        setItems((previous) => [
-          ...previous,
-          ...result.items.filter(
-            (item) => !previous.some((old) => old.id === item.id),
-          ),
-        ]);
-        setNextOffset(result.nextOffset);
-        setNextCursor(result.nextCursor);
-      })
-      .catch(() => {
-        if (requestGeneration === generation.current) setError(true);
-      })
-      .finally(() => {
-        if (requestGeneration === generation.current) setLoading(false);
-      });
-  };
-  const header = (
-    <View style={{ gap: 18 }}>
-      <Row
-        style={{
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.line,
-          borderRadius: 18,
-          paddingHorizontal: 16,
-        }}
-      >
-        <Search size={20} color={colors.muted} />
-        <TextInput
-          accessibilityLabel={t("search")}
-          placeholder={t("search")}
-          placeholderTextColor={colors.muted}
-          value={query}
-          onChangeText={setQuery}
-          style={{
-            flex: 1,
-            minHeight: 56,
-            fontSize: 14,
-            color: colors.ink,
-            fontFamily: local.language === "hi" ? fonts.hi : fonts.en,
-          }}
-        />
-      </Row>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        <Chip
-          label={t("all")}
-          selected={!type}
-          onPress={() => setType(undefined)}
-        />
-        {contentTypes.map((value) => (
-          <Chip
-            key={value}
-            label={t(value.toLowerCase() as StringKey)}
-            selected={type === value}
-            onPress={() => setType(value)}
-          />
-        ))}
-      </ScrollView>
-      <Section title={t("browseDeity")} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        <Chip
-          label={t("all")}
-          selected={!deity}
-          onPress={() => setDeity(undefined)}
-        />
-        {catalog?.deities.map((item) => (
-          <Chip
-            key={item.id}
-            label={item.name[local.language]}
-            selected={deity === item.id}
-            onPress={() => setDeity(item.id)}
-          />
-        ))}
-      </ScrollView>
-      <Section title={query ? t("results") : t("library")} />
-      {error && (
-        <Card>
-          <Txt>{t("error")}</Txt>
-          <Button
-            label={t("retry")}
-            onPress={() => setReload((value) => value + 1)}
-          />
-        </Card>
-      )}
-    </View>
-  );
+  const { t } = useApp();
+  const requested = route.params?.category;
+  // Home's "daily companions" tiles open Explore on a category.
+  const category = contentTypes.includes(requested as ContentType)
+    ? (requested as ContentType)
+    : DEFAULT_CATEGORY;
+  const window = useWindowDimensions();
+  const width = Math.min(window.width, PAGE_MAX) - PAGE_PADDING;
   return (
-    <Page title={t("explore")} subtitle={t("discover")} scroll={false}>
+    <Page title={t("explore")} subtitle={t("discover")}>
       <DataBoundary>
-        <FlatList
-          style={{ flexGrow: 0 }}
-          data={items}
-          keyExtractor={(item) => item.id}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={header}
-          renderItem={({ item }) => (
-            <ContentCard
-              compact
-              item={item}
-              onPress={() =>
-                navigation.navigate("Content", {
-                  contentId: item.id,
-                  source: query ? "search" : "explore",
-                })
-              }
+        <Txt bold size={20}>
+          {t("chooseCategory")}
+        </Txt>
+        <View style={styles.tiles}>
+          {categories.map((type) => (
+            <CategoryTile
+              key={type}
+              type={type}
+              width={Math.floor((width - 3 * TILE_GAP) / 4)}
+              selected={type === category}
+              onPress={() => navigation.setParams({ category: type })}
             />
-          )}
-          ListEmptyComponent={
-            !loading &&
-            !stale &&
-            !error &&
-            nextOffset === undefined &&
-            nextCursor === undefined ? (
-              <Card>
-                <Txt bold>{t("noResults")}</Txt>
-                <Txt muted>{t("noResultsHint")}</Txt>
-                <Button
-                  secondary
-                  label={t("clear")}
-                  onPress={() => {
-                    setQuery("");
-                    setType(undefined);
-                    setDeity(undefined);
-                  }}
-                />
-              </Card>
-            ) : null
-          }
-          ListFooterComponent={
-            <View style={{ paddingVertical: 24, gap: 16 }}>
-              {(loading || (stale && !error)) && (
-                <ActivityIndicator color={colors.primary} />
-              )}
-              {(nextOffset !== undefined || nextCursor !== undefined) &&
-                !loading &&
-                !stale && (
-                  <Button secondary label={t("loadMore")} onPress={more} />
-                )}
-              <Txt size={11} muted>
-                {t("demo")}
-              </Txt>
-            </View>
+          ))}
+        </View>
+        <DeityGrid
+          type={category}
+          width={width}
+          onOpen={(deity) =>
+            navigation.navigate("DeityContent", {
+              deityId: deity.id,
+              type: category,
+              source: "explore",
+            })
           }
         />
       </DataBoundary>
     </Page>
   );
 }
+
+function CategoryTile({
+  type,
+  width,
+  selected,
+  onPress,
+}: {
+  type: ContentType;
+  width: number;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { t } = useApp();
+  const Icon = contentTypeIcons[type];
+  const label = t(typeLabel(type));
+  return (
+    <Pressable
+      testID={`category-${type}`}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tile,
+        { width },
+        selected && styles.tileSelected,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={[styles.tileIcon, selected && styles.tileIconSelected]}>
+        <Icon size={26} color={selected ? colors.white : colors.primary} />
+      </View>
+      <Txt
+        bold
+        size={14}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={[styles.tileText, selected && { color: colors.white }]}
+      >
+        {label}
+      </Txt>
+    </Pressable>
+  );
+}
+
+// Only the gods with at least one published item of the chosen category,
+// three to a row: a round picture with the name below.
+function DeityGrid({
+  type,
+  width,
+  onOpen,
+}: {
+  type: ContentType;
+  width: number;
+  onOpen: (deity: Deity) => void;
+}) {
+  const { catalog, local, t } = useApp();
+  const { ids, pending, failed, retry } = useDeitiesWithContent(type);
+  const deities = (catalog?.deities ?? []).filter((deity) =>
+    ids.includes(deity.id),
+  );
+  const cell = Math.floor((width - 2 * DEITY_GAP) / 3);
+  const circle = Math.min(cell - 4, 128);
+  return (
+    <View style={{ gap: 16 }}>
+      <Row style={{ marginTop: 6 }}>
+        <Flower2 size={24} color={colors.gold} />
+        <Txt bold size={22} style={{ flex: 1 }}>
+          {t("chooseGod")}
+        </Txt>
+      </Row>
+      {deities.length > 0 && (
+        <View style={styles.deities} testID={`deities-${type}`}>
+          {deities.map((deity) => (
+            <Pressable
+              key={deity.id}
+              testID={`deity-${deity.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={deity.name[local.language]}
+              onPress={() => onOpen(deity)}
+              style={({ pressed }) => [
+                styles.deity,
+                { width: cell },
+                pressed && styles.pressed,
+              ]}
+            >
+              <DeityCircle deity={deity} size={circle} />
+              <Txt
+                bold
+                size={17}
+                numberOfLines={2}
+                style={{ textAlign: "center" }}
+              >
+                {deity.name[local.language]}
+              </Txt>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      {pending && (
+        <ActivityIndicator
+          color={colors.primary}
+          accessibilityLabel={t("loading")}
+        />
+      )}
+      {failed && (
+        <Card style={{ alignItems: "center" }}>
+          <Txt bold>{t("error")}</Txt>
+          <Button label={t("retry")} onPress={retry} />
+        </Card>
+      )}
+      {!pending && !failed && deities.length === 0 && (
+        <Card style={styles.empty}>
+          <Flower2 size={40} color={colors.gold} />
+          <Txt bold size={18} style={{ textAlign: "center" }}>
+            {t("noDeitiesForType")}
+          </Txt>
+        </Card>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tiles: { flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP },
+  tile: {
+    minHeight: 100,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  // Chosen: a kumkum-red tile edged in brass, like a decorated thali.
+  tileSelected: {
+    backgroundColor: colors.primary,
+    borderColor: sanctum.brass,
+    elevation: 4,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  tileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.pale,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileIconSelected: { backgroundColor: "rgba(255,255,255,0.18)" },
+  tileText: { textAlign: "center", color: colors.ink },
+  deities: { flexDirection: "row", flexWrap: "wrap", gap: DEITY_GAP },
+  deity: { alignItems: "center", gap: 8, paddingVertical: 4 },
+  empty: { alignItems: "center", paddingVertical: 28 },
+  pressed: { opacity: 0.72 },
+});

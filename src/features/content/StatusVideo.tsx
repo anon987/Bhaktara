@@ -19,12 +19,17 @@ const COMPLETE_RATIO = 0.8;
 // Status videos show the poster first and create a player only after a tap
 // (doc 22 §A5). Nothing here autoplays, and there is no custom animation, so
 // reduced-motion users see the same static poster and system spinner.
+// `fullBleed` (the status pager) fills the screen: the 9:16 video centred on
+// black, with the mute button and notices kept clear of the phone's bars.
+export type FullBleed = { top: number; right: number };
 export function StatusVideo({
   content,
   source,
+  fullBleed,
 }: {
   content: Content;
   source: ContentSource;
+  fullBleed?: FullBleed;
 }) {
   const { t } = useApp();
   const posterKey = (content.media.poster ?? content.media.thumb).key;
@@ -58,34 +63,49 @@ export function StatusVideo({
 
   if (!uri)
     return (
-      <View style={styles.frame} testID="status-video">
-        <DevotionalArt assetKey={posterKey} size="100%" />
-        <View style={styles.banner}>
-          <Txt bold size={13} style={styles.light}>
-            {t("videoUnavailable")}
-          </Txt>
-        </View>
-      </View>
+      <Frame
+        fullBleed={fullBleed}
+        chrome={
+          <View
+            style={[
+              styles.banner,
+              fullBleed && {
+                top: fullBleed.top + 64,
+                bottom: undefined,
+                left: 18,
+                right: fullBleed.right + 4,
+              },
+            ]}
+          >
+            <Txt bold size={fullBleed ? 16 : 13} style={styles.light}>
+              {t("videoUnavailable")}
+            </Txt>
+          </View>
+        }
+      >
+        <DevotionalArt assetKey={posterKey} size="100%" square={!!fullBleed} />
+      </Frame>
     );
   if (!started)
     return (
-      <View style={styles.frame} testID="status-video">
-        <DevotionalArt assetKey={posterKey} size="100%" />
+      <Frame fullBleed={fullBleed}>
+        <DevotionalArt assetKey={posterKey} size="100%" square={!!fullBleed} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("playVideo")}
           onPress={() => setStarted(true)}
           style={({ pressed }) => [styles.overlay, pressed && styles.pressed]}
         >
-          <PlayBadge />
+          <PlayBadge large={!!fullBleed} />
         </Pressable>
-      </View>
+      </Frame>
     );
   return (
     <StatusVideoPlayer
       key={attempt}
       uri={uri}
       posterKey={posterKey}
+      fullBleed={fullBleed}
       onFirstPlay={onFirstPlay}
       onComplete={onComplete}
       onRetry={() => setAttempt((value) => value + 1)}
@@ -93,15 +113,44 @@ export function StatusVideo({
   );
 }
 
+// The card frame, or the full-bleed one: black, with the 9:16 box centred.
+// `chrome` sits over the whole frame (the mute button, notices).
+function Frame({
+  fullBleed,
+  black,
+  chrome,
+  children,
+}: React.PropsWithChildren<{
+  fullBleed?: FullBleed;
+  black?: boolean;
+  chrome?: React.ReactNode;
+}>) {
+  if (!fullBleed)
+    return (
+      <View style={[styles.frame, black && styles.black]} testID="status-video">
+        {children}
+        {chrome}
+      </View>
+    );
+  return (
+    <View style={styles.fill} testID="status-video">
+      <View style={styles.fillBox}>{children}</View>
+      {chrome}
+    </View>
+  );
+}
+
 function StatusVideoPlayer({
   uri,
   posterKey,
+  fullBleed,
   onFirstPlay,
   onComplete,
   onRetry,
 }: {
   uri: string;
   posterKey: string;
+  fullBleed?: FullBleed;
   onFirstPlay: () => void;
   onComplete: () => void;
   onRetry: () => void;
@@ -148,15 +197,15 @@ function StatusVideoPlayer({
 
   if (status === "error")
     return (
-      <View style={styles.frame} testID="status-video">
-        <DevotionalArt assetKey={posterKey} size="100%" />
+      <Frame fullBleed={fullBleed}>
+        <DevotionalArt assetKey={posterKey} size="100%" square={!!fullBleed} />
         <View style={[styles.overlay, styles.scrim]}>
           <Txt bold style={[styles.light, { textAlign: "center" }]}>
             {t("videoError")}
           </Txt>
           <Button icon={RotateCcw} label={t("retry")} onPress={onRetry} />
         </View>
-      </View>
+      </Frame>
     );
   const loading = status === "loading" || status === "idle";
   const toggle = () => {
@@ -164,8 +213,31 @@ function StatusVideoPlayer({
     else if (ended) player.replay();
     else player.play();
   };
+  const mute = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t(muted ? "unmuteVideo" : "muteVideo")}
+      accessibilityState={{ selected: muted }}
+      onPress={() => setMuted(player, !muted)}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.mute,
+        fullBleed && [
+          styles.muteLarge,
+          { top: fullBleed.top, right: fullBleed.right, bottom: undefined },
+        ],
+        pressed && styles.pressed,
+      ]}
+    >
+      {muted ? (
+        <VolumeX size={fullBleed ? 26 : 20} color={colors.white} />
+      ) : (
+        <Volume2 size={fullBleed ? 26 : 20} color={colors.white} />
+      )}
+    </Pressable>
+  );
   return (
-    <View style={[styles.frame, styles.black]} testID="status-video">
+    <Frame fullBleed={fullBleed} black chrome={mute}>
       <VideoView
         player={player}
         nativeControls={false}
@@ -177,7 +249,11 @@ function StatusVideoPlayer({
       />
       {!firstFrame && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <DevotionalArt assetKey={posterKey} size="100%" />
+          <DevotionalArt
+            assetKey={posterKey}
+            size="100%"
+            square={!!fullBleed}
+          />
         </View>
       )}
       <Pressable
@@ -196,24 +272,10 @@ function StatusVideoPlayer({
             />
           </View>
         ) : (
-          !isPlaying && <PlayBadge replay={ended} />
+          !isPlaying && <PlayBadge replay={ended} large={!!fullBleed} />
         )}
       </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t(muted ? "unmuteVideo" : "muteVideo")}
-        accessibilityState={{ selected: muted }}
-        onPress={() => setMuted(player, !muted)}
-        hitSlop={8}
-        style={({ pressed }) => [styles.mute, pressed && styles.pressed]}
-      >
-        {muted ? (
-          <VolumeX size={20} color={colors.white} />
-        ) : (
-          <Volume2 size={20} color={colors.white} />
-        )}
-      </Pressable>
-    </View>
+    </Frame>
   );
 }
 
@@ -223,12 +285,12 @@ function setMuted(player: VideoPlayer, muted: boolean) {
   player.muted = muted;
 }
 
-function PlayBadge({ replay }: { replay?: boolean }) {
+function PlayBadge({ replay, large }: { replay?: boolean; large?: boolean }) {
   const Icon = replay ? RotateCcw : Play;
   return (
-    <View style={styles.badge}>
+    <View style={[styles.badge, large && styles.badgeLarge]}>
       <Icon
-        size={30}
+        size={large ? 40 : 30}
         color={colors.white}
         fill={replay ? "none" : colors.white}
       />
@@ -247,6 +309,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   black: { backgroundColor: "#000000" },
+  // Full bleed: the whole page is black, the 9:16 box centred within it.
+  fill: {
+    flex: 1,
+    alignSelf: "stretch",
+    justifyContent: "center",
+    backgroundColor: "#000000",
+    overflow: "hidden",
+  },
+  fillBox: {
+    width: "100%",
+    maxHeight: "100%",
+    aspectRatio: 9 / 16,
+    alignSelf: "center",
+  },
   overlay: {
     position: "absolute",
     top: 0,
@@ -268,6 +344,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  badgeLarge: { width: 88, height: 88 },
   banner: {
     position: "absolute",
     left: 12,
@@ -288,5 +365,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#00000080",
     alignItems: "center",
     justifyContent: "center",
+  },
+  // Same size and scrim as the pager's back button.
+  muteLarge: {
+    width: 52,
+    height: 52,
+    backgroundColor: "rgba(0,0,0,0.38)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
   },
 });
