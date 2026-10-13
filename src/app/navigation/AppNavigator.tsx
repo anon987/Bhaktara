@@ -8,7 +8,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootParams, TabParams } from "./routes";
 import { TabBar, useReducedMotion } from "./TabBar";
-import { colors } from "../../theme/tokens";
+import { colors, sanctum } from "../../theme/tokens";
 import { HomeScreen } from "../../features/home/HomeScreen";
 import { ExploreScreen } from "../../features/explore/ExploreScreen";
 import { ChooseDeityScreen } from "../../features/explore/ChooseDeityScreen";
@@ -48,6 +48,7 @@ function MainTabs() {
   );
 }
 export function AppNavigator() {
+  const reduced = useReducedMotion();
   return (
     <NavigationContainer
       ref={ref}
@@ -63,17 +64,28 @@ export function AppNavigator() {
         },
       }}
     >
+      {/* Native transitions (they stay smooth while JS is busy): pages slide
+          in from the right and back out; the full-screen viewers cross-fade
+          on their dark ground so going back never flashes. */}
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          animation: "none",
+          animation: reduced ? "none" : "slide_from_right",
+          animationDuration: 250,
           contentStyle: { backgroundColor: colors.background },
         }}
       >
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Content" component={ContentScreen} />
         <Stack.Screen name="ChooseDeity" component={ChooseDeityScreen} />
-        <Stack.Screen name="DeityContent" component={DeityContentScreen} />
+        <Stack.Screen
+          name="DeityContent"
+          component={DeityContentScreen}
+          options={{
+            animation: reduced ? "none" : "fade",
+            contentStyle: { backgroundColor: sanctum.night },
+          }}
+        />
         <Stack.Screen name="Player" component={PlayerScreen} />
         <Stack.Screen name="Jaap" component={JaapScreen} />
         <Stack.Screen name="Meditation" component={MeditationScreen} />
