@@ -311,6 +311,40 @@ describe("WhatsApp share", () => {
     ]);
   });
 
+  test("opens Instagram, or Facebook then Facebook Lite, with the same file", async () => {
+    const shareToAppAsync = jest.fn(
+      async (_uri: string, _mime: string, packageName: string) =>
+        packageName !== "com.facebook.katana",
+    );
+    const services = createAndroidServices(
+      fakeNative({ shareToAppAsync }),
+      async () => sharing(),
+    );
+    await expect(
+      services.share.shareToApp(image, "instagram"),
+    ).resolves.toEqual({ status: "success", channel: "instagram" });
+    await expect(services.share.shareToApp(image, "facebook")).resolves.toEqual(
+      { status: "success", channel: "facebook" },
+    );
+    expect(shareToAppAsync.mock.calls.map((call) => call[2])).toEqual([
+      "com.instagram.android",
+      "com.facebook.katana",
+      "com.facebook.lite",
+    ]);
+  });
+
+  test("falls back to the share sheet without Instagram", async () => {
+    const sheet = sharing();
+    const services = createAndroidServices(
+      fakeNative({ shareToAppAsync: jest.fn(async () => false) }),
+      async () => sheet,
+    );
+    await expect(
+      services.share.shareToApp(image, "instagram"),
+    ).resolves.toEqual({ status: "success", channel: "other" });
+    expect(sheet.shareAsync).toHaveBeenCalledTimes(1);
+  });
+
   test("falls back to the system share sheet without WhatsApp", async () => {
     const native = fakeNative({ shareToAppAsync: jest.fn(async () => false) });
     const sheet = sharing();

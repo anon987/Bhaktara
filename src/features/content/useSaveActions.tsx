@@ -16,6 +16,7 @@ import {
   SaveKind,
   ShareResult,
   WallpaperTarget,
+  SocialApp,
 } from "../../services/platform/contracts";
 import { SystemPermissionSheet } from "./SystemPermissionSheet";
 
@@ -58,7 +59,9 @@ export type SaveAction =
   // System share sheet (status videos).
   | { kind: "share" }
   // Straight into WhatsApp, falling back to the share sheet (wallpapers).
-  | { kind: "share-whatsapp" };
+  | { kind: "share-whatsapp" }
+  // Straight into Instagram or Facebook (status videos), same fallback.
+  | { kind: "share-app"; app: SocialApp };
 export type SavePhase =
   | { name: "idle" }
   | { name: "working"; progress: number | null }
@@ -83,8 +86,15 @@ const ringtoneTargets: [RingtoneTarget, StringKey][] = [
   ["alarm", "targetAlarm"],
 ];
 
+const socialTargets: [SocialApp, StringKey][] = [
+  ["instagram", "instagram"],
+  ["facebook", "facebook"],
+];
+
 const isShare = (action: SaveAction) =>
-  action.kind === "share" || action.kind === "share-whatsapp";
+  action.kind === "share" ||
+  action.kind === "share-whatsapp" ||
+  action.kind === "share-app";
 
 // WhatsApp gets the large master (doc 22 §A3), or the phone-sized copy;
 // status videos send their 720p video.
@@ -133,7 +143,11 @@ export function useSaveActions(item: Content) {
     if (mounted.current) setPhase(next);
   };
   const mediaFor = (action: SaveAction) =>
-    action.kind === "share-whatsapp" ? shareMedia : variant;
+    action.kind === "share-whatsapp" || action.kind === "share-app"
+      ? shareMedia
+      : variant;
+  const caption = () =>
+    t(item.type === "STATUS" ? "shareCaptionStatus" : "shareCaption");
 
   const execute = (
     action: SaveAction,
@@ -158,12 +172,12 @@ export function useSaveActions(item: Content) {
       case "share":
         return services.share.shareStatus(request);
       case "share-whatsapp":
-        return services.share.shareToWhatsApp({
-          ...request,
-          text: t(
-            item.type === "STATUS" ? "shareCaptionStatus" : "shareCaption",
-          ),
-        });
+        return services.share.shareToWhatsApp({ ...request, text: caption() });
+      case "share-app":
+        return services.share.shareToApp(
+          { ...request, text: caption() },
+          action.app,
+        );
     }
   };
 
@@ -303,6 +317,14 @@ export function useSaveActions(item: Content) {
     save: () => void run({ kind: "save" }),
     share: () => void run({ kind: "share" }),
     shareToWhatsApp: () => void run({ kind: "share-whatsapp" }),
+    // Instagram or Facebook chooser; free like WhatsApp (D-041).
+    shareToSocial: () =>
+      choose(
+        "socialTarget",
+        "socialTargetHint",
+        socialTargets,
+        (app) => void run({ kind: "share-app", app }),
+      ),
     // Home / lock / both chooser, then the rewarded gate.
     setWallpaper: () =>
       choose(

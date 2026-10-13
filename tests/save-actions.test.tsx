@@ -29,6 +29,7 @@ const mockServices = {
     canShare: true,
     shareStatus: jest.fn(),
     shareToWhatsApp: jest.fn(),
+    shareToApp: jest.fn(),
   },
   notifications: { canRequest: false, request: jest.fn() },
 };

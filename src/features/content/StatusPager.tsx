@@ -11,11 +11,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { ChevronLeft, Download } from "lucide-react-native";
+import { ChevronLeft } from "lucide-react-native";
 import { useApp } from "../../app/providers/AppProvider";
 import { Content } from "../../domain/models";
 import { analytics } from "../../services/analytics";
-import { colors, sanctum } from "../../theme/tokens";
+import { sanctum } from "../../theme/tokens";
 import type { PlaySource } from "../player/playback";
 import { StatusVideo } from "./StatusVideo";
 import { useSaveActions } from "./useSaveActions";
@@ -28,14 +28,16 @@ import {
   WHATSAPP_GREEN,
 } from "./WallpaperViewer";
 import { WhatsAppGlyph } from "./WhatsAppGlyph";
+import { SocialGlyph } from "./SocialGlyph";
 
 const SWIPE_HINT = "statusSwipe";
 
 // Full-bleed status videos of one deity, paged like the wallpaper viewer:
 // swipe up for the next. Each page shows its poster first and loads the video
 // only on a tap (StatusVideo, doc 22 §A5); leaving a page stops its video.
-// WhatsApp (free, D-041) floats above Save video (rewarded, D-038). No titles
-// or counts on screen.
+// Two free shares (D-041), no ads: WhatsApp status above Instagram / Facebook
+// story. No titles or counts on screen.
+const INSTAGRAM_MAGENTA = "#D62976";
 export function StatusPager({
   items,
   source,
@@ -201,7 +203,7 @@ export function StatusPager({
       >
         {actions.canShare && (
           <Fab
-            label={t("shareWhatsApp")}
+            label={t("statusWhatsApp")}
             color={WHATSAPP_GREEN}
             disabled={actions.busy || !actions.shareReady}
             onPress={actions.shareToWhatsApp}
@@ -209,15 +211,14 @@ export function StatusPager({
             <WhatsAppGlyph size={34} />
           </Fab>
         )}
-        {actions.canSave && (
+        {actions.canShare && (
           <Fab
-            label={t("saveStatus")}
-            color={colors.primary}
-            disabled={actions.busy || !actions.mediaReady}
-            badge={actions.gated ? t("adBadge") : undefined}
-            onPress={actions.save}
+            label={t("statusSocial")}
+            color={INSTAGRAM_MAGENTA}
+            disabled={actions.busy || !actions.shareReady}
+            onPress={actions.shareToSocial}
           >
-            <Download size={30} color={colors.white} />
+            <SocialGlyph size={32} />
           </Fab>
         )}
       </View>

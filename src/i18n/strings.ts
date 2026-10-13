@@ -220,6 +220,15 @@ export const strings = {
     "भक्तारा ऐप से आपके लिए एक भक्ति स्टेटस।",
   ],
   swipeForMore: ["Swipe up for more", "ऊपर स्वाइप करें — और वॉलपेपर"],
+  statusWhatsApp: ["WhatsApp status", "WhatsApp स्टेटस"],
+  statusSocial: ["Insta / FB status", "Insta / FB स्टेटस"],
+  socialTarget: ["Share as a status on", "स्टेटस कहाँ लगाएँ?"],
+  socialTargetHint: [
+    "The app opens with this video. Choose Story there.",
+    "ऐप इस वीडियो के साथ खुलेगा। वहाँ स्टोरी चुनें।",
+  ],
+  instagram: ["Instagram", "Instagram"],
+  facebook: ["Facebook", "Facebook"],
   swipeForMoreStatus: ["Swipe up for more", "ऊपर स्वाइप करें — और स्टेटस"],
   // Marks the Save / Set buttons that play one rewarded ad (doc 11 §4).
   adBadge: ["Ad", "विज्ञापन"],

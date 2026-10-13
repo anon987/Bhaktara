@@ -4,6 +4,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider } from "../src/app/providers/AppProvider";
 import { DialogProvider } from "../src/components/Dialog";
+import { setRuntimeMediaBaseUrl } from "../src/services/media/config";
 import { Catalog, Content, ContentType } from "../src/domain/models";
 import { DeityContentScreen } from "../src/features/explore/DeityContentScreen";
 import { ExploreScreen } from "../src/features/explore/ExploreScreen";
@@ -31,6 +32,7 @@ const mockServices = {
     canShare: true,
     shareStatus: jest.fn(),
     shareToWhatsApp: jest.fn(),
+    shareToApp: jest.fn(),
   },
   notifications: { canRequest: false, request: jest.fn() },
 };
@@ -325,7 +327,7 @@ test("Ringtone rows keep Set as ringtone", async () => {
   expect(screen.getByLabelText(/Set as ringtone/)).toBeTruthy();
 });
 
-test("Status: the god's videos open full screen, poster first, with WhatsApp above Save", async () => {
+test("Status: the god's videos open full screen with WhatsApp above Insta / FB, and no save or ads", async () => {
   const screen = renderDeity("krishna", "STATUS");
   await waitFor(() => expect(screen.getByTestId("status-pages")).toBeTruthy());
   const pages = screen.UNSAFE_getByType(FlatList).props.data as Content[];
@@ -335,12 +337,47 @@ test("Status: the god's videos open full screen, poster first, with WhatsApp abo
   const labels = screen
     .getAllByRole("button")
     .map((button) => button.props.accessibilityLabel as string);
-  const whatsapp = labels.indexOf("Send on WhatsApp");
+  const whatsapp = labels.indexOf("WhatsApp status");
   expect(whatsapp).toBeGreaterThanOrEqual(0);
-  expect(labels.indexOf("Save video")).toBeGreaterThan(whatsapp);
+  expect(labels.indexOf("Insta / FB status")).toBeGreaterThan(whatsapp);
+  expect(labels).not.toContain("Save video");
+  expect(screen.queryByText("Ad")).toBeNull();
   expect(tracked("content_view")[0][1]).toEqual({
     content_id: "status-1",
     content_type: "STATUS",
     source: "explore",
   });
+});
+
+test("Insta / FB asks which app, then shares the status video there for free", async () => {
+  mockServices.share.shareToApp.mockResolvedValue({
+    status: "success",
+    channel: "instagram",
+  });
+  setRuntimeMediaBaseUrl("https://media.example.com");
+  const status = fixtures.content.find((item) => item.id === "status-1")!;
+  const withVideo = {
+    ...status,
+    media: {
+      ...status.media,
+      video720: { key: "status/status-1/video720.mp4" },
+    },
+  };
+  const screen = renderDeity(
+    "krishna",
+    "STATUS",
+    backendWith({ search: async () => ({ items: [withVideo] }) }),
+  );
+  await waitFor(() => expect(screen.getByTestId("status-pages")).toBeTruthy());
+  fireEvent.press(screen.getByLabelText("Insta / FB status"));
+  expect(screen.getByText("Share as a status on")).toBeTruthy();
+  fireEvent.press(screen.getByText("Instagram"));
+  await waitFor(() => expect(mockServices.share.shareToApp).toHaveBeenCalled());
+  const [request, app] = mockServices.share.shareToApp.mock.calls[0];
+  expect(app).toBe("instagram");
+  expect(request.variant.key).toMatch(/video720/);
+  expect(mockServices.mediaSave.save).not.toHaveBeenCalled();
+  expect(tracked("content_share")[0][1]).toEqual(
+    expect.objectContaining({ channel: "instagram" }),
+  );
 });
