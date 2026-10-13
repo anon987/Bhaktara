@@ -42,6 +42,9 @@ export const deityInputSchema = z
     // symbol above the mantra on the Jaap screen (Krishna's flute…).
     shrineArt: art.optional(),
     jaapEmblem: art.optional(),
+    // The deity alone on a transparent background (a cut-out PNG), stood in
+    // the sanctum of whichever temple the devotee swipes to.
+    murtiArt: art.optional(),
   })
   .strict();
 
@@ -102,15 +105,48 @@ export const offeringKinds = [
   "ornament",
   "bhog",
   "other",
+  // Mandir decor: the temple the deity stands in (swiped on the Prayer
+  // screen), decorative lights over it, and the bell rung with its sound.
+  "temple",
+  "light",
+  "bell",
 ] as const;
+export type OfferingKind = (typeof offeringKinds)[number];
+// FREE: always available. REWARDED: one rewarded ad unlocks it for good on
+// that device. REWARDED_SINGLE_USE: one rewarded ad per use.
+export const offeringUnlocks = [
+  "FREE",
+  "REWARDED",
+  "REWARDED_SINGLE_USE",
+] as const;
+export type OfferingUnlock = (typeof offeringUnlocks)[number];
+const unit = z.number().min(0).max(1);
+// Where the deity stands in a temple image, as fractions of its width and
+// height: the box the murti is fitted into, feet on its bottom edge.
+export const templeStageSchema = z
+  .object({ x: unit, y: unit, width: unit, height: unit })
+  .strict()
+  .refine((s) => s.x + s.width <= 1 && s.y + s.height <= 1, {
+    message: "must fit inside the image",
+  });
+export type TempleStage = z.infer<typeof templeStageSchema>;
 export const mandirOfferingInputSchema = z
   .object({
     name: requiredLocalized(60),
     kind: z.enum(offeringKinds),
     art: art.optional(),
+    // Flowers: which traditional flower it is, so the deity rules (what is
+    // offered to whom, what never is) apply to it.
+    flowerKind: z.enum(flowerKinds).optional(),
+    // Bells: the sound when rung (an audio asset).
+    sound: z.object({ audio: mediaVariantSchema }).optional(),
+    // Lights: where it hangs over the temple.
+    placement: z.enum(["top", "bottom", "sides"]).optional(),
+    // Temples: where the deity stands in the image.
+    stage: templeStageSchema.optional(),
     // Empty: offered to every deity.
     deityIds: ids(40),
-    unlock: z.enum(["FREE", "REWARDED_SINGLE_USE"]),
+    unlock: z.enum(offeringUnlocks),
     startAt: isoInstantSchema.optional(),
     endAt: isoInstantSchema.optional(),
     sortOrder: z.number().int().min(0).max(10000),

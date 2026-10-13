@@ -1,0 +1,436 @@
+{
+  "_comment": "Mandir decor made with Gemini on Vertex (gemini-2.5-flash-image); bell sounds synthesised. Paths are relative to assets/mandir/. Seeds the admin catalogue (mandirOfferings, deities.murtiArt) and is the app's bundled default set. stage: where the deity stands in a temple (fractions of the image). placement: where a light hangs (top, bottom, sides).",
+  "offerings": [
+    {
+      "id": "temple-marble",
+      "kind": "temple",
+      "name": {
+        "en": "Marble temple",
+        "hi": "संगमरमर का मंदिर"
+      },
+      "image": "temples/marble.webp",
+      "unlock": "FREE",
+      "sortOrder": 10,
+      "stage": {
+        "x": 0.36,
+        "y": 0.47,
+        "width": 0.28,
+        "height": 0.27
+      }
+    },
+    {
+      "id": "temple-wooden",
+      "kind": "temple",
+      "name": {
+        "en": "Home mandir",
+        "hi": "घर का मंदिर"
+      },
+      "image": "temples/wooden.webp",
+      "unlock": "FREE",
+      "sortOrder": 20,
+      "stage": {
+        "x": 0.3,
+        "y": 0.4,
+        "width": 0.4,
+        "height": 0.38
+      }
+    },
+    {
+      "id": "temple-golden",
+      "kind": "temple",
+      "name": {
+        "en": "Golden temple",
+        "hi": "स्वर्ण मंदिर"
+      },
+      "image": "temples/golden.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 30,
+      "stage": {
+        "x": 0.33,
+        "y": 0.45,
+        "width": 0.34,
+        "height": 0.3
+      }
+    },
+    {
+      "id": "temple-rajasthani",
+      "kind": "temple",
+      "name": {
+        "en": "Rajasthani temple",
+        "hi": "राजस्थानी मंदिर"
+      },
+      "image": "temples/rajasthani.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 40,
+      "stage": {
+        "x": 0.37,
+        "y": 0.58,
+        "width": 0.26,
+        "height": 0.3
+      }
+    },
+    {
+      "id": "temple-south",
+      "kind": "temple",
+      "name": {
+        "en": "South Indian temple",
+        "hi": "दक्षिण भारतीय मंदिर"
+      },
+      "image": "temples/south.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 50,
+      "stage": {
+        "x": 0.39,
+        "y": 0.58,
+        "width": 0.22,
+        "height": 0.22
+      }
+    },
+    {
+      "id": "temple-himalayan",
+      "kind": "temple",
+      "name": {
+        "en": "Himalayan temple",
+        "hi": "हिमालय का मंदिर"
+      },
+      "image": "temples/himalayan.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 60,
+      "stage": {
+        "x": 0.38,
+        "y": 0.59,
+        "width": 0.24,
+        "height": 0.22
+      }
+    },
+    {
+      "id": "light-fairy",
+      "kind": "light",
+      "name": {
+        "en": "Fairy lights",
+        "hi": "झालर लाइट"
+      },
+      "image": "lights/fairy.webp",
+      "unlock": "FREE",
+      "sortOrder": 10,
+      "placement": "top"
+    },
+    {
+      "id": "light-diyas",
+      "kind": "light",
+      "name": {
+        "en": "Row of diyas",
+        "hi": "दीयों की कतार"
+      },
+      "image": "lights/diyas.webp",
+      "unlock": "FREE",
+      "sortOrder": 20,
+      "placement": "bottom"
+    },
+    {
+      "id": "light-marigold",
+      "kind": "light",
+      "name": {
+        "en": "Marigold lights",
+        "hi": "गेंदे की लाइट माला"
+      },
+      "image": "lights/marigold.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 30,
+      "placement": "top"
+    },
+    {
+      "id": "light-led",
+      "kind": "light",
+      "name": {
+        "en": "Colourful lights",
+        "hi": "रंगीन लाइटें"
+      },
+      "image": "lights/led.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 40,
+      "placement": "top"
+    },
+    {
+      "id": "light-kandil",
+      "kind": "light",
+      "name": {
+        "en": "Akash kandil",
+        "hi": "आकाश कंदील"
+      },
+      "image": "lights/kandil.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 50,
+      "placement": "sides"
+    },
+    {
+      "id": "light-jhumar",
+      "kind": "light",
+      "name": {
+        "en": "Jhumar",
+        "hi": "झूमर"
+      },
+      "image": "lights/jhumar.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 60,
+      "placement": "top"
+    },
+    {
+      "id": "bell-brass",
+      "kind": "bell",
+      "name": {
+        "en": "Brass ghanti",
+        "hi": "पीतल की घंटी"
+      },
+      "image": "bells/brass.webp",
+      "unlock": "FREE",
+      "sortOrder": 10,
+      "sound": "sounds/brass.m4a"
+    },
+    {
+      "id": "bell-big",
+      "kind": "bell",
+      "name": {
+        "en": "Temple bell",
+        "hi": "मंदिर का घंटा"
+      },
+      "image": "bells/big.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 20,
+      "sound": "sounds/big.m4a"
+    },
+    {
+      "id": "bell-nandi",
+      "kind": "bell",
+      "name": {
+        "en": "Silver Nandi bell",
+        "hi": "चाँदी की नंदी घंटी"
+      },
+      "image": "bells/nandi.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 30,
+      "sound": "sounds/nandi.m4a"
+    },
+    {
+      "id": "bell-cluster",
+      "kind": "bell",
+      "name": {
+        "en": "Bell cluster",
+        "hi": "घंटियों का गुच्छा"
+      },
+      "image": "bells/cluster.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 40,
+      "sound": "sounds/cluster.m4a"
+    },
+    {
+      "id": "flower-genda",
+      "kind": "flower",
+      "name": {
+        "en": "Marigold",
+        "hi": "गेंदा"
+      },
+      "image": "flowers/genda.webp",
+      "unlock": "FREE",
+      "sortOrder": 10,
+      "flowerKind": "genda"
+    },
+    {
+      "id": "flower-rose",
+      "kind": "flower",
+      "name": {
+        "en": "Rose",
+        "hi": "गुलाब"
+      },
+      "image": "flowers/rose.webp",
+      "unlock": "FREE",
+      "sortOrder": 20,
+      "flowerKind": "rose"
+    },
+    {
+      "id": "flower-jasmine",
+      "kind": "flower",
+      "name": {
+        "en": "Jasmine",
+        "hi": "मोगरा"
+      },
+      "image": "flowers/jasmine.webp",
+      "unlock": "FREE",
+      "sortOrder": 30,
+      "flowerKind": "jasmine"
+    },
+    {
+      "id": "flower-hibiscus",
+      "kind": "flower",
+      "name": {
+        "en": "Hibiscus",
+        "hi": "गुड़हल"
+      },
+      "image": "flowers/hibiscus.webp",
+      "unlock": "FREE",
+      "sortOrder": 40,
+      "flowerKind": "hibiscus"
+    },
+    {
+      "id": "flower-bilva",
+      "kind": "flower",
+      "name": {
+        "en": "Bel leaf",
+        "hi": "बेलपत्र"
+      },
+      "image": "flowers/bilva.webp",
+      "unlock": "FREE",
+      "sortOrder": 50,
+      "flowerKind": "bilva"
+    },
+    {
+      "id": "flower-tulsi",
+      "kind": "flower",
+      "name": {
+        "en": "Tulsi",
+        "hi": "तुलसी"
+      },
+      "image": "flowers/tulsi.webp",
+      "unlock": "FREE",
+      "sortOrder": 60,
+      "flowerKind": "tulsi"
+    },
+    {
+      "id": "flower-durva",
+      "kind": "flower",
+      "name": {
+        "en": "Durva grass",
+        "hi": "दूर्वा"
+      },
+      "image": "flowers/durva.webp",
+      "unlock": "FREE",
+      "sortOrder": 70,
+      "flowerKind": "durva"
+    },
+    {
+      "id": "flower-lotus",
+      "kind": "flower",
+      "name": {
+        "en": "Lotus",
+        "hi": "कमल"
+      },
+      "image": "flowers/lotus.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 80,
+      "flowerKind": "lotus"
+    },
+    {
+      "id": "flower-champa",
+      "kind": "flower",
+      "name": {
+        "en": "Champa",
+        "hi": "चंपा"
+      },
+      "image": "flowers/champa.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 90,
+      "flowerKind": "champa"
+    },
+    {
+      "id": "flower-dhatura",
+      "kind": "flower",
+      "name": {
+        "en": "Dhatura",
+        "hi": "धतूरा"
+      },
+      "image": "flowers/dhatura.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 100,
+      "flowerKind": "dhatura"
+    },
+    {
+      "id": "flower-aak",
+      "kind": "flower",
+      "name": {
+        "en": "Aak flower",
+        "hi": "आक"
+      },
+      "image": "flowers/aak.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 110,
+      "flowerKind": "aak"
+    },
+    {
+      "id": "flower-kaner",
+      "kind": "flower",
+      "name": {
+        "en": "Kaner",
+        "hi": "कनेर"
+      },
+      "image": "flowers/kaner.webp",
+      "unlock": "REWARDED",
+      "sortOrder": 120,
+      "flowerKind": "kaner"
+    }
+  ],
+  "murti": {
+    "shiva": {
+      "image": "murti/shiva.webp",
+      "name": {
+        "en": "Shiva",
+        "hi": "शिव"
+      }
+    },
+    "krishna": {
+      "image": "murti/krishna.webp",
+      "name": {
+        "en": "Krishna",
+        "hi": "कृष्ण"
+      }
+    },
+    "ganesha": {
+      "image": "murti/ganesha.webp",
+      "name": {
+        "en": "Ganesha",
+        "hi": "गणेश"
+      }
+    },
+    "hanuman": {
+      "image": "murti/hanuman.webp",
+      "name": {
+        "en": "Hanuman",
+        "hi": "हनुमान"
+      }
+    },
+    "durga": {
+      "image": "murti/durga.webp",
+      "name": {
+        "en": "Durga",
+        "hi": "दुर्गा"
+      }
+    },
+    "vishnu": {
+      "image": "murti/vishnu.webp",
+      "name": {
+        "en": "Vishnu",
+        "hi": "विष्णु"
+      }
+    },
+    "lakshmi": {
+      "image": "murti/lakshmi.webp",
+      "name": {
+        "en": "Lakshmi",
+        "hi": "लक्ष्मी"
+      }
+    },
+    "ram": {
+      "image": "murti/ram.webp",
+      "name": {
+        "en": "Ram",
+        "hi": "राम"
+      }
+    },
+    "saraswati": {
+      "image": "murti/saraswati.webp",
+      "name": {
+        "en": "Saraswati",
+        "hi": "सरस्वती"
+      }
+    }
+  }
+}
