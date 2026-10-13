@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ContentType } from "../../domain/models";
 import type { PlaySource } from "../../features/player/playback";
 export type TabParams = {
   Home: undefined;
@@ -15,6 +16,9 @@ export type RootParams = {
   Player: undefined;
   // `source` feeds the doc 13 analytics parameter of the same name.
   Content: { contentId: string; source?: PlaySource };
+  // Explore: one deity's published items of one type (wallpaper and status
+  // viewers open on the first; audio types list them).
+  DeityContent: { deityId: string; type: ContentType; source?: PlaySource };
   Jaap: undefined;
   Meditation: undefined;
   Prayer: undefined;

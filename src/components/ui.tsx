@@ -12,12 +12,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  ChevronLeft,
-  ChevronRight,
-  LucideIcon,
-  Search,
-} from "lucide-react-native";
+import { ChevronLeft, ChevronRight, LucideIcon } from "lucide-react-native";
 import { colors, fonts, radii } from "../theme/tokens";
 import { useApp } from "../app/providers/AppProvider";
 import { StringKey } from "../i18n/strings";
@@ -214,13 +209,11 @@ export function Page({
   title,
   subtitle,
   onBack,
-  onSearch,
   scroll = true,
 }: React.PropsWithChildren<{
   title: string;
   subtitle?: string;
   onBack?: () => void;
-  onSearch?: () => void;
   scroll?: boolean;
 }>) {
   const { storageError, t, connection } = useApp();
@@ -251,9 +244,6 @@ export function Page({
             </Txt>
           )}
         </View>
-        {onSearch && (
-          <IconButton icon={Search} label={t("search")} onPress={onSearch} />
-        )}
       </Row>
       {scroll ? (
         <ScrollView

@@ -9,6 +9,9 @@ import {
   PlatformResult,
   PlatformServices,
   ShareChannel,
+  ShareResult,
+  SocialApp,
+  WhatsAppApp,
 } from "./contracts";
 import { stubServices } from "./stub";
 import { settingsGuide } from "./settingsGuide";
@@ -22,7 +25,19 @@ const SAVE_FOLDER = "bhaktara-media";
 // after the share sheet closes.
 const SHARE_FOLDER = "bhaktara-share";
 // WhatsApp, then WhatsApp Business (doc 13 `content_share` channel "whatsapp").
-export const WHATSAPP_PACKAGES = ["com.whatsapp", "com.whatsapp.w4b"];
+export const WHATSAPP_APPS: Record<WhatsAppApp, string> = {
+  whatsapp: "com.whatsapp",
+  business: "com.whatsapp.w4b",
+};
+export const WHATSAPP_PACKAGES = [
+  WHATSAPP_APPS.whatsapp,
+  WHATSAPP_APPS.business,
+];
+// Tried in order; each must also be listed under <queries> in the module manifest.
+export const SOCIAL_PACKAGES: Record<SocialApp, string[]> = {
+  instagram: ["com.instagram.android"],
+  facebook: ["com.facebook.katana", "com.facebook.lite"],
+};
 
 const mimeByExtension: Record<string, string> = {
   jpg: "image/jpeg",
@@ -173,6 +188,56 @@ export function createAndroidServices(
   const unavailable = async (): Promise<PlatformResult> => ({
     status: "unavailable",
   });
+  // Opens the first installed app of `packages` with the file and caption;
+  // without any of them the same cache copy goes to the system share sheet.
+  async function shareVia(
+    request: MediaRequest & { text?: string },
+    packages: string[],
+    target: ShareChannel,
+  ): Promise<ShareResult> {
+    if (!native) return unavailable();
+    removeQuietly(new Directory(Paths.cache, SHARE_FOLDER));
+    let channel: ShareChannel = "other";
+    const result = await withDownload(
+      request,
+      SHARE_FOLDER,
+      async ({ file, mimeType }) => {
+        for (const packageName of packages) {
+          let opened = false;
+          try {
+            // Absent in dev clients built before shareToAppAsync existed.
+            opened =
+              (await native.shareToAppAsync?.(
+                file.uri,
+                mimeType,
+                packageName,
+                request.text ?? null,
+              )) ?? false;
+          } catch (error) {
+            if (__DEV__) console.warn(`Share to ${packageName} failed`, error);
+          }
+          if (opened) {
+            channel = target;
+            return;
+          }
+        }
+        // None installed: the same cache copy goes to the system share sheet.
+        const sharing = await loadSharing();
+        if (!(await sharing.isAvailableAsync()))
+          throw Object.assign(new Error("Sharing is unavailable"), {
+            code: "ERR_UNSUPPORTED",
+          });
+        await sharing.shareAsync(file.uri, {
+          mimeType,
+          dialogTitle: request.title,
+        });
+      },
+      // Kept for the receiving app; cleared before the next share.
+      { keepFile: true },
+    );
+    return result.status === "success" ? { ...result, channel } : result;
+  }
+
   const canGuide = () => {
     try {
       return !!native && native.canUsePictureInPicture();
@@ -282,49 +347,25 @@ export function createAndroidServices(
           { keepFile: true },
         );
       },
-      shareToWhatsApp: async (request) => {
-        if (!native) return unavailable();
-        removeQuietly(new Directory(Paths.cache, SHARE_FOLDER));
-        let channel: ShareChannel = "other";
-        const result = await withDownload(
+      shareToWhatsApp: (request, app) =>
+        shareVia(
           request,
-          SHARE_FOLDER,
-          async ({ file, mimeType }) => {
-            for (const packageName of WHATSAPP_PACKAGES) {
-              let opened = false;
-              try {
-                // Absent in dev clients built before shareToAppAsync existed.
-                opened =
-                  (await native.shareToAppAsync?.(
-                    file.uri,
-                    mimeType,
-                    packageName,
-                    request.text ?? null,
-                  )) ?? false;
-              } catch (error) {
-                if (__DEV__) console.warn("WhatsApp share failed", error);
-              }
-              if (opened) {
-                channel = "whatsapp";
-                return;
-              }
-            }
-            // No WhatsApp: the same cache copy goes to the system share sheet.
-            const sharing = await loadSharing();
-            if (!(await sharing.isAvailableAsync()))
-              throw Object.assign(new Error("Sharing is unavailable"), {
-                code: "ERR_UNSUPPORTED",
-              });
-            await sharing.shareAsync(file.uri, {
-              mimeType,
-              dialogTitle: request.title,
-            });
-          },
-          // Kept for the receiving app; cleared before the next share.
-          { keepFile: true },
-        );
-        return result.status === "success" ? { ...result, channel } : result;
+          app ? [WHATSAPP_APPS[app]] : WHATSAPP_PACKAGES,
+          "whatsapp",
+        ),
+      installedWhatsApps: () => {
+        const isInstalled = native?.isAppInstalled;
+        if (!isInstalled) return [];
+        return (Object.keys(WHATSAPP_APPS) as WhatsAppApp[]).filter((app) => {
+          try {
+            return isInstalled.call(native, WHATSAPP_APPS[app]);
+          } catch {
+            return false;
+          }
+        });
       },
+      shareToApp: (request, app) =>
+        shareVia(request, SOCIAL_PACKAGES[app], app),
     },
   };
 }

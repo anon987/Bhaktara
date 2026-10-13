@@ -9,6 +9,9 @@
   <queries>
     <package android:name="com.whatsapp" />
     <package android:name="com.whatsapp.w4b" />
+    <package android:name="com.instagram.android" />
+    <package android:name="com.facebook.katana" />
+    <package android:name="com.facebook.lite" />
   </queries>
 
   <application>

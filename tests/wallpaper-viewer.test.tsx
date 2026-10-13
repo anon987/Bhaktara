@@ -26,6 +26,8 @@ const mockServices = {
     canShare: true,
     shareStatus: jest.fn(),
     shareToWhatsApp: jest.fn(),
+    shareToApp: jest.fn(),
+    installedWhatsApps: jest.fn((): ("whatsapp" | "business")[] => []),
   },
   notifications: { canRequest: false, request: jest.fn() },
 };
@@ -203,11 +205,13 @@ test("WhatsApp share sends the large file with the caption and is never gated", 
   const { screen } = await open("wp-shiva-1");
   fireEvent.press(screen.getByText("Send on WhatsApp"));
   await waitFor(() => expect(tracked("content_share")).toHaveLength(1));
+  // No app chosen: only one (or no known) WhatsApp app is installed.
   expect(mockServices.share.shareToWhatsApp).toHaveBeenCalledWith(
     expect.objectContaining({
       variant: shiva1.media.full,
       text: "A divine wallpaper for you, from the Bhaktara app.",
     }),
+    undefined,
   );
   expect(tracked("content_share")[0][1]).toEqual({
     content_id: "wp-shiva-1",
@@ -215,6 +219,40 @@ test("WhatsApp share sends the large file with the caption and is never gated", 
     channel: "whatsapp",
   });
   expect(tracked("content_save_tap")).toHaveLength(0);
+});
+
+test("with both WhatsApp apps installed, WhatsApp asks which one to use", async () => {
+  mockServices.share.installedWhatsApps.mockReturnValueOnce([
+    "whatsapp",
+    "business",
+  ]);
+  mockServices.share.shareToWhatsApp.mockResolvedValue({
+    status: "success",
+    channel: "whatsapp",
+  });
+  const { screen } = await open("wp-shiva-1");
+  fireEvent.press(screen.getByText("Send on WhatsApp"));
+  expect(screen.getByText("Send with")).toBeTruthy();
+  fireEvent.press(screen.getByText("WhatsApp Business"));
+  await waitFor(() =>
+    expect(mockServices.share.shareToWhatsApp).toHaveBeenCalled(),
+  );
+  expect(mockServices.share.shareToWhatsApp.mock.calls[0][1]).toBe("business");
+});
+
+test("with only one WhatsApp app, sharing goes straight to it", async () => {
+  mockServices.share.installedWhatsApps.mockReturnValueOnce(["business"]);
+  mockServices.share.shareToWhatsApp.mockResolvedValue({
+    status: "success",
+    channel: "whatsapp",
+  });
+  const { screen } = await open("wp-shiva-1");
+  fireEvent.press(screen.getByText("Send on WhatsApp"));
+  await waitFor(() =>
+    expect(mockServices.share.shareToWhatsApp).toHaveBeenCalled(),
+  );
+  expect(screen.queryByText("Send with")).toBeNull();
+  expect(mockServices.share.shareToWhatsApp.mock.calls[0][1]).toBe("business");
 });
 
 test("Set wallpaper keeps the home / lock / both chooser and reports progress in a toast", async () => {

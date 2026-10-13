@@ -16,6 +16,8 @@ import {
   SaveKind,
   ShareResult,
   WallpaperTarget,
+  SocialApp,
+  WhatsAppApp,
 } from "../../services/platform/contracts";
 import { SystemPermissionSheet } from "./SystemPermissionSheet";
 
@@ -58,7 +60,9 @@ export type SaveAction =
   // System share sheet (status videos).
   | { kind: "share" }
   // Straight into WhatsApp, falling back to the share sheet (wallpapers).
-  | { kind: "share-whatsapp" };
+  | { kind: "share-whatsapp"; app?: WhatsAppApp }
+  // Straight into Instagram or Facebook (status videos), same fallback.
+  | { kind: "share-app"; app: SocialApp };
 export type SavePhase =
   | { name: "idle" }
   | { name: "working"; progress: number | null }
@@ -83,11 +87,26 @@ const ringtoneTargets: [RingtoneTarget, StringKey][] = [
   ["alarm", "targetAlarm"],
 ];
 
-const isShare = (action: SaveAction) =>
-  action.kind === "share" || action.kind === "share-whatsapp";
+const whatsappTargets: [WhatsAppApp, StringKey][] = [
+  ["whatsapp", "whatsappApp"],
+  ["business", "whatsappBusiness"],
+];
+const socialTargets: [SocialApp, StringKey][] = [
+  ["instagram", "instagram"],
+  ["facebook", "facebook"],
+];
 
-// WhatsApp gets the large master (doc 22 §A3), or the phone-sized copy.
-const whatsappVariant = (item: Content) => item.media.full ?? item.media.mobile;
+const isShare = (action: SaveAction) =>
+  action.kind === "share" ||
+  action.kind === "share-whatsapp" ||
+  action.kind === "share-app";
+
+// WhatsApp gets the large master (doc 22 §A3), or the phone-sized copy;
+// status videos send their 720p video.
+const whatsappVariant = (item: Content) =>
+  item.type === "STATUS"
+    ? item.media.video720
+    : (item.media.full ?? item.media.mobile);
 
 // Save / Set / Share logic shared by the content card (SaveActions) and the
 // full-screen wallpaper viewer: the rewarded gate (D-038), permissions,
@@ -129,7 +148,11 @@ export function useSaveActions(item: Content) {
     if (mounted.current) setPhase(next);
   };
   const mediaFor = (action: SaveAction) =>
-    action.kind === "share-whatsapp" ? shareMedia : variant;
+    action.kind === "share-whatsapp" || action.kind === "share-app"
+      ? shareMedia
+      : variant;
+  const caption = () =>
+    t(item.type === "STATUS" ? "shareCaptionStatus" : "shareCaption");
 
   const execute = (
     action: SaveAction,
@@ -154,10 +177,15 @@ export function useSaveActions(item: Content) {
       case "share":
         return services.share.shareStatus(request);
       case "share-whatsapp":
-        return services.share.shareToWhatsApp({
-          ...request,
-          text: t("shareCaption"),
-        });
+        return services.share.shareToWhatsApp(
+          { ...request, text: caption() },
+          action.app,
+        );
+      case "share-app":
+        return services.share.shareToApp(
+          { ...request, text: caption() },
+          action.app,
+        );
     }
   };
 
@@ -284,7 +312,8 @@ export function useSaveActions(item: Content) {
     busy,
     // The Save/Set master exists and resolves to the CDN.
     mediaReady,
-    // The WhatsApp copy (full, else mobile) exists and resolves to the CDN.
+    // The WhatsApp copy (full, else mobile; video720 for status) exists and
+    // resolves to the CDN.
     shareReady,
     gated: saveGateFor(item) === "rewarded",
     canSave: services.mediaSave.canSave,
@@ -295,7 +324,27 @@ export function useSaveActions(item: Content) {
     canShare: services.share.canShare,
     save: () => void run({ kind: "save" }),
     share: () => void run({ kind: "share" }),
-    shareToWhatsApp: () => void run({ kind: "share-whatsapp" }),
+    // Both WhatsApp apps installed: ask which. Otherwise straight to the
+    // one there is (or WhatsApp, then Business, when it can't be known).
+    shareToWhatsApp: () => {
+      const apps = services.share.installedWhatsApps();
+      if (apps.length > 1)
+        return choose(
+          "whatsappTarget",
+          "whatsappTargetHint",
+          whatsappTargets,
+          (app) => void run({ kind: "share-whatsapp", app }),
+        );
+      void run({ kind: "share-whatsapp", app: apps[0] });
+    },
+    // Instagram or Facebook chooser; free like WhatsApp (D-041).
+    shareToSocial: () =>
+      choose(
+        "socialTarget",
+        "socialTargetHint",
+        socialTargets,
+        (app) => void run({ kind: "share-app", app }),
+      ),
     // Home / lock / both chooser, then the rewarded gate.
     setWallpaper: () =>
       choose(

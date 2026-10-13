@@ -109,6 +109,11 @@ class BhaktaraMediaModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("BhaktaraMedia")
 
+    // Only packages declared under <queries> in this module's manifest are visible.
+    Function("isAppInstalled") { packageName: String ->
+      SAFE_PACKAGE_NAME.matches(packageName) && isInstalled(packageName)
+    }
+
     Function("canSetWallpaper") {
       val manager = WallpaperManager.getInstance(context)
       manager.isWallpaperSupported && manager.isSetWallpaperAllowed

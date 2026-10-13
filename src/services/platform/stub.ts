@@ -15,6 +15,8 @@ export const stubServices: PlatformServices = {
     canShare: false,
     shareStatus: unavailable,
     shareToWhatsApp: unavailable,
+    shareToApp: unavailable,
+    installedWhatsApps: () => [],
   },
   notifications: { canRequest: false, request: unavailable },
 };

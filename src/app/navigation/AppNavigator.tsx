@@ -11,6 +11,7 @@ import { TabBar, useReducedMotion } from "./TabBar";
 import { colors } from "../../theme/tokens";
 import { HomeScreen } from "../../features/home/HomeScreen";
 import { ExploreScreen } from "../../features/explore/ExploreScreen";
+import { DeityContentScreen } from "../../features/explore/DeityContentScreen";
 import { MandirScreen } from "../../features/mandir/MandirScreen";
 import { SadhanaScreen } from "../../features/sadhana/SadhanaScreen";
 import { ProfileScreen } from "../../features/profile/ProfileScreen";
@@ -70,6 +71,7 @@ export function AppNavigator() {
       >
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Content" component={ContentScreen} />
+        <Stack.Screen name="DeityContent" component={DeityContentScreen} />
         <Stack.Screen name="Player" component={PlayerScreen} />
         <Stack.Screen name="Jaap" component={JaapScreen} />
         <Stack.Screen name="Meditation" component={MeditationScreen} />

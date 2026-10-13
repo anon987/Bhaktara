@@ -311,6 +311,65 @@ describe("WhatsApp share", () => {
     ]);
   });
 
+  test("knows which WhatsApp apps are installed, and shares to the chosen one", async () => {
+    const shareToAppAsync = jest.fn(
+      async (_uri: string, _mime: string, _packageName: string) => true,
+    );
+    const both = createAndroidServices(
+      fakeNative({ shareToAppAsync, isAppInstalled: jest.fn(() => true) }),
+      async () => sharing(),
+    );
+    expect(both.share.installedWhatsApps()).toEqual(["whatsapp", "business"]);
+    await both.share.shareToWhatsApp(image, "business");
+    expect(shareToAppAsync.mock.calls.map((call) => call[2])).toEqual([
+      "com.whatsapp.w4b",
+    ]);
+    const onlyBusiness = createAndroidServices(
+      fakeNative({
+        isAppInstalled: jest.fn((name: string) => name === "com.whatsapp.w4b"),
+      }),
+      async () => sharing(),
+    );
+    expect(onlyBusiness.share.installedWhatsApps()).toEqual(["business"]);
+    // Older builds can't tell: empty, and sharing tries both in order.
+    const old = createAndroidServices(fakeNative(), async () => sharing());
+    expect(old.share.installedWhatsApps()).toEqual([]);
+  });
+
+  test("opens Instagram, or Facebook then Facebook Lite, with the same file", async () => {
+    const shareToAppAsync = jest.fn(
+      async (_uri: string, _mime: string, packageName: string) =>
+        packageName !== "com.facebook.katana",
+    );
+    const services = createAndroidServices(
+      fakeNative({ shareToAppAsync }),
+      async () => sharing(),
+    );
+    await expect(
+      services.share.shareToApp(image, "instagram"),
+    ).resolves.toEqual({ status: "success", channel: "instagram" });
+    await expect(services.share.shareToApp(image, "facebook")).resolves.toEqual(
+      { status: "success", channel: "facebook" },
+    );
+    expect(shareToAppAsync.mock.calls.map((call) => call[2])).toEqual([
+      "com.instagram.android",
+      "com.facebook.katana",
+      "com.facebook.lite",
+    ]);
+  });
+
+  test("falls back to the share sheet without Instagram", async () => {
+    const sheet = sharing();
+    const services = createAndroidServices(
+      fakeNative({ shareToAppAsync: jest.fn(async () => false) }),
+      async () => sheet,
+    );
+    await expect(
+      services.share.shareToApp(image, "instagram"),
+    ).resolves.toEqual({ status: "success", channel: "other" });
+    expect(sheet.shareAsync).toHaveBeenCalledTimes(1);
+  });
+
   test("falls back to the system share sheet without WhatsApp", async () => {
     const native = fakeNative({ shareToAppAsync: jest.fn(async () => false) });
     const sheet = sharing();
