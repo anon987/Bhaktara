@@ -20,8 +20,6 @@ import { StatusBar } from "expo-status-bar";
 import {
   ChevronLeft,
   ChevronsUp,
-  Download,
-  Heart,
   LucideIcon,
   Smartphone,
   X,
@@ -60,7 +58,7 @@ export function WallpaperViewer({
   source: PlaySource;
   onBack: () => void;
 }) {
-  const { catalog, local, ready, t, toggleFavorite, update } = useApp();
+  const { catalog, local, ready, t, update } = useApp();
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
   const [size, setSize] = useState({
@@ -136,7 +134,6 @@ export function WallpaperViewer({
     if (showHint) closeHint();
   };
 
-  const favorite = local.favorites.includes(current.id);
   const shareDisabled = actions.busy || !actions.shareReady;
   const setDisabled = actions.busy || !actions.mediaReady;
   const toastVisible = actions.phase.name !== "idle";
@@ -205,23 +202,6 @@ export function WallpaperViewer({
         ]}
       >
         <RoundButton icon={ChevronLeft} label={t("close")} onPress={onBack} />
-        <View style={styles.topRight}>
-          {actions.canSave && (
-            <RoundButton
-              icon={Download}
-              label={t("saveWallpaper")}
-              disabled={setDisabled}
-              badge={actions.gated ? t("adBadge") : undefined}
-              onPress={actions.save}
-            />
-          )}
-          <RoundButton
-            icon={Heart}
-            label={t(favorite ? "unfavorite" : "favorite")}
-            selected={favorite}
-            onPress={() => toggleFavorite(current.id)}
-          />
-        </View>
       </View>
 
       {showHint && (
@@ -243,20 +223,8 @@ export function WallpaperViewer({
           },
         ]}
       >
-        {toastVisible ? (
-          <Toast actions={actions} />
-        ) : (
-          <View pointerEvents="none">
-            {pages.length > 1 && (
-              <Txt size={14} style={styles.position}>
-                {`${t("wallpaperPosition")} ${index + 1} / ${pages.length}`}
-              </Txt>
-            )}
-            <Txt bold size={22} numberOfLines={2} style={styles.title}>
-              {current.title[language]}
-            </Txt>
-          </View>
-        )}
+        {/* The image speaks for itself: no name or count, only feedback. */}
+        {toastVisible && <Toast actions={actions} />}
       </View>
 
       <View
@@ -562,11 +530,6 @@ function SwipeHint({
   );
 }
 
-const shadow = {
-  textShadowColor: "rgba(0,0,0,0.6)",
-  textShadowOffset: { width: 0, height: 1 },
-  textShadowRadius: 4,
-};
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: sanctum.night },
   page: { backgroundColor: sanctum.night, overflow: "hidden" },
@@ -578,7 +541,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  topRight: { flexDirection: "row", gap: 12 },
   round: {
     width: 52,
     height: 52,
@@ -592,8 +554,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
   disabled: { opacity: 0.45 },
   bottomLeft: { position: "absolute" },
-  position: { color: sanctum.textMuted, ...shadow },
-  title: { color: colors.white, ...shadow },
   fabs: { position: "absolute", alignItems: "center", gap: 18 },
   fab: { alignItems: "center", width: 104, gap: 6 },
   fabCircle: {

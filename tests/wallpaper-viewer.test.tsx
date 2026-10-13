@@ -149,8 +149,9 @@ test("the deity's wallpapers start at the opened one, in catalog order, wrapping
 test("the viewer pages through the deity's wallpapers from the tapped one", async () => {
   const { screen } = await open("wp-shiva-2");
   expect(pageIds(screen)).toEqual(["wp-shiva-2", "wp-shiva-3", "wp-shiva-1"]);
-  expect(screen.getByText("Nandi at rest")).toBeTruthy();
-  expect(screen.getByText("Wallpaper 1 / 3")).toBeTruthy();
+  // Only the image: no name or count on screen.
+  expect(screen.queryByText("Nandi at rest")).toBeNull();
+  expect(screen.queryByText(/Wallpaper \d+ \//)).toBeNull();
   expect(tracked("content_view")).toEqual([
     [
       "content_view",
@@ -167,23 +168,22 @@ test("the viewer pages through the deity's wallpapers from the tapped one", asyn
   fireEvent(screen.getByTestId("wallpaper-pages"), "momentumScrollEnd", {
     nativeEvent: { contentOffset: { x: 0, y: next } },
   });
-  await waitFor(() => expect(screen.getByText("Moonlit Shiva")).toBeTruthy());
-  expect(screen.getByText("Wallpaper 2 / 3")).toBeTruthy();
+  await waitFor(() => expect(tracked("content_view")).toHaveLength(2));
   expect(tracked("content_view")[1][1]).toEqual(
     expect.objectContaining({ content_id: "wp-shiva-3" }),
   );
 });
 
-test("WhatsApp sits above Set wallpaper at the bottom right; the top bar keeps back, save and favourite", async () => {
+test("WhatsApp sits above Set wallpaper at the bottom right; the top bar has only back", async () => {
   const { screen, onBack } = await open("wp-shiva-1");
   const labels = buttons(screen);
   const whatsapp = labels.indexOf("Send on WhatsApp");
   const set = labels.indexOf("Set as wallpaper");
   expect(whatsapp).toBeGreaterThanOrEqual(0);
   expect(set).toBeGreaterThan(whatsapp);
-  expect(labels).toEqual(
-    expect.arrayContaining(["Close", "Save to gallery", "Add to favorites"]),
-  );
+  expect(labels).toContain("Close");
+  expect(labels).not.toContain("Save to gallery");
+  expect(labels).not.toContain("Add to favorites");
   fireEvent.press(screen.getByRole("button", { name: "Close" }));
   expect(onBack).toHaveBeenCalled();
 });
@@ -245,19 +245,20 @@ test("Set wallpaper keeps the home / lock / both chooser and reports progress in
   );
 });
 
-test("a failed save shows a retry in the toast", async () => {
-  mockServices.mediaSave.save
+test("a failed set-wallpaper shows a retry in the toast", async () => {
+  mockServices.wallpaper.setWallpaper
     .mockResolvedValueOnce({ status: "error" })
     .mockResolvedValueOnce({ status: "success" });
   const { screen } = await open("wp-shiva-1");
-  fireEvent.press(screen.getByRole("button", { name: "Save to gallery" }));
+  fireEvent.press(screen.getByText("Set as wallpaper"));
+  fireEvent.press(screen.getByText("Home and lock screens"));
   await waitFor(() => expect(screen.getByText(/Couldn’t finish/)).toBeTruthy());
   fireEvent.press(screen.getByText("Try again"));
   await waitFor(() =>
-    expect(screen.getByText("Saved to your gallery.")).toBeTruthy(),
+    expect(screen.getByText("Your wallpaper is set.")).toBeTruthy(),
   );
-  expect(mockServices.mediaSave.save).toHaveBeenLastCalledWith(
-    expect.objectContaining({ kind: "image", variant: shiva1.media.full }),
+  expect(mockServices.wallpaper.setWallpaper).toHaveBeenLastCalledWith(
+    expect.objectContaining({ target: "both", variant: shiva1.media.full }),
   );
 });
 

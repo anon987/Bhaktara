@@ -214,7 +214,6 @@ export const strings = {
   swipeForMore: ["Swipe up for more", "ऊपर स्वाइप करें — और वॉलपेपर"],
   // Marks the Save / Set buttons that play one rewarded ad (doc 11 §4).
   adBadge: ["Ad", "विज्ञापन"],
-  wallpaperPosition: ["Wallpaper", "वॉलपेपर"],
   saveRingtone: ["Save ringtone", "रिंगटोन सहेजें"],
   setRingtone: ["Set as ringtone", "रिंगटोन लगाएँ"],
   saveStatus: ["Save video", "वीडियो सहेजें"],
