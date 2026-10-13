@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { mediaSchema } from "./media";
+import type { Visuals } from "./visuals";
 export const localizedSchema = z.object({ hi: z.string(), en: z.string() });
 export const contentTypes = [
   "BHAJAN",
@@ -28,6 +29,10 @@ export type Deity = {
   id: string;
   name: z.infer<typeof localizedSchema>;
   artKey: string;
+  // D-057: the temple painted with the deity (Prayer) and the symbol shown
+  // above the mantra (Jaap). Without them the app draws its own.
+  shrineKey?: string;
+  emblemKey?: string;
 };
 export type Banner = {
   id: string;
@@ -51,5 +56,7 @@ export type Catalog = {
   banners: Banner[];
   challenges: Challenge[];
   sampleStats: { totalXp: number; level: number; currentStreak: number };
+  // appConfig/visuals; absent in fixture mode or before it is first saved.
+  visuals?: Visuals;
 };
 export type CatalogMode = "ready" | "loading" | "error" | "empty" | "offline";

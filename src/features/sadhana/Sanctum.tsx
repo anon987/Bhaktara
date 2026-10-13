@@ -6,8 +6,9 @@ import { StatusBar } from "expo-status-bar";
 import { ChevronLeft } from "lucide-react-native";
 import { Txt } from "../../components/ui";
 import { useApp } from "../../app/providers/AppProvider";
-import { sanctum } from "../../theme/tokens";
+import { sanctum, shrine } from "../../theme/tokens";
 import { Toran } from "./art/Toran";
+import { usePracticeFeedback } from "./feedback";
 import { PracticeNotice, useProgression } from "./ProgressionProvider";
 
 // The practice screens share one setting: a lamp-lit sanctum at dusk, framed
@@ -25,6 +26,7 @@ export function SanctumPage({
   scroll?: boolean;
 }>) {
   const { t } = useApp();
+  usePracticeFeedback();
   const body = scroll ? (
     <ScrollView
       contentContainerStyle={styles.scroll}
@@ -71,11 +73,27 @@ export function SanctumPage({
   );
 }
 
-// A calm, readable line on the dark ground (never an error-red alarm).
-export function SanctumNote({ text }: { text: string }) {
+// A calm, readable line on the ground (never an error-red alarm). `light`
+// is for the parchment Prayer and Jaap screens.
+export function SanctumNote({
+  text,
+  light,
+}: {
+  text: string;
+  light?: boolean;
+}) {
   return (
-    <View style={styles.note} accessibilityRole="text">
-      <Txt size={15} style={{ color: sanctum.text, textAlign: "center" }}>
+    <View
+      style={[styles.note, light && styles.noteLight]}
+      accessibilityRole="text"
+    >
+      <Txt
+        size={15}
+        style={{
+          color: light ? shrine.ink : sanctum.text,
+          textAlign: "center",
+        }}
+      >
         {text}
       </Txt>
     </View>
@@ -159,6 +177,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(243, 213, 138, 0.35)",
   },
+  noteLight: {
+    backgroundColor: "rgba(255, 248, 236, 0.92)",
+    borderColor: shrine.line,
+  },
   button: {
     minHeight: 60,
     borderRadius: 30,
@@ -189,7 +211,7 @@ function useTransientNotice() {
 }
 
 // Whether this practice can earn XP right now (D-050), as a quiet line.
-export function EarningNote() {
+export function EarningNote({ light }: { light?: boolean }) {
   const { t } = useApp();
   const { status } = useProgression();
   const transient = useTransientNotice();
@@ -200,5 +222,5 @@ export function EarningNote() {
       : status === "offline"
         ? t("earnOnline")
         : null);
-  return text ? <SanctumNote text={text} /> : null;
+  return text ? <SanctumNote text={text} light={light} /> : null;
 }

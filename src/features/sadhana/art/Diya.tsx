@@ -13,15 +13,18 @@ import { sanctum } from "../../../theme/tokens";
 import { useReducedMotion } from "../../../components/useReducedMotion";
 
 // A clay diya with a living flame. `glow` (0–1) grows the flame's halo, e.g.
-// with the streak. Decorative: callers give the meaning in text.
+// with the streak. `brass`: an engraved brass lamp on a foot (Meditation,
+// D-057). Decorative: callers give the meaning in text.
 export function Diya({
   size = 96,
   lit = true,
   glow = 0.5,
+  brass = false,
 }: {
   size?: number;
   lit?: boolean;
   glow?: number;
+  brass?: boolean;
 }) {
   const id = React.useId().replace(/:/g, "");
   const reduced = useReducedMotion();
@@ -136,37 +139,87 @@ export function Diya({
       >
         <Defs>
           <LinearGradient id={`${id}c`} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={sanctum.clay} />
-            <Stop offset="1" stopColor={sanctum.clayDark} />
+            <Stop offset="0" stopColor={brass ? "#F3D58A" : sanctum.clay} />
+            <Stop
+              offset="1"
+              stopColor={brass ? sanctum.brassDeep : sanctum.clayDark}
+            />
+          </LinearGradient>
+          <LinearGradient id={`${id}s`} x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0" stopColor={sanctum.brassDeep} />
+            <Stop offset="0.4" stopColor="#F7E2A8" />
+            <Stop offset="1" stopColor={sanctum.brassDeep} />
           </LinearGradient>
         </Defs>
         {/* Foot */}
-        <Ellipse cx="50" cy="90" rx="17" ry="4" fill={sanctum.clayDark} />
+        {brass ? (
+          <>
+            <Path d="M42 86 L 58 86 L 62 93 L 38 93 Z" fill={`url(#${id}s)`} />
+            <Ellipse cx="50" cy="94" rx="19" ry="3.6" fill={`url(#${id}s)`} />
+          </>
+        ) : (
+          <Ellipse cx="50" cy="90" rx="17" ry="4" fill={sanctum.clayDark} />
+        )}
         {/* Bowl */}
         <Path
           d="M8 62 C 12 80, 30 89, 50 89 C 70 89, 88 80, 92 62 Z"
-          fill={`url(#${id}c)`}
+          fill={brass ? `url(#${id}s)` : `url(#${id}c)`}
         />
-        {/* Painted band: kumkum dots and a white rangoli line */}
-        <Path
-          d="M16 70 Q 50 82 84 70"
-          stroke={sanctum.ghee}
-          strokeWidth="1.6"
-          fill="none"
-          strokeDasharray="3 3"
-          opacity={0.85}
-        />
-        {[22, 34, 50, 66, 78].map((x, i) => (
-          <Circle
-            key={x}
-            cx={x}
-            cy={i === 2 ? 79 : 76}
-            r="2.2"
-            fill={sanctum.kumkum}
-          />
-        ))}
+        {brass ? (
+          // Engraved band: a vine of petals between two lines.
+          <>
+            <Path
+              d="M13 68 Q 50 80 87 68"
+              stroke={sanctum.brassDeep}
+              strokeWidth="0.9"
+              fill="none"
+            />
+            <Path
+              d="M22 78 Q 50 87 78 78"
+              stroke={sanctum.brassDeep}
+              strokeWidth="0.9"
+              fill="none"
+            />
+            {[24, 37, 50, 63, 76].map((x, i) => (
+              <Path
+                key={x}
+                d={`M${x} ${i === 2 ? 80 : 77} c -3 -3 -3 -6 0 -8 c 3 2 3 5 0 8 Z`}
+                fill="none"
+                stroke={sanctum.brassDeep}
+                strokeWidth="0.8"
+              />
+            ))}
+          </>
+        ) : (
+          // Painted band: kumkum dots and a white rangoli line
+          <>
+            <Path
+              d="M16 70 Q 50 82 84 70"
+              stroke={sanctum.ghee}
+              strokeWidth="1.6"
+              fill="none"
+              strokeDasharray="3 3"
+              opacity={0.85}
+            />
+            {[22, 34, 50, 66, 78].map((x, i) => (
+              <Circle
+                key={x}
+                cx={x}
+                cy={i === 2 ? 79 : 76}
+                r="2.2"
+                fill={sanctum.kumkum}
+              />
+            ))}
+          </>
+        )}
         {/* Rim and ghee */}
-        <Ellipse cx="50" cy="62" rx="42" ry="7.5" fill={sanctum.clayDark} />
+        <Ellipse
+          cx="50"
+          cy="62"
+          rx="42"
+          ry="7.5"
+          fill={brass ? `url(#${id}c)` : sanctum.clayDark}
+        />
         <Ellipse
           cx="50"
           cy="62"

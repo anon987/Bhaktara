@@ -23,6 +23,7 @@ import {
   FlowerKind,
   GarlandKind,
 } from "../../../domain/puja";
+import { noVisuals, Visuals } from "../../../domain/visuals";
 import { sanctum } from "../../../theme/tokens";
 import { Diya } from "../art/Diya";
 import { SANCTUM, SHRINE_VIEW, Shrine, deityCentre } from "../art/Shrine";
@@ -58,22 +59,21 @@ export function sceneLayout(width: number, height: number) {
   };
 }
 
-const FLOWER_SLOTS = 14;
-// Flower pile positions around the deity's feet, front row first.
-const slot = (i: number) => {
-  const row = i < 8 ? 0 : 1;
-  const k = row === 0 ? i : i - 8;
-  const n = row === 0 ? 8 : 6;
-  return {
-    dx: (k - (n - 1) / 2) * (row === 0 ? 15 : 13),
-    dy: row === 0 ? 0 : -10,
-  };
-};
+// At most this many flowers rest at the deity's feet; a new one replaces the
+// oldest, so the altar never fills up.
+export const FLOWER_LIMIT = 7;
+// One row at the deity's feet, centred on however many flowers there are.
+const slot = (i: number, count: number) => ({
+  dx: (i - (count - 1) / 2) * 15,
+  dy: 0,
+});
 
 export function PujaScene({
   width,
   height,
   artKey,
+  shrineKey,
+  visuals = noVisuals,
   offerings,
   flowers,
   garland,
@@ -91,6 +91,8 @@ export function PujaScene({
   width: number;
   height: number;
   artKey: string;
+  shrineKey?: string;
+  visuals?: Visuals;
   offerings: DeityOfferings;
   flowers: PlacedFlower[];
   garland: GarlandKind | null;
@@ -203,8 +205,9 @@ export function PujaScene({
           templeStyle,
         ]}
       >
-        <Shrine size={L.size} artKey={artKey} glow={glow}>
-          {tilak && (
+        <Shrine size={L.size} artKey={artKey} imageKey={shrineKey} glow={glow}>
+          {/* A painted temple's deity has its own tilak. */}
+          {tilak && !shrineKey && (
             <Pop
               style={{
                 position: "absolute",
@@ -228,6 +231,7 @@ export function PujaScene({
                 kind={garland}
                 width={(SANCTUM.width + 20) * L.s}
                 height={SANCTUM.height * 0.62 * L.s}
+                imageKey={visuals.garlands[garland]}
               />
             </Drop>
           )}
@@ -300,7 +304,11 @@ export function PujaScene({
             <View style={{ flexDirection: "row" }}>
               {bhog.slice(-3).map((kind) => (
                 <Pop key={kind}>
-                  <Bhog kind={kind} size={26 * L.s} />
+                  <Bhog
+                    kind={kind}
+                    size={26 * L.s}
+                    imageKey={visuals.bhog[kind]}
+                  />
                 </Pop>
               ))}
             </View>
@@ -308,14 +316,18 @@ export function PujaScene({
               <View
                 style={{ position: "absolute", top: -6 * L.s, right: 2 * L.s }}
               >
-                <Flower kind="tulsi" size={16 * L.s} />
+                <Flower
+                  kind="tulsi"
+                  size={16 * L.s}
+                  imageKey={visuals.flowers.tulsi}
+                />
               </View>
             )}
           </View>
         )}
         {/* Flowers at the deity's feet */}
-        {flowers.slice(-FLOWER_SLOTS).map((flower, i) => {
-          const p = slot(i);
+        {flowers.slice(-FLOWER_LIMIT).map((flower, i, shown) => {
+          const p = slot(i, shown.length);
           return (
             <Drop
               key={flower.id}
@@ -327,7 +339,11 @@ export function PujaScene({
                 top: L.flowers.y + p.dy * L.s - 18 * L.s,
               }}
             >
-              <Flower kind={flower.kind} size={22 * L.s} />
+              <Flower
+                kind={flower.kind}
+                size={22 * L.s}
+                imageKey={visuals.flowers[flower.kind]}
+              />
             </Drop>
           );
         })}

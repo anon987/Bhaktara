@@ -11,6 +11,7 @@ import {
 import { homeLanguages, orderHomeSections } from "../domain/home";
 import { SessionService } from "../services/auth/session";
 import { Banner, contentSchema } from "../domain/models";
+import { deityArtKey, visualsFromDocument } from "../domain/visuals";
 import { FirestoreApi } from "./firestoreApi";
 
 const cursorSchema = z.object({
@@ -143,7 +144,7 @@ export function createFirestoreRepository(
     },
     async getCatalog() {
       await session.ensureSession();
-      const [page, deities, banners] = await Promise.all([
+      const [page, deities, banners, visuals] = await Promise.all([
         repository.search({ limit: 12 }),
         getDocsFromServer(
           query(
@@ -161,15 +162,26 @@ export function createFirestoreRepository(
             limit(10),
           ),
         ),
+        // Images are a nicety: without them (or before the rules allow the
+        // read) the screens draw their own art.
+        getDocFromServer(doc(db, "appConfig", "visuals")).then(
+          (snap) => (snap.exists() ? visualsFromDocument(snap.data()) : null),
+          () => null,
+        ),
       ]);
       return {
         content: page.items,
         deities: deities.docs.map((item) => {
-          const value = deityDocumentSchema.parse(item.data());
+          const data = item.data();
+          const value = deityDocumentSchema.parse(data);
+          const shrineKey = deityArtKey(data.shrineArt);
+          const emblemKey = deityArtKey(data.jaapEmblem);
           return {
             id: item.id,
             name: value.name,
             artKey: value.mandirArt.mobile.key,
+            ...(shrineKey ? { shrineKey } : {}),
+            ...(emblemKey ? { emblemKey } : {}),
           };
         }),
         banners: banners.docs
@@ -181,6 +193,7 @@ export function createFirestoreRepository(
           .map(toBanner),
         challenges: [],
         sampleStats: { totalXp: 0, level: 1, currentStreak: 0 },
+        ...(visuals ? { visuals } : {}),
       };
     },
   };

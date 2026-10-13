@@ -19,6 +19,10 @@ export const localStateSchema = z
     // Server session of the mala in progress, kept across app restarts.
     jaapSessionId: z.string().nullable().default(null),
     timer: timerSchema,
+    // Practice screens' sound (bell, ghanti, shankh) and bead haptics.
+    practice: z
+      .object({ sound: z.boolean(), vibration: z.boolean() })
+      .default({ sound: true, vibration: true }),
     days: z.record(
       z.string(),
       z.object({
@@ -44,6 +48,7 @@ export const initialState: LocalState = {
     endsAt: null,
     sessionId: null,
   },
+  practice: { sound: true, vibration: true },
   days: {},
 };
 const KEY = "bhaktara.local.v1";
