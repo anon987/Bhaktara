@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  ImageSourcePropType,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,7 +16,7 @@ import { Txt } from "../../components/ui";
 import { MiniPlayer } from "../../features/player/MiniPlayer";
 import { StringKey } from "../../i18n/strings";
 import { TabParams } from "./routes";
-import { TabGlyph, ToranDrop } from "./TabIcons";
+import { ToranDrop } from "./TabIcons";
 import { useReducedMotion } from "../../components/useReducedMotion";
 
 export { useReducedMotion };
@@ -23,23 +24,33 @@ export { useReducedMotion };
 const useNativeDriver = Platform.OS !== "web";
 // Strong ease-out: the change starts immediately under the finger.
 const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
-const PILL = { width: 60, height: 34 };
+const PILL = { width: 60, height: 42 };
 const DROP = 11;
 
-// Each glyph settles with a gesture that suits it. Reduced motion keeps only
-// the outline-to-filled crossfade.
+// 3D tab art (made with Gemini on Vertex).
+const tabArt: Record<keyof TabParams, ImageSourcePropType> = {
+  Home: require("../../../assets/tabs/home.webp"),
+  Explore: require("../../../assets/tabs/explore.webp"),
+  Mandir: require("../../../assets/tabs/mandir.webp"),
+  Sadhana: require("../../../assets/tabs/sadhana.webp"),
+  Profile: require("../../../assets/tabs/profile.webp"),
+};
+const ICON = 34;
+const HALO = 52;
+
+// The chosen icon springs up and grows into a saffron glow; each also settles
+// with a gesture that suits it. Reduced motion keeps only the brightening.
 function activeMotion(name: keyof TabParams, progress: Animated.Value) {
   const range = (output: number[] | string[]) =>
     progress.interpolate({ inputRange: [0, 1], outputRange: output });
+  const lift = [{ translateY: range([3, -6]) }, { scale: range([0.86, 1.18]) }];
   switch (name) {
-    case "Explore": // the compass needle swings to north
-      return [{ rotate: range(["-90deg", "0deg"]) }];
-    case "Mandir": // the temple rises into place
-      return [{ translateY: range([4, 0]) }, { scale: range([0.9, 1]) }];
+    case "Explore": // the compass swings to north
+      return [...lift, { rotate: range(["-90deg", "0deg"]) }];
     case "Sadhana": // the mala turns, bead by bead
-      return [{ rotate: range(["-60deg", "0deg"]) }];
+      return [...lift, { rotate: range(["-60deg", "0deg"]) }];
     default:
-      return [{ translateY: range([2, 0]) }, { scale: range([0.82, 1]) }];
+      return lift;
   }
 }
 
@@ -101,12 +112,22 @@ function TabItem({
   const [press] = useState(() => new Animated.Value(1));
   const wasActive = useRef(active);
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: active ? 1 : 0,
-      duration: reduced ? 120 : 260,
-      easing: easeOut,
-      useNativeDriver,
-    }).start();
+    // Springs in with a little overshoot (the bounce); eases out quietly.
+    (active && !reduced
+      ? Animated.spring(progress, {
+          toValue: 1,
+          useNativeDriver,
+          stiffness: 240,
+          damping: 11,
+          mass: 1,
+        })
+      : Animated.timing(progress, {
+          toValue: active ? 1 : 0,
+          duration: reduced ? 120 : 220,
+          easing: easeOut,
+          useNativeDriver,
+        })
+    ).start();
     // Bloom only when this tab newly becomes active, never on mount.
     if (active && !wasActive.current && !reduced) {
       bloom.setValue(0);
@@ -140,51 +161,48 @@ function TabItem({
       <Animated.View
         style={[styles.iconArea, { transform: [{ scale: press }] }]}
       >
-        <PetalBloom bloom={bloom} />
         <Animated.View
           style={[
-            styles.glyph,
+            styles.halo,
             {
               opacity: progress.interpolate({
                 inputRange: [0, 1],
-                outputRange: [1, 0],
+                outputRange: [0, 0.45],
+                extrapolate: "clamp",
               }),
+              transform: [
+                {
+                  scale: progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.4, 1],
+                  }),
+                },
+              ],
             },
           ]}
-        >
-          <TabGlyph
-            name={name}
-            filled={false}
-            color={colors.muted}
-            flame={colors.saffron}
-            mark={colors.marigold}
-            cutout={colors.surface}
-          />
-        </Animated.View>
-        <Animated.View
+        />
+        <PetalBloom bloom={bloom} />
+        <Animated.Image
+          source={tabArt[name]}
+          accessible={false}
           style={[
-            styles.glyph,
+            styles.icon,
             {
-              opacity: progress,
+              opacity: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.62, 1],
+                extrapolate: "clamp",
+              }),
               transform: reduced ? [] : activeMotion(name, progress),
             },
           ]}
-        >
-          <TabGlyph
-            name={name}
-            filled
-            color={colors.primary}
-            flame={colors.saffron}
-            mark={colors.marigold}
-            cutout={colors.pale}
-          />
-        </Animated.View>
+        />
       </Animated.View>
       <Txt
         size={12}
         bold={active}
         numberOfLines={1}
-        style={{ color: active ? colors.primary : colors.muted }}
+        style={{ color: active ? colors.marigold : colors.headerText }}
       >
         {label}
       </Txt>
@@ -237,8 +255,7 @@ export function TabBar({
               { width: tabWidth, transform: [{ translateX: indicator }] },
             ]}
           >
-            <ToranDrop color={colors.marigold} size={DROP - 1} />
-            <View style={styles.pill} />
+            <ToranDrop color={colors.haldi} size={DROP - 1} />
           </Animated.View>
         )}
         {state.routes.map((route, index) => {
@@ -271,11 +288,12 @@ export function TabBar({
 }
 
 const styles = StyleSheet.create({
+  // Temple maroon edged in gold.
   bar: {
     flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.maroon,
+    borderTopWidth: 2,
+    borderColor: colors.gold,
   },
   indicator: {
     position: "absolute",
@@ -283,12 +301,7 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: "center",
   },
-  pill: {
-    width: PILL.width,
-    height: PILL.height,
-    borderRadius: PILL.height / 2,
-    backgroundColor: colors.pale,
-  },
+
   tab: {
     flex: 1,
     minHeight: 64,
@@ -302,7 +315,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  glyph: { position: "absolute" },
+  icon: { width: ICON, height: ICON },
+  halo: {
+    position: "absolute",
+    width: HALO,
+    height: HALO,
+    borderRadius: HALO / 2,
+    backgroundColor: colors.bhagwa,
+  },
   petal: {
     position: "absolute",
     left: PILL.width / 2 - 2,

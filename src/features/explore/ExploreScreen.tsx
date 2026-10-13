@@ -12,6 +12,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams, TabParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
 import { Page, Txt } from "../../components/ui";
+import { backgrounds } from "../../components/backgrounds";
 import { categoryArt } from "../../components/categoryArt";
 import { ContentType, contentTypes } from "../../domain/models";
 import { StringKey } from "../../i18n/strings";
@@ -57,7 +58,11 @@ export function ExploreScreen({ navigation, route }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requested, navigation]);
   return (
-    <Page title={t("explore")} subtitle={t("discover")}>
+    <Page
+      background={backgrounds.explore}
+      title={t("explore")}
+      subtitle={t("discover")}
+    >
       <Txt bold size={22}>
         {t("chooseCategory")}
       </Txt>

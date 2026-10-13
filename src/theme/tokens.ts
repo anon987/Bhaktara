@@ -1,18 +1,25 @@
+// The Hindu palette: haldi-cream grounds, kumkum red for what you press,
+// bhagwa saffron and marigold for warmth, temple gold lines and maroon text.
 export const colors = {
-  background: "#FBF7EF",
-  surface: "#FFFDFA",
-  ink: "#35251E",
-  muted: "#796B60",
-  primary: "#AD461F",
-  saffron: "#DA702F",
-  gold: "#B78A39",
-  marigold: "#F2B65A",
-  line: "#EBE1D3",
-  pale: "#F6E8D8",
-  green: "#426650",
-  greenPale: "#EAF0E7",
-  dark: "#442C24",
+  background: "#FFF4DF",
+  surface: "#FFFBF3",
+  ink: "#3A0F0C",
+  muted: "#7A4A35",
+  primary: "#C1271D",
+  saffron: "#F57C00",
+  gold: "#C9962B",
+  marigold: "#FFB300",
+  line: "#F1D29A",
+  pale: "#FFE6BC",
+  green: "#1F7A45",
+  greenPale: "#E4F2DF",
+  dark: "#6B0F12",
   white: "#FFFFFF",
+  // Page headers run bhagwa → saffron → kumkum; the tab bar is temple maroon.
+  bhagwa: "#FF9933",
+  maroon: "#6B0F12",
+  haldi: "#F4C430",
+  headerText: "#FFF3DC",
 };
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
 export const radii = { sm: 12, md: 20, lg: 28, pill: 999 };

@@ -31,6 +31,8 @@ import {
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { ContentCard } from "../../components/ContentCard";
 import { categoryArt } from "../../components/categoryArt";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { backgrounds } from "../../components/backgrounds";
 import { resolveMediaUrl } from "../../services/media/config";
 import { colors, sanctum, shrine } from "../../theme/tokens";
 import { localPracticeDay } from "../../domain/practice";
@@ -121,8 +123,7 @@ function useHomeFeed() {
 export function HomeScreen({ navigation }: Props) {
   const { t } = useApp();
   return (
-    <Page bare title={t("home")}>
-      <Greeting />
+    <Page title={t("home")} header={<Greeting />} background={backgrounds.home}>
       <DarshanHero onPress={() => navigation.navigate("Mandir")} />
       <DataBoundary>
         <HomeFeedView navigation={navigation} />
@@ -130,26 +131,37 @@ export function HomeScreen({ navigation }: Props) {
     </Page>
   );
 }
-// A marigold toran across the top, then the greeting for the hour.
+// The greeting for the hour on a saffron band, a marigold toran hanging below.
 function Greeting() {
   const { t } = useApp();
+  const insets = useSafeAreaInsets();
   const now = new Date();
   return (
     <View style={styles.greeting}>
+      <LinearGradient
+        colors={[colors.bhagwa, colors.saffron, colors.primary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.greetingBand, { paddingTop: insets.top + 14 }]}
+      >
+        <Txt
+          bold
+          size={30}
+          accessibilityRole="header"
+          style={{ color: colors.white }}
+        >
+          {`${t(greetingFor(now))} 🙏`}
+        </Txt>
+        <Txt size={15} style={{ color: colors.headerText }}>
+          {t("homeSubtitle")}
+        </Txt>
+      </LinearGradient>
       <Image
         source={art.toran}
         style={styles.toran}
         resizeMode="contain"
         accessible={false}
       />
-      <View style={{ paddingHorizontal: 22 }}>
-        <Txt bold size={30} accessibilityRole="header">
-          {`${t(greetingFor(now))} 🙏`}
-        </Txt>
-        <Txt muted size={15}>
-          {t("homeSubtitle")}
-        </Txt>
-      </View>
     </View>
   );
 }
@@ -524,9 +536,22 @@ function BannerCarousel({
 }
 
 const styles = StyleSheet.create({
-  greeting: { marginHorizontal: -22, marginTop: -4, gap: 8 },
+  greeting: { marginBottom: 4 },
+  greetingBand: {
+    paddingHorizontal: 22,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    borderBottomWidth: 3,
+    borderColor: colors.haldi,
+  },
   // The toran is 1080 x 217: full width, hanging from the top edge.
-  toran: { width: "100%", height: undefined, aspectRatio: 1080 / 217 },
+  toran: {
+    width: "100%",
+    height: undefined,
+    aspectRatio: 1080 / 217,
+    marginTop: -18,
+  },
   hero: {
     width: "100%",
     aspectRatio: 0.8,

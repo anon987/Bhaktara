@@ -85,7 +85,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <DialogProvider>
           <AppContent />
         </DialogProvider>

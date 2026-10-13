@@ -2,6 +2,8 @@ import { useDialog } from "./dialogContext";
 import React from "react";
 import {
   ActivityIndicator,
+  Image,
+  ImageSourcePropType,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +13,12 @@ import {
   ViewProps,
   ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { backgrounds } from "./backgrounds";
 import { ChevronLeft, ChevronRight, LucideIcon } from "lucide-react-native";
 import { colors, fonts, radii } from "../theme/tokens";
 import { useApp } from "../app/providers/AppProvider";
@@ -210,16 +217,20 @@ export function Page({
   subtitle,
   onBack,
   scroll = true,
-  bare = false,
+  header,
+  background = backgrounds.page,
 }: React.PropsWithChildren<{
   title: string;
   subtitle?: string;
   onBack?: () => void;
   scroll?: boolean;
-  // No title row: the screen draws its own heading inside the scroll (Home).
-  bare?: boolean;
+  // Replaces the saffron title band; scrolls with the page (Home's greeting).
+  header?: React.ReactNode;
+  // The screen's soft background art.
+  background?: ImageSourcePropType;
 }>) {
   const { storageError, t, connection } = useApp();
+  const insets = useSafeAreaInsets();
   const body = (
     <View style={[styles.pageContent, !scroll && { flex: 1 }]}>
       {storageError && <Notice text={t("storageError")} />}
@@ -232,35 +243,61 @@ export function Page({
     </View>
   );
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.page}>
-      <Row
-        style={[styles.header, bare && { display: "none" }]}
-        accessibilityElementsHidden={bare}
-      >
-        {onBack && (
-          <IconButton icon={ChevronLeft} label={t("close")} onPress={onBack} />
-        )}
-        <View style={{ flex: 1 }}>
-          <Txt bold size={28}>
-            {title}
-          </Txt>
-          {subtitle && (
-            <Txt muted size={13}>
-              {subtitle}
-            </Txt>
-          )}
-        </View>
-      </Row>
+    <SafeAreaView edges={["left", "right"]} style={styles.page}>
+      <Image
+        source={background}
+        resizeMode="cover"
+        accessible={false}
+        style={styles.pageBackground}
+      />
+      {!header && (
+        <LinearGradient
+          colors={[colors.bhagwa, colors.saffron, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.band, { paddingTop: insets.top + 12 }]}
+        >
+          <Row style={styles.header}>
+            {onBack && (
+              <IconButton
+                icon={ChevronLeft}
+                label={t("close")}
+                onPress={onBack}
+                color={colors.white}
+              />
+            )}
+            <View style={{ flex: 1 }}>
+              <Txt
+                bold
+                size={28}
+                accessibilityRole="header"
+                style={{ color: colors.white }}
+              >
+                {title}
+              </Txt>
+              {subtitle && (
+                <Txt size={14} style={{ color: colors.headerText }}>
+                  {subtitle}
+                </Txt>
+              )}
+            </View>
+          </Row>
+        </LinearGradient>
+      )}
       {scroll ? (
         <ScrollView
           contentContainerStyle={{ paddingBottom: 28 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {header}
           {body}
         </ScrollView>
       ) : (
-        body
+        <>
+          {header}
+          {body}
+        </>
       )}
     </SafeAreaView>
   );
@@ -325,6 +362,22 @@ export function useUnavailable() {
 }
 export const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.background },
+  // Explicit size: a bundled image with only absoluteFill draws at its pixel size.
+  pageBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+  },
+  // The saffron title band, edged in haldi gold with rounded lower corners.
+  band: {
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    borderBottomWidth: 3,
+    borderColor: colors.haldi,
+    marginBottom: 18,
+  },
   pageContent: {
     paddingHorizontal: 22,
     gap: 20,
@@ -334,7 +387,6 @@ export const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 22,
-    paddingTop: 16,
     paddingBottom: 20,
     width: "100%",
     maxWidth: 640,
