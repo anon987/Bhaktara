@@ -1,13 +1,18 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
-import { ChevronRight } from "lucide-react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams, TabParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
 import { Page, Txt } from "../../components/ui";
-import { contentTypeIcons } from "../../components/contentTypeIcons";
+import { categoryArt } from "../../components/categoryArt";
 import { ContentType, contentTypes } from "../../domain/models";
 import { StringKey } from "../../i18n/strings";
 import { colors, sanctum } from "../../theme/tokens";
@@ -30,7 +35,7 @@ const categories: ContentType[] = [
 // Page padding (22 each side) and the widest page (ui.tsx Page).
 const PAGE_PADDING = 44;
 const PAGE_MAX = 640;
-const TILE_GAP = 12;
+const TILE_GAP = 10;
 
 const typeLabel = (type: ContentType) => type.toLowerCase() as StringKey;
 
@@ -61,7 +66,7 @@ export function ExploreScreen({ navigation, route }: Props) {
           <CategoryTile
             key={type}
             type={type}
-            width={Math.floor((width - TILE_GAP) / 2)}
+            width={Math.floor((width - 2 * TILE_GAP) / 3)}
             onPress={() => choose(type)}
           />
         ))}
@@ -80,7 +85,6 @@ function CategoryTile({
   onPress: () => void;
 }) {
   const { t } = useApp();
-  const Icon = contentTypeIcons[type];
   const label = t(typeLabel(type));
   return (
     <Pressable
@@ -94,21 +98,21 @@ function CategoryTile({
         pressed && styles.pressed,
       ]}
     >
-      <View style={styles.tileIcon}>
-        <Icon size={34} color={colors.primary} />
-      </View>
-      <View style={styles.tileLabel}>
-        <Txt
-          bold
-          size={19}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          style={styles.tileText}
-        >
-          {label}
-        </Txt>
-        <ChevronRight size={20} color={sanctum.brass} />
-      </View>
+      <Image
+        source={categoryArt[type]}
+        style={styles.tileArt}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+      <Txt
+        bold
+        size={17}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={styles.tileText}
+      >
+        {label}
+      </Txt>
     </Pressable>
   );
 }
@@ -117,26 +121,18 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP },
   // A brass-edged tile like a decorated thali; the whole tile opens the gods.
   tile: {
-    minHeight: 132,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+    minHeight: 120,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderRadius: 24,
     borderWidth: 2,
     borderColor: sanctum.brassLight,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 10,
   },
-  tileIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.pale,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tileLabel: { flexDirection: "row", alignItems: "center", gap: 4 },
-  tileText: { textAlign: "center", color: colors.ink, flexShrink: 1 },
+  tileArt: { width: 72, height: 72 },
+  tileText: { textAlign: "center", color: colors.ink },
   pressed: { opacity: 0.72 },
 });
