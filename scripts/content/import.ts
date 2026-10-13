@@ -37,7 +37,7 @@ Options:
   --assets <dir>         Folder that asset paths are relative to (default: manifest folder).
   --dry-run              Validate rows and process media locally; write nothing.
   --local-media <dir>    Write renditions to <dir> instead of uploading to R2.
-  --publish-ready        Emulator/dev only: publish rows whose checklist is complete.
+  --publish-ready        Emulator/dev only: publish valid rows instead of READY.
   --confirm-bucket <b>   Required to upload to a bucket not ending in "-dev".
   --report <file>        Also write the per-row report as JSON.`;
 
@@ -46,7 +46,6 @@ export type RowResult = {
   line: number;
   outcome: "created" | "updated" | "valid" | "failed";
   status?: string;
-  missingChecks?: string[];
   errors: string[];
 };
 
@@ -185,7 +184,6 @@ export async function importManifest(options: {
               id: built.contentId,
             });
           result.status = built.status;
-          result.missingChecks = built.missing;
           if (db) {
             const batch = db.batch();
             batch.set(
@@ -261,9 +259,8 @@ async function main(argv: string[]) {
     );
   const count = (outcome: RowResult["outcome"]) =>
     results.filter((result) => result.outcome === outcome).length;
-  const drafts = results.filter((result) => result.status === "DRAFT");
   console.error(
-    `\n${results.length} rows: ${count("created")} created, ${count("updated")} updated, ${count("valid")} valid (dry run), ${failed.length} failed; ${drafts.length} left in DRAFT (incomplete checklist).`,
+    `\n${results.length} rows: ${count("created")} created, ${count("updated")} updated, ${count("valid")} valid (dry run), ${failed.length} failed.`,
   );
   if (values.report)
     await writeFile(values.report, JSON.stringify(results, null, 2));

@@ -7,15 +7,19 @@ import {
   contentDraftSchema,
   ContentDraftInput,
   contentStatuses,
+  createContentSchema,
   draftFromDocuments,
   readinessProblems,
+  saveContentSchema,
   transitions,
 } from "../src/domain/cms";
+import { checkItems, checkLabels } from "../src/domain/checklist";
 import {
-  applicableChecks,
-  checkItems,
-  checkLabels,
-} from "../src/domain/checklist";
+  contentIdBase,
+  generateContentId,
+  slugify,
+  transliterateHindi,
+} from "../src/domain/contentId";
 import { contentSearchTokens } from "../src/domain/search";
 import { resolveBannerTarget } from "../src/app/navigation/routes";
 
@@ -35,15 +39,14 @@ const draft = (overrides: Partial<ContentDraftInput> = {}) =>
     saveGate: "FREE",
     isShareable: true,
     adEligible: true,
-    private: {
-      aiTool: "Tool",
-      aiPlan: "Pro",
-      checklist: Object.fromEntries(
-        applicableChecks("BHAJAN").map((item) => [item, true]),
-      ),
-    },
+    private: {},
     ...overrides,
   });
+const wallpaperMedia = {
+  thumb: { key: "wallpaper/w1/thumb.0123abcd.webp" },
+  mobile: { key: "wallpaper/w1/mobile.0123abcd.webp" },
+  full: { key: "wallpaper/w1/full.0123abcd.png" },
+};
 
 describe("CMS roles and workflow (doc 09 §15, D-036)", () => {
   it("maps roles to permissions", () => {
@@ -81,40 +84,74 @@ describe("CMS roles and workflow (doc 09 §15, D-036)", () => {
   });
 });
 
-describe("readiness (doc 12 §3–§5)", () => {
+describe("readiness (doc 09 §3)", () => {
   it("passes a complete item and lists every gap otherwise", () => {
     expect(readinessProblems(draft())).toEqual([]);
     const gaps = readinessProblems(
       draft({
         title: { hi: "", en: "Bhajan" },
+        description: { hi: "", en: "" },
+        deityIds: [],
         media: { thumb: { key: "bhajan/b1/thumb.0123abcd.webp" } },
-        private: { checklist: { titleChecked: true } },
       }),
     ).map((problem) => problem.field);
     expect(gaps).toEqual([
       "title.hi",
+      "description.hi",
+      "description.en",
+      "deityIds",
       "media.stream",
-      "private.aiTool",
-      "private.aiPlan",
-      ...applicableChecks("BHAJAN")
-        .filter((item) => item !== "titleChecked")
-        .map((item) => `checklist.${item}`),
     ]);
   });
 
-  it("requires type-specific media and sacred source text", () => {
-    const ringtone = readinessProblems(draft({ type: "RINGTONE" }));
-    expect(ringtone.map((problem) => problem.field)).toEqual([
-      "media.file",
-      "checklist.cleanStartEnd",
-      "checklist.loudEnough",
+  it("makes a wallpaper READY with titles, one deity and its media only", () => {
+    expect(
+      readinessProblems(
+        draft({
+          type: "WALLPAPER",
+          description: { hi: "", en: "" },
+          media: wallpaperMedia,
+        }),
+      ),
+    ).toEqual([]);
+    // The app never shows a wallpaper's name: the file name alone is enough.
+    const fromFile = (title: { hi: string; en: string }) =>
+      readinessProblems(
+        draft({ type: "WALLPAPER", title, description: { hi: "", en: "" }, media: wallpaperMedia }),
+      ).map((problem) => problem.field);
+    expect(fromFile({ hi: "", en: "Hanuman 04" })).toEqual([]);
+    expect(fromFile({ hi: "", en: "" })).toEqual(["title.en"]);
+    for (const type of ["RINGTONE", "STATUS"] as const)
+      expect(
+        readinessProblems(draft({ type, description: { hi: "", en: "" } })).map(
+          (problem) => problem.field,
+        ),
+      ).not.toEqual(expect.arrayContaining([expect.stringMatching(/^desc/)]));
+  });
+
+  it("requires both descriptions for devotional audio types", () => {
+    for (const type of ["BHAJAN", "AARTI", "MANTRA", "CHALISA"] as const)
+      expect(
+        readinessProblems(draft({ type, description: { hi: "", en: "" } })).map(
+          (problem) => problem.field,
+        ),
+      ).toEqual(["description.hi", "description.en"]);
+  });
+
+  it("never gates on provenance, source text or the checklist", () => {
+    for (const type of ["AARTI", "MANTRA", "CHALISA"] as const)
+      expect(readinessProblems(draft({ type }))).toEqual([]);
+    expect(readinessProblems(draft({ type: "RINGTONE" }))).toEqual([
+      { field: "media.file", message: 'RINGTONE needs a "file" media key' },
     ]);
-    const mantra = readinessProblems(draft({ type: "MANTRA" })).map(
-      (problem) => problem.field,
-    );
-    expect(mantra).toContain("private.sourceText");
-    expect(mantra).toContain("private.sourceTextRef");
-    expect(mantra).toContain("checklist.sanskritChecked");
+    // Old documents with partial checklists and provenance still parse.
+    expect(
+      readinessProblems(
+        draft({
+          private: { aiTool: "Tool", checklist: { titleChecked: false } },
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("labels every checklist item", () => {
@@ -131,6 +168,67 @@ describe("readiness (doc 12 §3–§5)", () => {
         media: { thumb: { key: "https://example.com/a.png" } },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("content IDs", () => {
+  it("accepts a missing or blank ID on create but not on update", () => {
+    const body = { ...draft(), private: undefined };
+    for (const id of [undefined, "", "  "])
+      expect(createContentSchema.parse({ id, draft: body }).id).toBeUndefined();
+    expect(createContentSchema.parse({ id: "bulk-1", draft: draft() }).id).toBe(
+      "bulk-1",
+    );
+    expect(
+      createContentSchema.safeParse({ id: "Bad Id", draft: draft() }).success,
+    ).toBe(false);
+    expect(saveContentSchema.safeParse({ draft: draft() }).success).toBe(false);
+    // The private panel itself is optional input.
+    expect(
+      createContentSchema.parse({ draft: body }).draft.private.checklist,
+    ).toEqual({});
+  });
+
+  it("builds readable slugs from the English, then Hindi title, then type", () => {
+    expect(slugify("  Hanuman Chalisa — Morning (HD)! ")).toBe(
+      "hanuman-chalisa-morning-hd",
+    );
+    expect(transliterateHindi("हनुमान चालीसा")).toBe("hanuman chalisa");
+    expect(transliterateHindi("ॐ नमः शिवाय")).toBe("om namah shivay");
+    expect(transliterateHindi("श्री संत")).toBe("shri sant");
+    expect(
+      contentIdBase({ type: "BHAJAN", title: { hi: "भजन", en: "Om Jai" } }),
+    ).toBe("om-jai");
+    expect(
+      contentIdBase({
+        type: "CHALISA",
+        title: { hi: "हनुमान चालीसा", en: "" },
+      }),
+    ).toBe("hanuman-chalisa");
+    expect(
+      contentIdBase({ type: "WALLPAPER", title: { hi: "", en: "!!!" } }),
+    ).toBe("wallpaper");
+    expect(
+      contentIdBase({ type: "STATUS", title: { hi: "", en: "x".repeat(200) } })
+        .length,
+    ).toBeLessThanOrEqual(60);
+  });
+
+  it("generates valid, distinct slugs with a 4-character suffix", () => {
+    const input = {
+      type: "WALLPAPER" as const,
+      title: { hi: "", en: "Hanuman Dawn" },
+    };
+    const ids = new Set(
+      Array.from({ length: 200 }, () => generateContentId(input)),
+    );
+    expect(ids.size).toBeGreaterThan(190);
+    for (const id of ids) {
+      expect(id).toMatch(/^hanuman-dawn-[a-z0-9]{4}$/);
+      expect(createContentSchema.parse({ id, draft: draft() }).id).toBe(id);
+    }
+    expect(generateContentId(input, () => 0)).toBe("hanuman-dawn-aaaa");
+    expect(generateContentId(input, () => 0.9999)).toBe("hanuman-dawn-9999");
   });
 });
 

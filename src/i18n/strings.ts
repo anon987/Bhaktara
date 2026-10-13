@@ -467,6 +467,22 @@ export const strings = {
   notYet: ["Not yet", "अभी नहीं"],
   // Puja (prayer task, D-053)
   pujaChoose: ["Whom will you worship today?", "आज किनकी पूजा करेंगे?"],
+  // Prayer and Jaap shrine screens (D-057)
+  jaapTagline: ["A moment of devotion", "भक्ति का एक क्षण"],
+  tapToCount: ["Tap to count", "गिनने के लिए छुएँ"],
+  chooseOffering: ["Choose an offering", "अर्पण चुनें"],
+  dhyanTagline: [
+    "Rest with the flame within.",
+    "भीतर की ज्योति में विश्राम करें।",
+  ],
+  remainingOf: ["remaining of", "शेष, कुल"],
+  minutesLong: ["minutes", "मिनट"],
+  templeBells: ["Temple bells", "मंदिर की घंटियाँ"],
+  resetOfferings: ["Reset offerings", "अर्पण फिर से"],
+  restartMalaShort: ["Restart mala", "माला फिर से"],
+  practiceSound: ["Sound", "ध्वनि"],
+  practiceVibration: ["Vibration", "कंपन"],
+  practiceSettings: ["Settings", "सेटिंग्स"],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {

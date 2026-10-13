@@ -79,7 +79,7 @@ service cloud.firestore {
       allow list: if authenticated() && resource.data.isActive == true && bounded(50);
     }
     match /appConfig/{id} {
-      allow get: if authenticated() && id in ['gamification', 'sadhana'];
+      allow get: if authenticated() && id in ['gamification', 'sadhana', 'visuals'];
     }
     match /leagueCohorts/{id} {
       allow get: if signedIn();

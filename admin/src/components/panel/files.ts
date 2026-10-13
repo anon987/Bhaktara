@@ -23,6 +23,17 @@ export const maxBytesOf = (mime: UploadMime) => uploadKinds[mime].maxBytes;
 export const withUploadType = (file: File, mime: UploadMime) =>
   file.type === mime ? file : new File([file], file.name, { type: mime, lastModified: file.lastModified });
 
+// The folder path each gathered file came from (drag-and-drop, folder picker
+// or inside a ZIP), so a "hanuman/" folder can name the deity.
+const folders = new WeakMap<File, string>();
+export const folderOf = (file: File) =>
+  folders.get(file) ?? (file.webkitRelativePath ? file.webkitRelativePath.slice(0, file.webkitRelativePath.lastIndexOf("/")) : "");
+const inFolder = (file: File, path: string) => {
+  const folder = path.slice(0, path.lastIndexOf("/")).replace(/^\/+/, "");
+  if (folder) folders.set(file, folder);
+  return file;
+};
+
 const isJunk = (path: string) =>
   path.split("/").some((part) => part.startsWith(".") || part === "__MACOSX") ||
   /(^|\/)(thumbs\.db|desktop\.ini)$/i.test(path);
@@ -42,7 +53,7 @@ function unzipFile(file: File): Promise<File[]> {
               .map(([path, data]) => {
                 const name = path.slice(path.lastIndexOf("/") + 1);
                 const mime = uploadMimeOf(name);
-                return new File([data as BlobPart], name, mime ? { type: mime } : {});
+                return inFolder(new File([data as BlobPart], name, mime ? { type: mime } : {}), path);
               }),
           );
         }),
@@ -68,7 +79,8 @@ type Entry = FileSystemEntry & {
 async function walk(entry: Entry, out: File[]) {
   if (isJunk(entry.fullPath)) return;
   if (entry.isFile && entry.file) {
-    out.push(await new Promise<File>((resolve, reject) => entry.file!(resolve, reject)));
+    const file = await new Promise<File>((resolve, reject) => entry.file!(resolve, reject));
+    out.push(inFolder(file, entry.fullPath));
   } else if (entry.isDirectory && entry.createReader) {
     const reader = entry.createReader();
     // readEntries returns at most 100 entries per call.
@@ -89,6 +101,25 @@ export async function filesFromDrop(transfer: DataTransfer): Promise<File[]> {
   if (entries.length) for (const entry of entries) await walk(entry, files);
   else files.push(...transfer.files);
   return expandZips(files);
+}
+
+// Deities named by a file's folders or its file name ("hanuman/04.png",
+// "Shiv Parvati/x.jpg", "ganesh_02.jpg"): whole-word matches on a deity's ID
+// or English name. The first folder or name that names any deity wins.
+export function deitiesFromPath(file: File, deities: { value: string; label: string }[]): string[] {
+  const words = (text: string) =>
+    ` ${text.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim()} `;
+  const keys = deities.map((deity) => ({
+    id: deity.value,
+    names: [deity.value, deity.label].map(words).filter((name) => name.trim()),
+  }));
+  const places = [...folderOf(file).split("/").reverse(), baseName(file.name)].filter(Boolean);
+  for (const place of places) {
+    const text = words(place);
+    const found = keys.filter((key) => key.names.some((name) => text.includes(name))).map((key) => key.id);
+    if (found.length) return found.slice(0, 10);
+  }
+  return [];
 }
 
 // ---- Turning files into content items --------------------------------------

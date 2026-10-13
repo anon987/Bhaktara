@@ -57,6 +57,8 @@ export function pageFor(route: Route, role: AdminRole): ReactNode | null {
       return <CatalogPage key="mandirOffering" kind="mandirOffering" />;
     case "puja":
       return <ConfigPage key="puja" id="puja" />;
+    case "visuals":
+      return <ConfigPage key="visuals" id="visuals" />;
     case "sadhana-config":
       return <ConfigPage key="sadhana" id="sadhana" />;
     case "gamification-config":

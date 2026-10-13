@@ -4,11 +4,13 @@ import {
   Timestamp,
   Transaction,
 } from "firebase-admin/firestore";
+import { randomInt } from "node:crypto";
 import { logger } from "firebase-functions";
 import { HttpsError } from "firebase-functions/v2/https";
 import {
   ContentDraft,
   contentDraftSchema,
+  createContentSchema,
   ContentStatus,
   draftFromDocuments,
   editableStatuses,
@@ -21,6 +23,7 @@ import {
   transitionSchema,
 } from "../../src/domain/cms";
 import { checklistState } from "../../src/domain/checklist";
+import { generateContentId } from "../../src/domain/contentId";
 import { contentSearchTokens, SearchDeity } from "../../src/domain/search";
 import { publishedContentSchema } from "../../src/repositories/firestoreSchemas";
 import {
@@ -101,7 +104,7 @@ function privateFields(draft: ContentDraft) {
     aiTool: draft.private.aiTool,
     aiPlan: draft.private.aiPlan,
     licenseRecordId: draft.private.licenseRecordId,
-    // Only the items that apply to this type are stored (doc 12 §5).
+    // Optional notes; only the items that apply to this type are stored.
     checklist: checklistState(draft.type, draft.private.checklist).values,
   });
 }
@@ -122,16 +125,35 @@ const stable = (value: unknown): string =>
       : entry,
   );
 
+// Crypto-backed float in [0, 1) for the generated ID suffix.
+const secureRandom = () => randomInt(0, 2 ** 32) / 2 ** 32;
+const ID_ATTEMPTS = 8;
+
 export async function createContent(actor: Actor, data: unknown) {
   requirePermission(actor, "content.edit");
-  const { id, draft } = parse(saveContentSchema, data);
+  const { id: requestedId, draft } = parse(createContentSchema, data);
   return db().runTransaction(async (tx) => {
-    const [existing, existingPrivate] = await tx.getAll(
-      contentRef(id),
-      privateRef(id),
-    );
-    if (existing.exists || existingPrivate.exists)
-      throw new HttpsError("already-exists", `Content "${id}" already exists.`);
+    // Explicit IDs (bulk uploader) must be free; generated ones retry on a
+    // collision with a fresh random suffix.
+    let id: string | undefined;
+    for (let attempt = 0; attempt < ID_ATTEMPTS && !id; attempt++) {
+      const candidate = requestedId ?? generateContentId(draft, secureRandom);
+      const [existing, existingPrivate] = await tx.getAll(
+        contentRef(candidate),
+        privateRef(candidate),
+      );
+      if (!existing.exists && !existingPrivate.exists) id = candidate;
+      else if (requestedId)
+        throw new HttpsError(
+          "already-exists",
+          `Content "${requestedId}" already exists.`,
+        );
+    }
+    if (!id)
+      throw new HttpsError(
+        "aborted",
+        "Could not generate a free content ID. Please try again.",
+      );
     const deities = await loadDeities(tx, draft.deityIds);
     assertKnownDeities(draft, deities);
     const now = FieldValue.serverTimestamp();
@@ -222,20 +244,18 @@ export async function updateContent(actor: Actor, data: unknown) {
 }
 
 const incomplete = (problems: ReadinessProblem[]) =>
-  new HttpsError(
-    "failed-precondition",
-    "The checklist or required fields are incomplete.",
-    {
-      reason: "CHECKLIST_INCOMPLETE",
-      problems,
-    } satisfies TransitionErrorDetails,
-  );
+  new HttpsError("failed-precondition", "Some required fields are missing.", {
+    // Legacy reason name kept for existing clients; means "not ready".
+    reason: "CHECKLIST_INCOMPLETE",
+    problems,
+  } satisfies TransitionErrorDetails);
 
 const millis = (value: unknown) =>
   value instanceof Timestamp ? value.toMillis() : undefined;
 
-// D-036 state machine with role rules (doc 08 §3) and checklist gating
-// (doc 12 §5). Shared by the callable and the scheduled publisher.
+// D-036 state machine with role rules (doc 08 §3) and required-field gating
+// (readinessProblems; no checklist or provenance gates). Shared by the
+// callable and the scheduled publisher.
 async function applyTransition(
   tx: Transaction,
   input: {
@@ -369,7 +389,7 @@ export async function transitionContentStatus(
 
 // Doc 08 §4 publishScheduledContent: SCHEDULED → PUBLISHED when due, and
 // PUBLISHED → ARCHIVED after expireAt. Each item is its own transaction, so
-// one failing item (e.g. an incomplete checklist) never blocks the rest.
+// one failing item (e.g. a missing required field) never blocks the rest.
 export async function publishDueContent(now = new Date()) {
   const actor: Actor = {
     uid: "system:publishScheduledContent",

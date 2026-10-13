@@ -31,6 +31,9 @@ const purposeLabels: Record<AssetPurpose, string> = {
   festival: "Festivals",
   offering: "Offerings",
   collection: "Collection covers",
+  temple: "Temples",
+  background: "Backgrounds",
+  decor: "Decor & emblems",
 };
 
 type ImageRow = {

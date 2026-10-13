@@ -17,15 +17,17 @@ import { isoToLocalInput, localInputToIso } from "../ui";
 
 // Editor state: plain strings for the inputs, converted to the callable's
 // ContentDraftInput on save. The original variant metadata (bytes, mime,
-// dimensions) is kept while the key is unchanged.
+// dimensions) is kept while the key is unchanged. Media keys, provenance and
+// the checklist are not shown in the editor any more, but they stay on the
+// form so a save writes back what is stored.
 export type DraftForm = {
   type: ContentType;
   title: { hi: string; en: string };
   description: { hi: string; en: string };
   audioLanguage: string;
   deityIds: string[];
-  categoryIds: string;
-  tags: string;
+  categoryIds: string[];
+  tags: string[];
   media: Partial<Record<MediaVariantName, { key: string; original?: MediaVariant }>>;
   durationSeconds: string;
   isFeatured: boolean;
@@ -48,8 +50,8 @@ export function emptyForm(type: ContentType = "BHAJAN"): DraftForm {
     description: { hi: "", en: "" },
     audioLanguage: "",
     deityIds: [],
-    categoryIds: "",
-    tags: "",
+    categoryIds: [],
+    tags: [],
     media: {},
     durationSeconds: "",
     isFeatured: false,
@@ -66,12 +68,6 @@ export function emptyForm(type: ContentType = "BHAJAN"): DraftForm {
   };
 }
 
-const list = (value: string) =>
-  value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
 export function formFromDraft(draft: ContentDraftInput): DraftForm {
   const media: DraftForm["media"] = {};
   for (const name of mediaVariantNames) {
@@ -84,8 +80,8 @@ export function formFromDraft(draft: ContentDraftInput): DraftForm {
     description: { ...draft.description },
     audioLanguage: (draft.audioLanguage as string | undefined) ?? "",
     deityIds: [...draft.deityIds],
-    categoryIds: draft.categoryIds.join(", "),
-    tags: draft.tags.join(", "),
+    categoryIds: [...draft.categoryIds],
+    tags: [...draft.tags],
     media,
     durationSeconds:
       draft.durationSeconds === undefined ? "" : String(draft.durationSeconds),
@@ -119,8 +115,8 @@ export function draftFromForm(form: DraftForm): ContentDraftInput {
     description: { ...form.description },
     audioLanguage: form.audioLanguage.trim() || undefined,
     deityIds: form.deityIds,
-    categoryIds: list(form.categoryIds),
-    tags: list(form.tags),
+    categoryIds: form.categoryIds,
+    tags: form.tags.map((tag) => tag.trim()).filter(Boolean),
     media,
     durationSeconds: duration === "" ? undefined : Number(duration),
     isFeatured: form.isFeatured,
@@ -165,4 +161,59 @@ export function validateForm(form: DraftForm): DraftValidation {
       readiness: [],
     };
   return { draft: parsed.data, issues: [], readiness: readinessProblems(parsed.data) };
+}
+
+// Content types with spoken or sung audio (audio language applies).
+export const audioTypes: readonly ContentType[] = ["BHAJAN", "AARTI", "MANTRA", "CHALISA", "RINGTONE"];
+
+// a-z, 0-9 and "-", at most 60 characters ("" when nothing usable is left).
+export function slugify(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/, "");
+}
+
+// New items get a readable, unique ID: the English title as a slug plus four
+// random characters, e.g. "hanuman-wallpaper-k3x9".
+export function generateContentId(form: Pick<DraftForm, "type" | "title">): string {
+  const base = slugify(form.title.en) || form.type.toLowerCase();
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const random = crypto.getRandomValues(new Uint8Array(4));
+  return `${base}-${Array.from(random, (byte) => alphabet[byte % alphabet.length]).join("")}`;
+}
+
+const mediaWord: Record<ContentType, string> = {
+  BHAJAN: "the audio and cover image",
+  AARTI: "the audio and cover image",
+  MANTRA: "the audio and cover image",
+  CHALISA: "the audio and cover image",
+  WALLPAPER: "the wallpaper image",
+  RINGTONE: "the ringtone audio",
+  STATUS: "the status video",
+};
+
+// What still blocks READY, in plain words, for fields the editor shows:
+// missing media becomes one "upload" line, and items recorded outside the
+// editor (provenance, checklist) become one summary line.
+export function editorReadiness(type: ContentType, problems: readonly Problem[]): Problem[] {
+  const shown: Problem[] = [];
+  let media = false;
+  let review = 0;
+  for (const problem of problems) {
+    if (problem.field.startsWith("media")) media = true;
+    else if (problem.field.startsWith("private.") || problem.field.startsWith("checklist.")) review += 1;
+    else shown.push(problem);
+  }
+  if (media) shown.push({ field: "Media", message: `Upload ${mediaWord[type]}` });
+  if (review)
+    shown.push({
+      field: "Review",
+      message: `${review} review ${review === 1 ? "item" : "items"} (AI tool, source or checklist) not set in this editor`,
+    });
+  return shown;
 }

@@ -29,10 +29,13 @@ const acceptFor = (role: MediaInputRole) =>
 export function MediaUpload({
   contentId,
   type,
+  hasMedia = true,
   onProcessed,
 }: {
   contentId: string;
   type: ContentType;
+  // False: nothing uploaded yet, so the box asks for the first files.
+  hasMedia?: boolean;
   onProcessed: () => void;
 }) {
   const { api, panel } = useAdmin();
@@ -94,10 +97,11 @@ export function MediaUpload({
   return (
     <section className="panel space-y-4" aria-labelledby="upload-heading">
       <div>
-        <h2 id="upload-heading">Upload or replace media</h2>
+        <h2 id="upload-heading">{hasMedia ? "Replace media" : "Upload media"}</h2>
         <p className="muted">
-          Upload only what you want to add or change, for example just a new cover. The processor renders every size
-          the app needs and replaces those files on this item; the rest stays as it is.
+          {hasMedia
+            ? "Upload only what you want to change, for example just a new cover. Every size the app needs is made for you; the rest stays as it is."
+            : "Drop the file here, then press “Render and save”. Every size the app needs is made for you."}
         </p>
       </div>
       {roles.map((role) => {

@@ -9,7 +9,7 @@ import Svg, {
   RadialGradient,
   Stop,
 } from "react-native-svg";
-import { sanctum } from "../../../theme/tokens";
+import { sanctum, shrine } from "../../../theme/tokens";
 import { useReducedMotion } from "../../../components/useReducedMotion";
 import type { MalaKind } from "../../../domain/mantras";
 
@@ -42,13 +42,38 @@ const Bead = memo(function Bead({
   index,
   state,
   kind,
+  shade,
 }: {
   index: number;
   state: "done" | "current" | "ahead";
   kind: MalaKind;
+  // Light tone (D-057): the id prefix of the ring's bead gradients.
+  shade?: string;
 }) {
   const { x, y } = point(index + 1);
   const colors = malaColors[kind];
+  if (shade)
+    return (
+      <G>
+        {state === "current" && (
+          <Circle
+            cx={x}
+            cy={y}
+            r={11}
+            fill={shrine.saffronLight}
+            opacity={0.7}
+          />
+        )}
+        <Circle
+          cx={x}
+          cy={y}
+          r={state === "current" ? 7.2 : 6.2}
+          fill={`url(#${shade}${state === "ahead" ? "a" : "d"})`}
+          stroke={state === "ahead" ? colors.shade : shrine.saffronDeep}
+          strokeWidth={0.5}
+        />
+      </G>
+    );
   if (state === "current")
     return (
       <G>
@@ -92,12 +117,17 @@ export function MalaRing({
   kind,
   size,
   completedKey,
+  tone = "dark",
 }: {
   beads: number;
   kind: MalaKind;
   size: number;
   completedKey: number;
+  // "light": polished wooden beads on parchment, chanted ones gold (D-057).
+  tone?: "dark" | "light";
 }) {
+  const shade = React.useId().replace(/:/g, "");
+  const light = tone === "light";
   const reduced = useReducedMotion();
   const [pulse] = useState(() => new Animated.Value(0));
   const [flash] = useState(() => new Animated.Value(0));
@@ -165,12 +195,26 @@ export function MalaRing({
         <Glow />
       </Animated.View>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEW} ${VIEW}`}>
+        {light && (
+          <Defs>
+            <RadialGradient id={`${shade}a`} cx="35%" cy="35%" r="70%">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.55} />
+              <Stop offset="0.25" stopColor={colors.bead} />
+              <Stop offset="1" stopColor={colors.shade} />
+            </RadialGradient>
+            <RadialGradient id={`${shade}d`} cx="35%" cy="35%" r="70%">
+              <Stop offset="0" stopColor="#FFF6D8" />
+              <Stop offset="0.35" stopColor={shrine.saffronLight} />
+              <Stop offset="1" stopColor={shrine.saffronDeep} />
+            </RadialGradient>
+          </Defs>
+        )}
         {/* Thread */}
         <Circle
           cx={CENTER}
           cy={CENTER}
           r={RADIUS}
-          stroke={colors.thread}
+          stroke={light ? shrine.gold : colors.thread}
           strokeWidth={1.4}
           fill="none"
           opacity={0.8}
@@ -180,6 +224,7 @@ export function MalaRing({
             key={index}
             index={index}
             kind={kind}
+            shade={light ? shade : undefined}
             state={
               index < beads ? "done" : index === beads ? "current" : "ahead"
             }
@@ -194,8 +239,8 @@ export function MalaRing({
               y1={sumeru.y + 10}
               x2={sumeru.x + dx}
               y2={sumeru.y + 26}
-              stroke={colors.thread}
-              strokeWidth={2}
+              stroke={light ? shrine.saffron : colors.thread}
+              strokeWidth={light ? 2.4 : 2}
               strokeLinecap="round"
             />
           ))}
@@ -208,8 +253,8 @@ export function MalaRing({
           cx={sumeru.x}
           cy={sumeru.y}
           r={10.5}
-          fill={sanctum.brass}
-          stroke={sanctum.brassLight}
+          fill={light ? `url(#${shade}a)` : sanctum.brass}
+          stroke={light ? shrine.gold : sanctum.brassLight}
           strokeWidth={1.5}
         />
         <Circle
@@ -230,7 +275,7 @@ export function MalaRing({
           height: 30 * scale,
           borderRadius: 15 * scale,
           borderWidth: 2,
-          borderColor: sanctum.brassLight,
+          borderColor: light ? shrine.saffron : sanctum.brassLight,
           opacity: pulse.interpolate({
             inputRange: [0, 1],
             outputRange: [0.15, 0.7],

@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { librarySections, parseHash, sectionForType } from "./app/router";
 import { readConfig } from "./config";
-import { draftFromForm, emptyForm, formFromDraft, validateForm } from "./content/draftForm";
+import {
+  draftFromForm,
+  editorReadiness,
+  emptyForm,
+  formFromDraft,
+  generateContentId,
+  validateForm,
+} from "./content/draftForm";
 import { readableError } from "./errors";
 import { contentTypes } from "./domain";
 import { callableError } from "./test/fakeApi";
-import { withoutUndefined } from "./panelApi";
+import { distinctTags, withoutUndefined } from "./panelApi";
 import { audioVariant, clock } from "./components/panel/preview";
 
 describe("readConfig", () => {
@@ -81,7 +88,7 @@ describe("draft form", () => {
       key: "wallpaper/s/thumb.abcd1234.webp",
       original: { key: "wallpaper/s/thumb.abcd1234.webp", bytes: 10 },
     };
-    form.tags = " om , , shiva ";
+    form.tags = [" om ", "", "shiva "];
     form.checklist = { titleChecked: true, listenThrough: true };
     const draft = draftFromForm(form);
     expect(draft.media.thumb).toEqual({ key: "wallpaper/s/thumb.abcd1234.webp", bytes: 10 });
@@ -90,6 +97,46 @@ describe("draft form", () => {
     // listenThrough only applies to BHAJAN.
     expect(draft.private.checklist).toEqual({ titleChecked: true });
     expect(draftFromForm(formFromDraft(draft))).toEqual(draft);
+  });
+
+  it("keeps stored provenance, checklist and media it does not show", () => {
+    const stored = draftFromForm({
+      ...emptyForm("BHAJAN"),
+      aiTool: "Suno",
+      sourceTextRef: "Tulsidas",
+      checklist: { titleChecked: true },
+      media: { stream: { key: "bhajan/x/stream.abcd1234.m4a" } },
+    });
+    const form = formFromDraft(stored);
+    form.tags = ["aarti"];
+    const draft = draftFromForm(form);
+    expect(draft.private).toEqual(stored.private);
+    expect(draft.media).toEqual(stored.media);
+  });
+
+  it("generates a slug ID from the English title", () => {
+    expect(generateContentId({ type: "WALLPAPER", title: { hi: "", en: "Hanuman Ji — Gold!" } })).toMatch(
+      /^hanuman-ji-gold-[a-z0-9]{4}$/,
+    );
+    expect(generateContentId({ type: "WALLPAPER", title: { hi: "हनुमान", en: "" } })).toMatch(
+      /^wallpaper-[a-z0-9]{4}$/,
+    );
+  });
+
+  it("words readiness for the editor's fields", () => {
+    expect(
+      editorReadiness("WALLPAPER", [
+        { field: "title.hi", message: "Hindi title is required" },
+        { field: "media.thumb", message: "x" },
+        { field: "media.full", message: "y" },
+        { field: "private.aiTool", message: "AI tool must be recorded" },
+        { field: "checklist.titleChecked", message: "Checklist: …" },
+      ]),
+    ).toEqual([
+      { field: "title.hi", message: "Hindi title is required" },
+      { field: "Media", message: "Upload the wallpaper image" },
+      { field: "Review", message: "2 review items (AI tool, source or checklist) not set in this editor" },
+    ]);
   });
 
   it("separates shape errors from readiness", () => {
@@ -117,6 +164,16 @@ describe("parseHash", () => {
     expect(parseHash("#/content/new/RINGTONE")).toEqual({ name: "content-new", type: "RINGTONE" });
     expect(parseHash("#/content/new/PODCAST")).toEqual({ name: "not-found" });
     expect(parseHash("#/nope")).toEqual({ name: "not-found" });
+  });
+});
+
+describe("distinctTags", () => {
+  it("dedupes case-insensitively, most used first", () => {
+    expect(distinctTags([["Om", "shiva"], ["om", " Aarti "], null, ["shiva", "om", ""]])).toEqual([
+      "Om",
+      "shiva",
+      "Aarti",
+    ]);
   });
 });
 

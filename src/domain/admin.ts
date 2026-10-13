@@ -8,11 +8,8 @@ import {
   gamificationConfigSchema,
   sadhanaConfigSchema,
 } from "./progression";
-import {
-  bhogKinds,
-  flowerKinds,
-  garlandKinds,
-} from "./puja";
+import { bhogKinds, flowerKinds, garlandKinds } from "./puja";
+import { visualsConfigSchema } from "./visuals";
 
 // Admin panel v2 (doc 09 §1): catalogue documents, versioned app config,
 // user administration and the asset library. Shared by the Cloud Functions
@@ -23,7 +20,10 @@ const localizedText = (max: number) =>
   z.object({ hi: text(max), en: text(max) });
 const requiredLocalized = (max: number) =>
   z.object({ hi: text(max).min(1), en: text(max).min(1) });
-const art = z.object({ mobile: mediaVariantSchema, thumb: mediaVariantSchema.optional() });
+const art = z.object({
+  mobile: mediaVariantSchema,
+  thumb: mediaVariantSchema.optional(),
+});
 const dayString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const ids = (max: number) => z.array(slugSchema).max(max);
 
@@ -38,6 +38,10 @@ export const deityInputSchema = z
     isMandirEnabled: z.boolean(),
     sortOrder: z.number().int().min(0).max(10000),
     mandirArt: art.optional(),
+    // D-057: the temple with the deity for the Prayer screen, and the
+    // symbol above the mantra on the Jaap screen (Krishna's flute…).
+    shrineArt: art.optional(),
+    jaapEmblem: art.optional(),
   })
   .strict();
 
@@ -171,12 +175,14 @@ export const configDocs = {
   gamification: gamificationConfigSchema,
   sadhana: sadhanaConfigSchema,
   puja: pujaConfigSchema,
+  visuals: visualsConfigSchema,
 } as const;
 export type ConfigDoc = keyof typeof configDocs;
+const configIds = Object.keys(configDocs) as [ConfigDoc, ...ConfigDoc[]];
 
 export const saveConfigSchema = z
   .object({
-    id: z.enum(["gamification", "sadhana", "puja"]),
+    id: z.enum(configIds),
     data: z.unknown(),
     // The version the editor started from; a stale editor is refused.
     expectedVersion: z.number().int().min(0),
@@ -184,7 +190,7 @@ export const saveConfigSchema = z
   .strict();
 export const rollbackConfigSchema = z
   .object({
-    id: z.enum(["gamification", "sadhana", "puja"]),
+    id: z.enum(configIds),
     toVersion: z.number().int().positive(),
     expectedVersion: z.number().int().min(0),
   })
@@ -202,13 +208,20 @@ export const searchUsersSchema = z
   })
   .strict();
 export const getUserSchema = z.object({ uid: uidSchema }).strict();
-export const moderateUserSchema = z
-  .discriminatedUnion("action", [
-    z.object({ uid: uidSchema, action: z.literal("flag"), reason: text(200).min(1) }),
-    z.object({ uid: uidSchema, action: z.literal("unflag") }),
-    z.object({ uid: uidSchema, action: z.literal("resetDisplayName") }),
-    z.object({ uid: uidSchema, action: z.literal("note"), note: text(1000).min(1) }),
-  ]);
+export const moderateUserSchema = z.discriminatedUnion("action", [
+  z.object({
+    uid: uidSchema,
+    action: z.literal("flag"),
+    reason: text(200).min(1),
+  }),
+  z.object({ uid: uidSchema, action: z.literal("unflag") }),
+  z.object({ uid: uidSchema, action: z.literal("resetDisplayName") }),
+  z.object({
+    uid: uidSchema,
+    action: z.literal("note"),
+    note: text(1000).min(1),
+  }),
+]);
 export const setUserDisabledSchema = z
   .object({ uid: uidSchema, disabled: z.boolean(), reason: text(200).min(1) })
   .strict();
@@ -223,18 +236,24 @@ export const deleteUserSchema = z
 
 // ---- Asset library -----------------------------------------------------------
 
-// What an uploaded image is for; it decides the renditions (banner: wide,
-// deity/offering: tall art).
+// What an uploaded image is for; it decides the renditions. Both keep the
+// image's shape (and a PNG's transparency) at 1080 px wide; "deity" also
+// makes a square thumbnail, "banner" a 320 px wide one.
 export const assetPurposes = [
   "banner",
   "deity",
   "festival",
   "offering",
   "collection",
+  // D-057: Prayer and Jaap visuals.
+  "temple",
+  "background",
+  "decor",
 ] as const;
 export type AssetPurpose = (typeof assetPurposes)[number];
+const tallArt: AssetPurpose[] = ["deity", "offering", "temple", "decor"];
 export const assetMediaType = (purpose: AssetPurpose): "banner" | "deity" =>
-  purpose === "deity" || purpose === "offering" ? "deity" : "banner";
+  tallArt.includes(purpose) ? "deity" : "banner";
 
 export const requestAssetUploadSchema = z
   .object({
