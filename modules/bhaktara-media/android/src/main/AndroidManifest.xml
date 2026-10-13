@@ -4,4 +4,23 @@
   <!-- RingtoneManager.setActualDefaultRingtoneUri needs this special app-op. The user grants it
        on the system "Modify system settings" screen, opened only after tapping "Set as ringtone". -->
   <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+
+  <!-- shareToAppAsync checks whether WhatsApp is installed (Android 11+ package visibility). -->
+  <queries>
+    <package android:name="com.whatsapp" />
+    <package android:name="com.whatsapp.w4b" />
+  </queries>
+
+  <application>
+    <!-- Hands the cached share copy to WhatsApp as a content:// URI with a one-off read grant. -->
+    <provider
+      android:name="com.bhaktara.media.BhaktaraMediaFileProvider"
+      android:authorities="${applicationId}.BhaktaraMediaFileProvider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/bhaktara_media_file_paths" />
+    </provider>
+  </application>
 </manifest>

@@ -54,6 +54,18 @@ export interface BhaktaraMediaModule {
     mimeType: string,
     title: string,
   ): Promise<string>;
+  /**
+   * Opens one app's share screen (ACTION_SEND with setPackage) for a cache file,
+   * shared through the module's FileProvider with read permission granted.
+   * `text` becomes the caption. Resolves false, opening nothing, when the app
+   * is not installed. Missing in dev clients built before it was added.
+   */
+  shareToAppAsync?(
+    fileUri: string,
+    mimeType: string,
+    packageName: string,
+    text?: string | null,
+  ): Promise<boolean>;
 }
 
 // Null on iOS, web, Jest and dev clients built before this module existed.

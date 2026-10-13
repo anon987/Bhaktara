@@ -18,6 +18,7 @@ import { audioTypes, playableVariant } from "../player/playback";
 import { resolveMediaUrl } from "../../services/media/config";
 import { StatusVideo } from "./StatusVideo";
 import { SaveActions } from "./SaveActions";
+import { WallpaperViewer } from "./WallpaperViewer";
 export function ContentScreen({
   route,
   navigation,
@@ -67,6 +68,16 @@ export function ContentScreen({
           />
         )}
       </Page>
+    );
+  // Wallpapers open full screen, with swipe-up paging and floating actions.
+  if (item.type === "WALLPAPER")
+    return (
+      <WallpaperViewer
+        key={item.id}
+        item={item}
+        source={route.params.source ?? "explore"}
+        onBack={navigation.goBack}
+      />
     );
   const favorite = local.favorites.includes(item.id);
   const audio = audioTypes.includes(item.type);

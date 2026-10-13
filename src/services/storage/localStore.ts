@@ -23,6 +23,8 @@ export const localStateSchema = z
     practice: z
       .object({ sound: z.boolean(), vibration: z.boolean() })
       .default({ sound: true, vibration: true }),
+    // One-time hints already shown (e.g. "wallpaperSwipe").
+    seenHints: z.array(z.string()).default([]),
     days: z.record(
       z.string(),
       z.object({
@@ -49,6 +51,7 @@ export const initialState: LocalState = {
     sessionId: null,
   },
   practice: { sound: true, vibration: true },
+  seenHints: [],
   days: {},
 };
 const KEY = "bhaktara.local.v1";

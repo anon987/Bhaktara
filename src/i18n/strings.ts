@@ -204,6 +204,17 @@ export const strings = {
   share: ["Share to WhatsApp · free", "WhatsApp पर साझा करें · निःशुल्क"],
   saveWallpaper: ["Save to gallery", "गैलरी में सहेजें"],
   setWallpaper: ["Set as wallpaper", "वॉलपेपर लगाएँ"],
+  // Full-screen wallpaper viewer
+  shareWhatsApp: ["Send on WhatsApp", "WhatsApp पर भेजें"],
+  // Caption sent with a wallpaper shared to WhatsApp; easy to change.
+  shareCaption: [
+    "A divine wallpaper for you, from the Bhaktara app.",
+    "भक्तारा ऐप से आपके लिए एक दिव्य वॉलपेपर।",
+  ],
+  swipeForMore: ["Swipe up for more", "ऊपर स्वाइप करें — और वॉलपेपर"],
+  // Marks the Save / Set buttons that play one rewarded ad (doc 11 §4).
+  adBadge: ["Ad", "विज्ञापन"],
+  wallpaperPosition: ["Wallpaper", "वॉलपेपर"],
   saveRingtone: ["Save ringtone", "रिंगटोन सहेजें"],
   setRingtone: ["Set as ringtone", "रिंगटोन लगाएँ"],
   saveStatus: ["Save video", "वीडियो सहेजें"],

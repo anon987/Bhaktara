@@ -21,13 +21,27 @@ const palettes: Record<string, [string, string, string]> = {
   durga: ["#632D3D", "#B56870", "#EDCB83"],
 };
 // size is the frame height; "100%" fills a parent that sets its own aspect.
-type ArtProps = { assetKey: string; size?: number | "100%"; lit?: boolean };
-export function DevotionalArt({ assetKey, size = 160, lit = false }: ArtProps) {
+// `square` drops the rounded corners (full-bleed screens).
+type ArtProps = {
+  assetKey: string;
+  size?: number | "100%";
+  lit?: boolean;
+  square?: boolean;
+};
+export function DevotionalArt({
+  assetKey,
+  size = 160,
+  lit = false,
+  square = false,
+}: ArtProps) {
   const uri = resolveMediaUrl(assetKey);
   const [failed, setFailed] = useState<string | null>(null);
   if (uri && failed !== uri)
     return (
-      <View accessible={false} style={[styles.frame, { height: size }]}>
+      <View
+        accessible={false}
+        style={[styles.frame, { height: size }, square && styles.square]}
+      >
         <Image
           source={{ uri }}
           resizeMode="cover"
@@ -37,14 +51,24 @@ export function DevotionalArt({ assetKey, size = 160, lit = false }: ArtProps) {
         {lit && <View pointerEvents="none" style={styles.glow} />}
       </View>
     );
-  return <SymbolicArt assetKey={assetKey} size={size} lit={lit} />;
+  return (
+    <SymbolicArt assetKey={assetKey} size={size} lit={lit} square={square} />
+  );
 }
-function SymbolicArt({ assetKey, size = 160, lit = false }: ArtProps) {
+function SymbolicArt({
+  assetKey,
+  size = 160,
+  lit = false,
+  square = false,
+}: ArtProps) {
   const id = React.useId().replace(/:/g, "");
   const deity = assetKey.split("/").pop() ?? "";
   const [dark, light, gold] = palettes[deity] ?? palettes.ganesha;
   return (
-    <View accessible={false} style={[styles.frame, { height: size }]}>
+    <View
+      accessible={false}
+      style={[styles.frame, { height: size }, square && styles.square]}
+    >
       <Svg
         width="100%"
         height="100%"
@@ -117,6 +141,7 @@ function SymbolicArt({ assetKey, size = 160, lit = false }: ArtProps) {
 }
 const styles = StyleSheet.create({
   frame: { borderRadius: 18, overflow: "hidden", width: "100%" },
+  square: { borderRadius: 0 },
   // Warm wash standing in for the lit-diya state on photographic art.
   glow: {
     position: "absolute",

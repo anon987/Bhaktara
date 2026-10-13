@@ -4,7 +4,12 @@ import {
   BhaktaraMediaModule,
 } from "../../../modules/bhaktara-media";
 import { resolveMediaUrl } from "../media/config";
-import { MediaRequest, PlatformResult, PlatformServices } from "./contracts";
+import {
+  MediaRequest,
+  PlatformResult,
+  PlatformServices,
+  ShareChannel,
+} from "./contracts";
 import { stubServices } from "./stub";
 import { settingsGuide } from "./settingsGuide";
 import { AppState } from "react-native";
@@ -16,6 +21,8 @@ const SAVE_FOLDER = "bhaktara-media";
 // Share copies stay until the next share: the receiving app may read the file
 // after the share sheet closes.
 const SHARE_FOLDER = "bhaktara-share";
+// WhatsApp, then WhatsApp Business (doc 13 `content_share` channel "whatsapp").
+export const WHATSAPP_PACKAGES = ["com.whatsapp", "com.whatsapp.w4b"];
 
 const mimeByExtension: Record<string, string> = {
   jpg: "image/jpeg",
@@ -274,6 +281,49 @@ export function createAndroidServices(
             }),
           { keepFile: true },
         );
+      },
+      shareToWhatsApp: async (request) => {
+        if (!native) return unavailable();
+        removeQuietly(new Directory(Paths.cache, SHARE_FOLDER));
+        let channel: ShareChannel = "other";
+        const result = await withDownload(
+          request,
+          SHARE_FOLDER,
+          async ({ file, mimeType }) => {
+            for (const packageName of WHATSAPP_PACKAGES) {
+              let opened = false;
+              try {
+                // Absent in dev clients built before shareToAppAsync existed.
+                opened =
+                  (await native.shareToAppAsync?.(
+                    file.uri,
+                    mimeType,
+                    packageName,
+                    request.text ?? null,
+                  )) ?? false;
+              } catch (error) {
+                if (__DEV__) console.warn("WhatsApp share failed", error);
+              }
+              if (opened) {
+                channel = "whatsapp";
+                return;
+              }
+            }
+            // No WhatsApp: the same cache copy goes to the system share sheet.
+            const sharing = await loadSharing();
+            if (!(await sharing.isAvailableAsync()))
+              throw Object.assign(new Error("Sharing is unavailable"), {
+                code: "ERR_UNSUPPORTED",
+              });
+            await sharing.shareAsync(file.uri, {
+              mimeType,
+              dialogTitle: request.title,
+            });
+          },
+          // Kept for the receiving app; cleared before the next share.
+          { keepFile: true },
+        );
+        return result.status === "success" ? { ...result, channel } : result;
       },
     },
   };

@@ -25,7 +25,11 @@ const mockServices = {
     setRingtone: jest.fn(),
   },
   mediaSave: { canSave: true, save: jest.fn() },
-  share: { canShare: true, shareStatus: jest.fn() },
+  share: {
+    canShare: true,
+    shareStatus: jest.fn(),
+    shareToWhatsApp: jest.fn(),
+  },
   notifications: { canRequest: false, request: jest.fn() },
 };
 // Imports load before mockServices is initialised, so read it lazily.

@@ -258,6 +258,114 @@ test("status share opens the system share sheet from a cache copy without saving
   });
 });
 
+describe("WhatsApp share", () => {
+  const image = {
+    contentId: "wp-1",
+    title: "A golden sanctuary",
+    variant: { key: "wallpaper/wp-1/full.3f9a1c2e.jpg" },
+    text: "From Bhaktara",
+  };
+  const shared = "file:///cache/bhaktara-share/bhaktara-wp-1-full.3f9a1c2e.jpg";
+  const sharing = () => ({
+    isAvailableAsync: jest.fn(async () => true),
+    shareAsync: jest.fn(async () => undefined),
+  });
+
+  test("opens WhatsApp directly with the cached image and caption", async () => {
+    const native = fakeNative({ shareToAppAsync: jest.fn(async () => true) });
+    const sheet = sharing();
+    const services = createAndroidServices(native, async () => sheet);
+    await expect(services.share.shareToWhatsApp(image)).resolves.toEqual({
+      status: "success",
+      channel: "whatsapp",
+    });
+    expect(native.shareToAppAsync).toHaveBeenCalledTimes(1);
+    expect(native.shareToAppAsync).toHaveBeenCalledWith(
+      shared,
+      "image/jpeg",
+      "com.whatsapp",
+      "From Bhaktara",
+    );
+    expect(sheet.shareAsync).not.toHaveBeenCalled();
+    expect(native.saveToLibraryAsync).not.toHaveBeenCalled();
+    // Kept for WhatsApp to read; cleared before the next share.
+    expect(mockFs.deleted).not.toContain(shared);
+  });
+
+  test("tries WhatsApp Business when WhatsApp is not installed", async () => {
+    const shareToAppAsync = jest.fn(
+      async (_uri: string, _mime: string, packageName: string) =>
+        packageName === "com.whatsapp.w4b",
+    );
+    const services = createAndroidServices(
+      fakeNative({ shareToAppAsync }),
+      async () => sharing(),
+    );
+    await expect(services.share.shareToWhatsApp(image)).resolves.toEqual({
+      status: "success",
+      channel: "whatsapp",
+    });
+    expect(shareToAppAsync.mock.calls.map((call) => call[2])).toEqual([
+      "com.whatsapp",
+      "com.whatsapp.w4b",
+    ]);
+  });
+
+  test("falls back to the system share sheet without WhatsApp", async () => {
+    const native = fakeNative({ shareToAppAsync: jest.fn(async () => false) });
+    const sheet = sharing();
+    const services = createAndroidServices(native, async () => sheet);
+    await expect(services.share.shareToWhatsApp(image)).resolves.toEqual({
+      status: "success",
+      channel: "other",
+    });
+    expect(native.shareToAppAsync).toHaveBeenCalledTimes(2);
+    expect(sheet.shareAsync).toHaveBeenCalledWith(shared, {
+      mimeType: "image/jpeg",
+      dialogTitle: "A golden sanctuary",
+    });
+    // Downloaded once for every attempt.
+    expect(download).toHaveBeenCalledTimes(1);
+  });
+
+  test("an older build without shareToAppAsync, or a failing one, still shares", async () => {
+    const sheet = sharing();
+    const old = createAndroidServices(fakeNative(), async () => sheet);
+    await expect(old.share.shareToWhatsApp(image)).resolves.toEqual({
+      status: "success",
+      channel: "other",
+    });
+    const failing = createAndroidServices(
+      fakeNative({
+        shareToAppAsync: jest.fn(async () => {
+          throw new Error("no activity");
+        }),
+      }),
+      async () => sheet,
+    );
+    await expect(failing.share.shareToWhatsApp(image)).resolves.toEqual({
+      status: "success",
+      channel: "other",
+    });
+    expect(sheet.shareAsync).toHaveBeenCalledTimes(2);
+  });
+
+  test("no WhatsApp and no share sheet is unavailable; so is no native module", async () => {
+    const sheet = sharing();
+    sheet.isAvailableAsync.mockResolvedValue(false);
+    const services = createAndroidServices(
+      fakeNative({ shareToAppAsync: jest.fn(async () => false) }),
+      async () => sheet,
+    );
+    await expect(services.share.shareToWhatsApp(image)).resolves.toEqual({
+      status: "unavailable",
+    });
+    await expect(
+      createAndroidServices(null).share.shareToWhatsApp(image),
+    ).resolves.toEqual({ status: "unavailable" });
+  });
+});
+
 describe("guided ringtone permission (picture-in-picture)", () => {
   let appStateHandler: ((state: string) => void) | undefined;
   beforeEach(() => {
