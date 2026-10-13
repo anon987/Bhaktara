@@ -2,7 +2,7 @@
 # The JS bundle is embedded, so the APK runs without Metro. Manual dispatch
 # only, to save Actions minutes.
 name: Android APK
-run-name: APK ${{ inputs.abi }} @ ${{ github.ref_name }}
+run-name: APK ${{ inputs.abi }}${{ inputs.variant == 'debug' && ' dev' || '' }} @ ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -17,9 +17,17 @@ on:
           - armeabi-v7a
           - x86_64
           - x86
+      variant:
+        description: release (JS bundled in) or debug (dev client that loads JS from Metro)
+        required: false
+        type: choice
+        default: release
+        options:
+          - release
+          - debug
 
 concurrency:
-  group: android-apk-${{ github.ref }}-${{ inputs.abi }}
+  group: android-apk-${{ github.ref }}-${{ inputs.abi }}-${{ inputs.variant }}
   cancel-in-progress: true
 
 permissions:
@@ -31,11 +39,21 @@ jobs:
     timeout-minutes: 60
     env:
       ABI: ${{ inputs.abi }}
+      VARIANT: ${{ inputs.variant || 'release' }}
       # Booleans only: the secrets themselves reach just the steps that write
       # them, never npm install scripts.
       HAS_GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
       HAS_ENV_LOCAL: ${{ secrets.ENV_LOCAL != '' }}
     steps:
+      # The runner's ~14 GB free disk is not enough for an unminified debug
+      # build; drop toolchains this job never uses (not the Android SDK).
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
+            /usr/local/lib/node_modules /opt/hostedtoolcache/CodeQL /usr/share/swift \
+            /usr/local/share/powershell /usr/local/share/chromium /opt/microsoft
+          df -h /
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -77,13 +95,16 @@ jobs:
             echo "::warning::No ENV_LOCAL secret: this APK uses built-in sample data, not the Firebase backend."
           fi
 
-      - name: Build release APK
+      # Debug is the Expo dev client: it bundles no JS and loads it from Metro.
+      - name: Build ${{ inputs.variant || 'release' }} APK
         working-directory: android
-        run: ./gradlew assembleRelease -PreactNativeArchitectures="$ABI" --no-daemon
+        run: |
+          task=$([ "$VARIANT" = debug ] && echo assembleDebug || echo assembleRelease)
+          ./gradlew "$task" -PreactNativeArchitectures="$ABI" --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
-          name: app-${{ inputs.abi }}-${{ github.sha }}
-          path: android/app/build/outputs/apk/release/*.apk
+          name: app-${{ inputs.variant == 'debug' && 'dev-' || '' }}${{ inputs.abi }}-${{ github.sha }}
+          path: android/app/build/outputs/apk/${{ inputs.variant || 'release' }}/*.apk
           if-no-files-found: error
           retention-days: 7
