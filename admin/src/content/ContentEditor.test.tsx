@@ -70,7 +70,9 @@ describe("ContentEditor form", () => {
     renderEditor(fakeApi(), "EDITOR", undefined, undefined, "WALLPAPER");
     const status = await screen.findByRole("complementary", { name: "Status and media" });
     expect(within(status).getByText(/Needed before READY/)).toBeInTheDocument();
-    expect(within(status).getByText(/Hindi title is required/)).toBeInTheDocument();
+    // Wallpapers need only a name (from the file), not Hindi and English titles.
+    expect(within(status).getByText(/A name is required/)).toBeInTheDocument();
+    expect(within(status).queryByText(/Hindi title is required/)).not.toBeInTheDocument();
     expect(within(status).getByText(/At least one deity is required/)).toBeInTheDocument();
     expect(within(status).getByText(/Upload the wallpaper image/)).toBeInTheDocument();
     expect(within(status).queryByText(/media key/)).not.toBeInTheDocument();
