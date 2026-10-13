@@ -4,7 +4,7 @@ import type { ContentType, UploadMime } from "../../domain";
 import type { MediaInputRole } from "../../../../src/domain/mediaProcessing";
 import { readableError } from "../../errors";
 import type { PanelApi } from "../../panelApi";
-import { roleOf, slugFromFileName, titleFromFileName, type PlannedItem } from "../../components/panel/files";
+import { deitiesFromPath, roleOf, slugFromFileName, titleFromFileName, type PlannedItem } from "../../components/panel/files";
 import type { MediaSet } from "../../components/panel/preview";
 
 // The bulk uploader's steps for one item (D-036 drafts + doc 22 §A4 media):
@@ -23,12 +23,16 @@ export type UploadRow = PlannedItem & {
   media?: MediaSet;
   durationSeconds?: number | null;
   warnings: string[];
+  // Moved to READY after rendering (BatchDefaults.markReady).
+  ready?: boolean;
 };
 export type BatchDefaults = {
   deityIds: string[];
   audioLanguage: string;
   aiTool: string;
   aiPlan: string;
+  // Move each item to READY once its media is rendered, when nothing blocks it.
+  markReady: boolean;
 };
 
 export const rowFromPlan = (item: PlannedItem): UploadRow => ({
@@ -124,11 +128,13 @@ export async function runUpload(
     defaults: BatchDefaults;
     // IDs taken in this batch, so two files never race for the same ID.
     taken: Set<string>;
+    // Deities to recognise in folder and file names; the batch deity is the fallback.
+    deities?: { value: string; label: string }[];
     check?: (type: ContentType, file: File) => Promise<string | null>;
   },
   update: (patch: Partial<UploadRow>) => void,
 ): Promise<void> {
-  const { api, panel, type, defaults, taken, check = precheck } = deps;
+  const { api, panel, type, defaults, taken, deities = [], check = precheck } = deps;
   let contentId = row.contentId;
   try {
     if (!contentId) {
@@ -140,7 +146,8 @@ export async function runUpload(
       }
       const form = emptyForm(type);
       form.title = { hi: row.title.hi.trim(), en: row.title.en.trim() };
-      form.deityIds = defaults.deityIds;
+      const named = deitiesFromPath(row.main, deities);
+      form.deityIds = named.length ? named : defaults.deityIds;
       form.audioLanguage = defaults.audioLanguage === "none" ? "" : defaults.audioLanguage;
       form.aiTool = defaults.aiTool.trim();
       form.aiPlan = defaults.aiPlan.trim();
@@ -178,11 +185,22 @@ export async function runUpload(
 
     update({ stage: "rendering", progress: 1 });
     const result = await panel.processMedia({ contentId: contentId!, inputs });
+    const warnings = [...result.warnings];
+    let ready = false;
+    if (defaults.markReady) {
+      try {
+        await api.transitionContent({ contentId: contentId!, to: "READY" });
+        ready = true;
+      } catch (error) {
+        warnings.push(`Kept as a draft: ${errorText(error)}`);
+      }
+    }
     update({
       stage: "done",
       media: result.media as MediaSet,
       durationSeconds: result.durationSeconds,
-      warnings: result.warnings,
+      warnings,
+      ready,
     });
   } catch (error) {
     update({ stage: "error", error: errorText(error) });

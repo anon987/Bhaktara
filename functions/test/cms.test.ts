@@ -109,7 +109,8 @@ const draft = (
   saveGate: "REWARDED",
   isShareable: true,
   adEligible: true,
-  private: { aiTool: "Tool", aiPlan: "Pro", checklist: {} },
+  // Provenance and the checklist are optional notes, never gates.
+  private: {},
   ...overrides,
 });
 const allChecked = (type: ContentDraftInput["type"]) =>
@@ -256,11 +257,7 @@ describe("content workflow", () => {
       problems: { field: string }[];
     }>("createContent", { id, draft: draft() });
     assert.equal(result.status, "DRAFT");
-    assert.ok(
-      result.problems.some(
-        (problem) => problem.field === "checklist.titleChecked",
-      ),
-    );
+    assert.deepEqual(result.problems, []);
 
     const content = (await db.doc(`content/${id}`).get()).data()!;
     assert.equal(content.status, "DRAFT");
@@ -296,7 +293,41 @@ describe("content workflow", () => {
     assert.ok(audit.createdAt instanceof Timestamp);
   });
 
-  test("checklist gating blocks READY and lists every missing item", async () => {
+  test("createContent generates a unique slug ID when none is given", async () => {
+    type Created = { id: string; status: string };
+    const wall = draft({ title: { hi: "शिव", en: "Shiv Wallpaper" } });
+    const first = await users.EDITOR.call<Created>("createContent", {
+      draft: wall,
+    });
+    const second = await users.EDITOR.call<Created>("createContent", {
+      id: "",
+      draft: wall,
+    });
+    for (const created of [first, second]) {
+      assert.match(created.id, /^shiv-wallpaper-[a-z0-9]{4}$/);
+      assert.equal(created.status, "DRAFT");
+      const content = (await db.doc(`content/${created.id}`).get()).data()!;
+      assert.equal(content.slug, created.id);
+      assert.ok((await db.doc(`contentPrivate/${created.id}`).get()).exists);
+      assert.equal((await auditFor(created.id))[0].action, "content.create");
+    }
+    assert.notEqual(first.id, second.id);
+    // Hindi-only titles are romanized for the ID.
+    const hindi = await users.EDITOR.call<Created>("createContent", {
+      draft: draft({ title: { hi: "हनुमान चालीसा", en: "" } }),
+    });
+    assert.match(hindi.id, /^hanuman-chalisa-[a-z0-9]{4}$/);
+  });
+
+  test("READY is gated only by required fields, never by checklist or provenance", async () => {
+    // A wallpaper needs titles, a deity and thumb/mobile/full; no description.
+    await users.EDITOR.call("updateContent", {
+      id,
+      draft: draft({
+        description: { hi: "", en: "" },
+        media: { thumb: { key: "wallpaper/cms-wall/thumb.0123abcd.webp" } },
+      }),
+    });
     await rejects(
       users.EDITOR.call("transitionContentStatus", {
         contentId: id,
@@ -307,45 +338,25 @@ describe("content workflow", () => {
         assert.equal(details.reason, "CHECKLIST_INCOMPLETE");
         assert.deepEqual(
           details.problems.map((problem) => problem.field),
-          applicableChecks("WALLPAPER").map((item) => `checklist.${item}`),
+          ["media.mobile", "media.full"],
         );
       },
     );
-    // A partially ticked checklist is still blocked.
-    const partial = { ...allChecked("WALLPAPER"), noDistortions: false };
-    await users.EDITOR.call("updateContent", {
-      id,
-      draft: draft({
-        private: { aiTool: "Tool", aiPlan: "Pro", checklist: partial },
-      }),
-    });
-    await rejects(
-      users.EDITOR.call("transitionContentStatus", {
-        contentId: id,
-        to: "READY",
-      }),
-      "failed-precondition",
-      (details: { problems: { field: string }[] }) =>
-        assert.deepEqual(
-          details.problems.map((problem) => problem.field),
-          ["checklist.noDistortions"],
-        ),
-    );
+    await users.EDITOR.call("updateContent", { id, draft: draft() });
     assert.equal((await db.doc(`content/${id}`).get()).data()!.status, "DRAFT");
   });
 
-  test("required fields gate READY too (sacred text needs its source)", async () => {
+  test("sacred audio reaches READY without source text; descriptions are required", async () => {
+    const mantra = (overrides: Partial<ContentDraftInput> = {}) =>
+      draft({
+        type: "MANTRA",
+        saveGate: "FREE",
+        media: { thumb: { key: "mantra/cms-mantra/thumb.0123abcd.webp" } },
+        ...overrides,
+      });
     await users.EDITOR.call("createContent", {
       id: "cms-mantra",
-      draft: draft({
-        type: "MANTRA",
-        media: { thumb: { key: "mantra/cms-mantra/thumb.0123abcd.webp" } },
-        private: {
-          aiTool: "Tool",
-          aiPlan: "Pro",
-          checklist: allChecked("MANTRA"),
-        },
-      }),
+      draft: mantra({ description: { hi: "", en: "" } }),
     });
     await rejects(
       users.EDITOR.call("transitionContentStatus", {
@@ -356,8 +367,24 @@ describe("content workflow", () => {
       (details: { problems: { field: string }[] }) =>
         assert.deepEqual(
           details.problems.map((problem) => problem.field),
-          ["media.stream", "private.sourceText", "private.sourceTextRef"],
+          ["description.hi", "description.en", "media.stream"],
         ),
+    );
+    await users.EDITOR.call("updateContent", {
+      id: "cms-mantra",
+      draft: mantra({
+        media: {
+          thumb: { key: "mantra/cms-mantra/thumb.0123abcd.webp" },
+          stream: { key: "mantra/cms-mantra/stream.0123abcd.m4a" },
+        },
+      }),
+    });
+    assert.deepEqual(
+      await users.EDITOR.call("transitionContentStatus", {
+        contentId: "cms-mantra",
+        to: "READY",
+      }),
+      { id: "cms-mantra", from: "DRAFT", to: "READY" },
     );
   });
 
@@ -494,13 +521,7 @@ describe("content workflow", () => {
 
   test("the scheduler publishes due items and archives expired ones", async () => {
     const { publishDueContent } = await import("../src/content");
-    const ready = draft({
-      private: {
-        aiTool: "Tool",
-        aiPlan: "Pro",
-        checklist: allChecked("WALLPAPER"),
-      },
-    });
+    const ready = draft();
     const inOneHour = new Date(Date.now() + 3_600_000).toISOString();
     for (const contentId of ["cms-due", "cms-expiring"]) {
       await users.EDITOR.call("createContent", {

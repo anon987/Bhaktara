@@ -5,13 +5,13 @@ import { contentSearchTokens, SearchDeity } from "../../src/domain/search";
 import {
   checkItems,
   checklistState as typedChecklistState,
-  sacredTypes,
 } from "../../src/domain/checklist";
+import { descriptionRequiredTypes } from "../../src/domain/cms";
 
 // Seed/import manifest (doc 18 §3, doc 09 §4). One row per content item.
-// List columns use "|" between values; checklist columns are check_<item>.
-// The doc 12 §5 checklist lives in src/domain/checklist.ts so the importer,
-// the CMS Cloud Functions and the admin app enforce the same items.
+// List columns use "|" between values; optional checklist columns are
+// check_<item>. Provenance (aiTool, aiPlan, licenseRecordId, sourceText,
+// sourceTextRef) and checklist columns are optional notes, never gates.
 export {
   applicableChecks,
   checklist,
@@ -135,8 +135,15 @@ export const rowSchema = z
     ),
     title_hi: text(120),
     title_en: text(120),
-    description_hi: text(600),
-    description_en: text(600),
+    // Required for devotional audio types only (see superRefine).
+    description_hi: z.preprocess(
+      (value) => value ?? "",
+      z.string().trim().max(600),
+    ),
+    description_en: z.preprocess(
+      (value) => value ?? "",
+      z.string().trim().max(600),
+    ),
     deityIds: z.preprocess(
       split,
       z.array(slug).min(1, "needs at least one deity"),
@@ -165,25 +172,19 @@ export const rowSchema = z
     isFeatured: flag(false),
     sourceText: optional(20000),
     sourceTextRef: optional(300),
-    aiTool: text(100),
-    aiPlan: text(100),
+    aiTool: optional(100),
+    aiPlan: optional(100),
     licenseRecordId: optional(100),
-    checks: z.record(z.string(), flag(false)),
+    checks: z.record(z.string(), flag(false)).default({}),
   })
   .superRefine((row, context) => {
     const need = (field: keyof typeof row, why: string) => {
       if (!row[field])
         context.addIssue({ code: "custom", path: [field], message: why });
     };
-    if (sacredTypes.includes(row.type)) {
-      need(
-        "sourceText",
-        "sacred text types need the canonical source text (doc 12 §3)",
-      );
-      need(
-        "sourceTextRef",
-        "sacred text types need a source reference (doc 12 §3)",
-      );
+    if (descriptionRequiredTypes.includes(row.type)) {
+      need("description_hi", `${row.type} needs a Hindi description`);
+      need("description_en", `${row.type} needs an English description`);
     }
     if (
       ["BHAJAN", "AARTI", "MANTRA", "CHALISA", "RINGTONE"].includes(row.type)
@@ -225,8 +226,8 @@ export type ExistingContent = {
 const lockedStatuses = ["PUBLISHED", "SCHEDULED", "ARCHIVED"];
 
 // Builds the public content document and its private provenance record.
-// Imports land in DRAFT or READY (doc 09 §4); publishReady is a dev-only
-// shortcut until the transitionContentStatus function exists (doc 08).
+// A valid row already satisfies readinessProblems, so imports land in READY
+// (doc 09 §4); publishReady is a dev-only shortcut to PUBLISHED.
 export function buildDocuments(input: {
   row: ManifestRow;
   media: Media;
@@ -236,17 +237,14 @@ export function buildDocuments(input: {
   now: unknown;
 }) {
   const { row, media, deities, existing, now } = input;
-  const { values, missing } = checklistState(row);
-  let status: string;
-  if (existing && lockedStatuses.includes(existing.status)) {
-    // Never move live items backwards silently.
-    if (missing.length)
-      throw new Error(
-        `${row.importKey} is ${existing.status}; its checklist must stay complete (missing ${missing.join(", ")})`,
-      );
-    status = existing.status;
-  } else if (missing.length) status = "DRAFT";
-  else status = input.publishReady ? "PUBLISHED" : "READY";
+  const { values } = checklistState(row);
+  // Never move live items backwards silently.
+  const status =
+    existing && lockedStatuses.includes(existing.status)
+      ? existing.status
+      : input.publishReady
+        ? "PUBLISHED"
+        : "READY";
   const content = stripUndefined({
     type: row.type,
     status,
@@ -299,7 +297,7 @@ export function buildDocuments(input: {
     updatedAt: now,
     ...(existing ? {} : { createdBy: "content-import", createdAt: now }),
   });
-  return { contentId: row.importKey, status, missing, content, privateRecord };
+  return { contentId: row.importKey, status, content, privateRecord };
 }
 
 function stripUndefined<T extends Record<string, unknown>>(value: T): T {

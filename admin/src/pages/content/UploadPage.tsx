@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "../../app/context";
@@ -32,7 +31,8 @@ import { navigate, paths, sectionForType } from "../../app/router";
 import { can, type ContentType, contentTypes } from "../../domain";
 import { MultiDrop } from "../../components/panel/drop";
 import { planItems, rolesFor, type Plan } from "../../components/panel/files";
-import { ChipSelect, SelectField, useDeityOptions } from "../../components/panel/inputs";
+import { SelectField, SwitchField, useDeityOptions } from "../../components/panel/inputs";
+import { CreatableMultiSelect } from "../../components/panel/CreatableMultiSelect";
 import { EmptyState, PageHeader } from "../../components/panel/page";
 import { MediaThumb } from "../../components/panel/media";
 import { AudioPlayer, audioVariant, isAudio, VisualTile } from "../../components/panel/preview";
@@ -78,7 +78,7 @@ function StageBadge({ row }: { row: UploadRow }) {
     creating: "Creating draft",
     uploading: `Uploading ${Math.round(row.progress * 100)}%`,
     rendering: "Rendering",
-    done: "Done",
+    done: row.ready ? "Ready" : "Draft saved",
     error: "Failed",
   }[row.stage];
   return (
@@ -102,7 +102,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
   const [skipped, setSkipped] = useState<Plan["skipped"]>([]);
   const [running, setRunning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [defaults, setDefaults] = useState<BatchDefaults>({ deityIds: [], audioLanguage: "none", aiTool: "", aiPlan: "" });
+  const [defaults, setDefaults] = useState<BatchDefaults>({ deityIds: [], audioLanguage: "none", aiTool: "", aiPlan: "", markReady: true });
   const deityOptions = useDeityOptions();
 
   const commit = (next: UploadRow[]) => {
@@ -161,7 +161,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
     const worker = async () => {
       for (let key = queue.shift(); key; key = queue.shift()) {
         const row = rowsRef.current.find((item) => item.key === key);
-        if (row) await runUpload(row, { api, panel, type, defaults, taken: taken.current }, (patch) => updateRow(key, patch));
+        if (row) await runUpload(row, { api, panel, type, defaults, taken: taken.current, deities: deityOptions }, (patch) => updateRow(key, patch));
       }
     };
     // Two at a time: fast enough, and gentle on the processor and the network.
@@ -170,7 +170,10 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
     const done = rowsRef.current.filter((row) => row.stage === "done").length;
     const failed = rowsRef.current.filter((row) => row.stage === "error").length;
     if (failed) toast.error(`${failed} of ${rowsRef.current.length} failed. Fix them and choose Retry failed.`);
-    else if (done) toast.success(`${done} drafts created with their media.`);
+    else if (done) {
+      const ready = rowsRef.current.filter((row) => row.ready).length;
+      toast.success(ready ? `${ready} of ${done} uploaded and READY to publish.` : `${done} drafts created with their media.`);
+    }
   };
 
   const counts = useMemo(() => {
@@ -218,27 +221,13 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
               );
             })}
           </div>
-          <Collapsible className="mt-4">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="px-2 text-muted-foreground">
-                <ChevronDown /> Details for the whole batch (optional)
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 grid gap-4 md:grid-cols-2">
-              <ChipSelect label="Deity" options={deityOptions} value={defaults.deityIds} onChange={(deityIds) => setDefaults({ ...defaults, deityIds })} hint="Applied to every item in this batch." />
-              {isAudio(type) && (
-                <SelectField id="batch-language" label="Language of the audio" value={defaults.audioLanguage} options={languages} onChange={(audioLanguage) => setDefaults({ ...defaults, audioLanguage })} />
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="batch-ai-tool">Made with (AI tool)</Label>
-                <Input id="batch-ai-tool" value={defaults.aiTool} placeholder="e.g. Suno" onChange={(event) => setDefaults({ ...defaults, aiTool: event.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="batch-ai-plan">AI plan</Label>
-                <Input id="batch-ai-plan" value={defaults.aiPlan} placeholder="e.g. Pro" onChange={(event) => setDefaults({ ...defaults, aiPlan: event.target.value })} />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <CreatableMultiSelect label="Deity" noun="deity" options={deityOptions} value={defaults.deityIds} onChange={(deityIds) => setDefaults({ ...defaults, deityIds })} max={10} hint="Files in a folder named after a deity (hanuman/…) or named like ganesh_02.jpg get that deity automatically; the rest get this one." />
+            <SwitchField id="batch-ready" label="Mark READY when done" description="Each item goes to READY as soon as its media is rendered, so it only needs publishing. Items missing something stay as drafts." checked={defaults.markReady} onChange={(markReady) => setDefaults({ ...defaults, markReady })} />
+            {isAudio(type) && (
+              <SelectField id="batch-language" label="Language of the audio" value={defaults.audioLanguage} options={languages} onChange={(audioLanguage) => setDefaults({ ...defaults, audioLanguage })} />
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -249,7 +238,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <MultiDrop accept={acceptFor(type)} disabled={running} onFiles={addFiles} onError={(message) => toast.error(message)}>
-            <p className="mt-1 text-sm text-muted-foreground">Everything lands as a draft; nothing is published.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Nothing is published until you publish it.</p>
           </MultiDrop>
           {skipped.length > 0 && (
             <Collapsible>
@@ -281,7 +270,11 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">3. Check and upload ({rows.length})</CardTitle>
-            <CardDescription>Edit the titles if you like; the Hindi title can also be added later in the editor.</CardDescription>
+            <CardDescription>
+              {type === "WALLPAPER"
+                ? "Names come from the file names; wallpapers need nothing else."
+                : "Edit the titles if you like; the Hindi title can also be added later in the editor."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {rows.map((row) => (
@@ -389,10 +382,10 @@ function UploadRowCard({
             <p className="truncate font-mono text-[11px] text-muted-foreground">{row.contentId ?? row.id}</p>
           </div>
         </div>
-        <div className="grid flex-1 gap-2 sm:grid-cols-2">
+        {type === "WALLPAPER" ? <div className="flex-1" /> : <div className="grid flex-1 gap-2 sm:grid-cols-2">
           <Input aria-label={`English title for ${row.name}`} value={row.title.en} disabled={!editable || busy && !done} placeholder="English title" onChange={(event) => setTitle({ ...row.title, en: event.target.value })} />
           <Input aria-label={`Hindi title for ${row.name}`} lang="hi" value={row.title.hi} disabled={!editable || busy && !done} placeholder="हिन्दी शीर्षक" onChange={(event) => setTitle({ ...row.title, hi: event.target.value })} />
-        </div>
+        </div>}
         <div className="flex items-center gap-2 lg:w-72 lg:justify-end">
           {done && isAudio(type) && (
             <AudioPlayer iconOnly mediaKey={audioVariant(type, row.media)?.key} title={title} />

@@ -95,6 +95,10 @@ export function ContentLibraryPage({ type: fixedType }: { type?: ContentType }) 
   const newPath = fixedType ? paths.contentNewOf(fixedType) : paths.contentNew;
   const newLabel = info ? `New ${info.one}` : "New content";
   const writable = can(role, "content.edit");
+  const canUpload = can(role, "content.upload");
+  // File-first sections: uploading creates the drafts, so it leads.
+  const uploadFirst = fixedType === "WALLPAPER" || fixedType === "RINGTONE" || fixedType === "STATUS";
+  const uploadLabel = uploadFirst && info ? `Upload ${info.many.toLowerCase()}` : "Upload files";
 
   return (
     <div>
@@ -106,14 +110,19 @@ export function ContentLibraryPage({ type: fixedType }: { type?: ContentType }) 
         }
         actions={
           <>
-            {can(role, "content.upload") && (
+            {canUpload && !uploadFirst && (
               <Button variant="outline" onClick={() => navigate(paths.upload(fixedType))}>
-                <UploadCloud /> Upload files
+                <UploadCloud /> {uploadLabel}
               </Button>
             )}
             {writable && (
-              <Button onClick={() => navigate(newPath)}>
+              <Button variant={uploadFirst && canUpload ? "outline" : "default"} onClick={() => navigate(newPath)}>
                 <Plus /> {newLabel}
+              </Button>
+            )}
+            {canUpload && uploadFirst && (
+              <Button onClick={() => navigate(paths.upload(fixedType))}>
+                <UploadCloud /> {uploadLabel}
               </Button>
             )}
           </>
@@ -155,7 +164,13 @@ export function ContentLibraryPage({ type: fixedType }: { type?: ContentType }) 
           icon={BookOpen}
           title={info ? `No ${info.many.toLowerCase()} here` : "No content here"}
           text="Create an item, or bulk-import a manifest with npm run content:import."
-          action={writable ? <Button onClick={() => navigate(newPath)}><Plus /> {newLabel}</Button> : undefined}
+          action={
+            uploadFirst && canUpload ? (
+              <Button onClick={() => navigate(paths.upload(fixedType))}><UploadCloud /> {uploadLabel}</Button>
+            ) : writable ? (
+              <Button onClick={() => navigate(newPath)}><Plus /> {newLabel}</Button>
+            ) : undefined
+          }
         />
       )}
       {visible.length > 0 &&

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { zipSync } from "fflate";
-import { expandZips, planItems, slugFromFileName, titleFromFileName, uploadMimeOf } from "./components/panel/files";
+import { deitiesFromPath, expandZips, planItems, slugFromFileName, titleFromFileName, uploadMimeOf } from "./components/panel/files";
 import { rowFromPlan, runUpload, uploadsUnavailable, type UploadRow } from "./pages/content/uploadPipeline";
 import type { PanelApi } from "./panelApi";
 import { callableError, fakeApi } from "./test/fakeApi";
@@ -67,8 +67,32 @@ describe("planning items", () => {
   });
 });
 
+describe("deities from folders and file names", () => {
+  const deities = [
+    { value: "hanuman", label: "Hanuman" },
+    { value: "ganesha", label: "Ganesh" },
+    { value: "shiva", label: "Shiv" },
+    { value: "parvati", label: "Parvati" },
+  ];
+  it("reads the folder, else the file name, on whole words only", async () => {
+    const zip = zipSync({
+      "wallpapers/Hanuman/04.png": new Uint8Array([1]),
+      "Shiv Parvati/dawn.png": new Uint8Array([1]),
+      "misc/ganesh_02.jpg": new Uint8Array([1]),
+      "misc/shivalik-hills.jpg": new Uint8Array([1]),
+    });
+    const files = await expandZips([new File([zip as BlobPart], "batch.zip")]);
+    const of = (name: string) => deitiesFromPath(files.find((item) => item.name === name)!, deities);
+    expect(of("04.png")).toEqual(["hanuman"]);
+    expect(of("dawn.png")).toEqual(["shiva", "parvati"]);
+    expect(of("ganesh_02.jpg")).toEqual(["ganesha"]);
+    expect(of("shivalik-hills.jpg")).toEqual([]);
+    expect(deitiesFromPath(file("loose.png"), deities)).toEqual([]);
+  });
+});
+
 const panelWith = (processMedia: PanelApi["processMedia"]) => ({ processMedia }) as unknown as PanelApi;
-const defaults = { deityIds: ["shiva"], audioLanguage: "hi", aiTool: "Suno", aiPlan: "Pro" };
+const defaults = { deityIds: ["shiva"], audioLanguage: "hi", aiTool: "Suno", aiPlan: "Pro", markReady: false };
 
 describe("upload pipeline", () => {
   const plan = planItems("BHAJAN", [file("shiv-tandav.mp3", 300), file("shiv-tandav.jpg", 100)]);
@@ -98,6 +122,33 @@ describe("upload pipeline", () => {
       inputs: { audio: "staging/k1.audio/mpeg", image: "staging/k2.image/jpeg" },
     });
     expect(row.durationSeconds).toBe(300);
+  });
+
+  it("uses the deity a folder names, and marks the item READY when asked", async () => {
+    const zip = zipSync({ "hanuman/04.png": new Uint8Array([1]) });
+    const [image] = await expandZips([new File([zip as BlobPart], "w.zip")]);
+    const wallpaper = planItems("WALLPAPER", [image]).items[0];
+    const api = fakeApi({ requestUploadUrl: vi.fn(async () => ({ key: "staging/k.png", url: "u", method: "PUT" as const, headers: {}, expiresAt: "" })) });
+    const processMedia = vi.fn(async () => ({ media: { thumb: { key: "wallpaper/a/thumb.webp" } }, warnings: [], durationSeconds: null }));
+    let row: UploadRow = rowFromPlan(wallpaper);
+    const deities = [{ value: "hanuman", label: "Hanuman" }];
+    await runUpload(row, { api, panel: panelWith(processMedia), type: "WALLPAPER", defaults: { ...defaults, markReady: true }, taken: new Set(), deities, check: async () => null }, (patch) => (row = { ...row, ...patch }));
+    expect(vi.mocked(api.createContent).mock.calls[0][1].deityIds).toEqual(["hanuman"]);
+    expect(api.transitionContent).toHaveBeenCalledWith({ contentId: row.contentId, to: "READY" });
+    expect(row).toMatchObject({ stage: "done", ready: true });
+  });
+
+  it("keeps the draft and says why when READY is refused", async () => {
+    const api = fakeApi({
+      requestUploadUrl: vi.fn(async () => ({ key: "staging/k.png", url: "u", method: "PUT" as const, headers: {}, expiresAt: "" })),
+      transitionContent: vi.fn().mockRejectedValue(callableError("failed-precondition", "Some required fields are missing.")),
+    });
+    const processMedia = vi.fn(async () => ({ media: {}, warnings: [], durationSeconds: null }));
+    let row: UploadRow = rowFromPlan(planItems("WALLPAPER", [file("a.png")]).items[0]);
+    await runUpload(row, { api, panel: panelWith(processMedia), type: "WALLPAPER", defaults: { ...defaults, deityIds: [], markReady: true }, taken: new Set(), check: async () => null }, (patch) => (row = { ...row, ...patch }));
+    expect(row.stage).toBe("done");
+    expect(row.ready).toBe(false);
+    expect(row.warnings.join(" ")).toMatch(/Kept as a draft/);
   });
 
   it("leaves the audio language unset when the batch says so", async () => {
