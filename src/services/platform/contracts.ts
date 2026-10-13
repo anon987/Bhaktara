@@ -47,10 +47,20 @@ export interface MediaSaveService {
   readonly canSave: boolean;
   save(request: MediaRequest & { kind: SaveKind }): Promise<PlatformResult>;
 }
+// Doc 13 `content_share` channel: where the share actually opened.
+export type ShareChannel = "whatsapp" | "other";
+export type ShareResult = PlatformResult & { channel?: ShareChannel };
 export interface ShareService {
   readonly canShare: boolean;
   // System share sheet with a temporary cache copy; never saves to the gallery.
   shareStatus(request: MediaRequest): Promise<PlatformResult>;
+  // Opens WhatsApp (then WhatsApp Business) straight to its chat picker with
+  // the file and an optional caption; without either app it falls back to the
+  // system share sheet. Free, never gated (D-041). A success reports the
+  // channel that opened.
+  shareToWhatsApp(
+    request: MediaRequest & { text?: string },
+  ): Promise<ShareResult>;
 }
 export interface NotificationPermissionService {
   canRequest: boolean;

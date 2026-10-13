@@ -11,6 +11,10 @@ export const stubServices: PlatformServices = {
     setRingtone: unavailable,
   },
   mediaSave: { canSave: false, save: unavailable },
-  share: { canShare: false, shareStatus: unavailable },
+  share: {
+    canShare: false,
+    shareStatus: unavailable,
+    shareToWhatsApp: unavailable,
+  },
   notifications: { canRequest: false, request: unavailable },
 };

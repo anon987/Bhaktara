@@ -6,6 +6,8 @@ import android.app.Activity
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
 import android.app.WallpaperManager
+import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
@@ -21,6 +23,7 @@ import android.provider.BaseColumns
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Rational
+import androidx.core.content.FileProvider
 import expo.modules.interfaces.permissions.PermissionsResponseListener
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.exception.Exceptions
@@ -43,6 +46,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 // Saved media lands in a "Bhaktara" folder inside the standard public directory for its kind.
 private const val ALBUM = "Bhaktara"
 private val SAFE_FILE_NAME = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+private val SAFE_PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
+// Declared in this module's AndroidManifest.xml; serves only the cache share folder.
+private const val FILE_PROVIDER_SUFFIX = ".BhaktaraMediaFileProvider"
 
 // Error codes are part of the JS contract (modules/bhaktara-media/index.ts).
 internal class StoragePermissionDeniedException :
@@ -212,6 +218,55 @@ class BhaktaraMediaModule : Module() {
         throw WriteSettingsDeniedException()
       }
       uri.toString()
+    }
+
+    // Opens one app's share screen directly (e.g. WhatsApp's chat picker) with a file from the app
+    // cache, shared through this module's FileProvider with a one-off read grant. `text` becomes the
+    // caption. Resolves false, opening nothing, when the app is not installed, so the caller can try
+    // the next app or the system share sheet.
+    AsyncFunction("shareToAppAsync") { fileUri: String, mimeType: String, packageName: String, text: String? ->
+      if (!SAFE_PACKAGE_NAME.matches(packageName)) {
+        throw InvalidArgumentException("Invalid package name")
+      }
+      if (!isInstalled(packageName)) return@AsyncFunction false
+      val activity = appContext.currentActivity ?: throw Exceptions.MissingActivity()
+      val file = cacheFile(fileUri)
+      val contentUri = try {
+        FileProvider.getUriForFile(context, context.packageName + FILE_PROVIDER_SUFFIX, file)
+      } catch (error: IllegalArgumentException) {
+        throw InvalidArgumentException("The file is outside the shared cache folder")
+      }
+      val intent = Intent(Intent.ACTION_SEND).apply {
+        setPackage(packageName)
+        type = mimeType
+        putExtra(Intent.EXTRA_STREAM, contentUri)
+        if (!text.isNullOrBlank()) putExtra(Intent.EXTRA_TEXT, text)
+        // ClipData carries the grant reliably on every Android version.
+        clipData = ClipData.newRawUri(null, contentUri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      }
+      try {
+        activity.startActivity(intent)
+        true
+      } catch (error: ActivityNotFoundException) {
+        false
+      }
+    }.runOnQueue(Queues.MAIN)
+  }
+
+  // Package visibility for these apps is declared with <queries> in this module's manifest.
+  private fun isInstalled(packageName: String): Boolean {
+    val manager = context.packageManager
+    return try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        manager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+      } else {
+        @Suppress("DEPRECATION")
+        manager.getPackageInfo(packageName, 0)
+      }
+      true
+    } catch (error: PackageManager.NameNotFoundException) {
+      false
     }
   }
 

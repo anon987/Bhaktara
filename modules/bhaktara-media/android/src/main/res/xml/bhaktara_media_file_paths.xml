@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the temporary share copies (SHARE_FOLDER in src/services/platform/androidMedia.ts). -->
+<paths>
+  <cache-path name="bhaktara_share" path="bhaktara-share/" />
+</paths>
