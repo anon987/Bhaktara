@@ -31,8 +31,8 @@ import {
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { ContentCard } from "../../components/ContentCard";
 import { categoryArt } from "../../components/categoryArt";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { backgrounds } from "../../components/backgrounds";
+import { AppBar } from "../../components/AppBar";
 import { resolveMediaUrl } from "../../services/media/config";
 import { colors, sanctum, shrine } from "../../theme/tokens";
 import { localPracticeDay } from "../../domain/practice";
@@ -131,31 +131,28 @@ export function HomeScreen({ navigation }: Props) {
     </Page>
   );
 }
-// The greeting for the hour on a saffron band, a marigold toran hanging below.
+// The greeting for the hour in the saffron app bar, a marigold toran hanging
+// from its edge instead of the jhalar.
 function Greeting() {
   const { t } = useApp();
-  const insets = useSafeAreaInsets();
   const now = new Date();
   return (
     <View style={styles.greeting}>
-      <LinearGradient
-        colors={[colors.bhagwa, colors.saffron, colors.primary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.greetingBand, { paddingTop: insets.top + 14 }]}
-      >
-        <Txt
-          bold
-          size={30}
-          accessibilityRole="header"
-          style={{ color: colors.white }}
-        >
-          {`${t(greetingFor(now))} 🙏`}
-        </Txt>
-        <Txt size={15} style={{ color: colors.headerText }}>
-          {t("homeSubtitle")}
-        </Txt>
-      </LinearGradient>
+      <AppBar fringe={false}>
+        <View style={{ paddingHorizontal: 6, paddingTop: 4 }}>
+          <Txt
+            bold
+            size={28}
+            accessibilityRole="header"
+            style={{ color: colors.white }}
+          >
+            {`${t(greetingFor(now))} 🙏`}
+          </Txt>
+          <Txt size={15} style={{ color: colors.headerText }}>
+            {t("homeSubtitle")}
+          </Txt>
+        </View>
+      </AppBar>
       <Image
         source={art.toran}
         style={styles.toran}
@@ -537,20 +534,12 @@ function BannerCarousel({
 
 const styles = StyleSheet.create({
   greeting: { marginBottom: 4 },
-  greetingBand: {
-    paddingHorizontal: 22,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-    borderBottomWidth: 3,
-    borderColor: colors.haldi,
-  },
   // The toran is 1080 x 217: full width, hanging from the top edge.
   toran: {
     width: "100%",
     height: undefined,
     aspectRatio: 1080 / 217,
-    marginTop: -18,
+    marginTop: -10,
   },
   hero: {
     width: "100%",

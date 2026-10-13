@@ -17,9 +17,9 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { backgrounds } from "./backgrounds";
-import { ChevronLeft, ChevronRight, LucideIcon } from "lucide-react-native";
+import { AppBar } from "./AppBar";
+import { ChevronRight, LucideIcon } from "lucide-react-native";
 import { colors, fonts, radii } from "../theme/tokens";
 import { useApp } from "../app/providers/AppProvider";
 import { StringKey } from "../i18n/strings";
@@ -224,7 +224,7 @@ export function Page({
   subtitle?: string;
   onBack?: () => void;
   scroll?: boolean;
-  // Replaces the saffron title band; scrolls with the page (Home's greeting).
+  // Replaces the app bar; scrolls with the page (Home's greeting).
   header?: React.ReactNode;
   // The screen's soft background art.
   background?: ImageSourcePropType;
@@ -250,40 +250,7 @@ export function Page({
         accessible={false}
         style={styles.pageBackground}
       />
-      {!header && (
-        <LinearGradient
-          colors={[colors.bhagwa, colors.saffron, colors.primary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.band, { paddingTop: insets.top + 12 }]}
-        >
-          <Row style={styles.header}>
-            {onBack && (
-              <IconButton
-                icon={ChevronLeft}
-                label={t("close")}
-                onPress={onBack}
-                color={colors.white}
-              />
-            )}
-            <View style={{ flex: 1 }}>
-              <Txt
-                bold
-                size={28}
-                accessibilityRole="header"
-                style={{ color: colors.white }}
-              >
-                {title}
-              </Txt>
-              {subtitle && (
-                <Txt size={14} style={{ color: colors.headerText }}>
-                  {subtitle}
-                </Txt>
-              )}
-            </View>
-          </Row>
-        </LinearGradient>
-      )}
+      {!header && <AppBar title={title} subtitle={subtitle} onBack={onBack} />}
       {scroll ? (
         <ScrollView
           contentContainerStyle={{ paddingBottom: 28 }}
@@ -299,6 +266,12 @@ export function Page({
           {body}
         </>
       )}
+      {/* Saffron behind the status bar, so content scrolled under it (Home's
+          greeting) never shows through. */}
+      <View
+        pointerEvents="none"
+        style={[styles.statusStrip, { height: insets.top }]}
+      />
     </SafeAreaView>
   );
 }
@@ -362,6 +335,13 @@ export function useUnavailable() {
 }
 export const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.background },
+  statusStrip: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.bhagwa,
+  },
   // Explicit size: a bundled image with only absoluteFill draws at its pixel size.
   pageBackground: {
     position: "absolute",
@@ -370,24 +350,9 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  // The saffron title band, edged in haldi gold with rounded lower corners.
-  band: {
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-    borderBottomWidth: 3,
-    borderColor: colors.haldi,
-    marginBottom: 18,
-  },
   pageContent: {
     paddingHorizontal: 22,
     gap: 20,
-    width: "100%",
-    maxWidth: 640,
-    alignSelf: "center",
-  },
-  header: {
-    paddingHorizontal: 22,
-    paddingBottom: 20,
     width: "100%",
     maxWidth: 640,
     alignSelf: "center",
