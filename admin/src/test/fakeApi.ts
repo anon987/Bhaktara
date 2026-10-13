@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { AdminApi } from "../api";
+import type { BulkContentInput } from "../domain";
 
 // A fully stubbed AdminApi; tests override the calls they care about.
 export function fakeApi(overrides: Partial<AdminApi> = {}): AdminApi {
@@ -16,6 +17,9 @@ export function fakeApi(overrides: Partial<AdminApi> = {}): AdminApi {
       id: input.contentId,
       from: "DRAFT" as const,
       to: input.to,
+    })),
+    bulkContent: vi.fn(async (input: BulkContentInput) => ({
+      results: input.ids.map((id) => ({ id, ok: true })),
     })),
     listBanners: vi.fn(async () => []),
     createBanner: vi.fn(async () => ({ id: "b1" })),

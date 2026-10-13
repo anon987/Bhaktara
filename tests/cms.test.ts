@@ -1,13 +1,16 @@
 import {
   adminRoles,
   allowedTransitions,
+  applyListPatch,
   bannerInputSchema,
+  bulkContentSchema,
   bannerRoutes,
   can,
   contentDraftSchema,
   ContentDraftInput,
   contentStatuses,
   createContentSchema,
+  deletableContent,
   draftFromDocuments,
   readinessProblems,
   saveContentSchema,
@@ -312,5 +315,71 @@ describe("banners (doc 09 §7, D-015)", () => {
     expect(
       bannerInputSchema.safeParse({ ...banner, endAt: banner.startAt }).success,
     ).toBe(false);
+  });
+});
+
+describe("bulk content contract", () => {
+  const ids = (count: number) =>
+    Array.from({ length: count }, (_, index) => `item-${index}`);
+  const valid = (input: unknown) => bulkContentSchema.safeParse(input).success;
+
+  it("takes 1 to 200 unique slugs", () => {
+    const action = { kind: "delete" };
+    expect(valid({ ids: ids(200), action })).toBe(true);
+    expect(valid({ ids: ids(201), action })).toBe(false);
+    expect(valid({ ids: [], action })).toBe(false);
+    expect(valid({ ids: ["a", "a"], action })).toBe(false);
+    expect(valid({ ids: ["Not A Slug"], action })).toBe(false);
+  });
+
+  it("needs a publish time to schedule", () => {
+    const transition = (extra: object) => ({
+      ids: ["a"],
+      action: { kind: "transition", to: "SCHEDULED", ...extra },
+    });
+    expect(valid(transition({}))).toBe(false);
+    expect(
+      valid(transition({ scheduledAt: "2026-11-01T04:30:00.000Z" })),
+    ).toBe(true);
+    expect(
+      valid({ ids: ["a"], action: { kind: "transition", to: "PUBLISHED" } }),
+    ).toBe(true);
+  });
+
+  it("edits metadata only and needs at least one change", () => {
+    const update = (patch: object) => ({
+      ids: ["a"],
+      action: { kind: "update", patch },
+    });
+    expect(valid(update({ isFeatured: true }))).toBe(true);
+    expect(
+      valid(update({ deityIds: { mode: "add", values: ["hanuman"] } })),
+    ).toBe(true);
+    expect(valid(update({}))).toBe(false);
+    expect(valid(update({ title: { hi: "x", en: "x" } }))).toBe(false);
+    expect(valid(update({ media: {} }))).toBe(false);
+    expect(valid(update({ tags: { mode: "merge", values: [] } }))).toBe(false);
+  });
+
+  it("applies add, remove and replace without duplicates", () => {
+    const current = ["shiva", "hanuman"];
+    expect(applyListPatch(current, undefined)).toEqual(current);
+    expect(
+      applyListPatch(current, { mode: "add", values: ["hanuman", "durga"] }),
+    ).toEqual(["shiva", "hanuman", "durga"]);
+    expect(applyListPatch(current, { mode: "remove", values: ["shiva"] })).toEqual(
+      ["hanuman"],
+    );
+    expect(applyListPatch(current, { mode: "replace", values: ["ganesha"] })).toEqual(
+      ["ganesha"],
+    );
+  });
+
+  it("deletes only archived items and never-published drafts", () => {
+    expect(deletableContent({ status: "ARCHIVED", publishedAt: 1 })).toBe(true);
+    expect(deletableContent({ status: "DRAFT" })).toBe(true);
+    expect(deletableContent({ status: "DRAFT", publishedAt: 1 })).toBe(false);
+    for (const status of ["READY", "SCHEDULED", "PUBLISHED"])
+      expect(deletableContent({ status })).toBe(false);
   });
 });

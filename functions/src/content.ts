@@ -35,10 +35,11 @@ import {
   writeAudit,
 } from "./core";
 
-const contentRef = (id: string) => db().collection("content").doc(id);
-const privateRef = (id: string) => db().collection("contentPrivate").doc(id);
+export const contentRef = (id: string) => db().collection("content").doc(id);
+export const privateRef = (id: string) =>
+  db().collection("contentPrivate").doc(id);
 
-async function loadDeities(tx: Transaction, ids: string[]) {
+export async function loadDeities(tx: Transaction, ids: string[]) {
   if (!ids.length) return new Map<string, SearchDeity>();
   const snapshots = await tx.getAll(
     ...ids.map((id) => db().collection("deities").doc(id)),
@@ -53,8 +54,8 @@ async function loadDeities(tx: Transaction, ids: string[]) {
   );
 }
 
-function assertKnownDeities(
-  draft: ContentDraft,
+export function assertKnownDeities(
+  draft: Pick<ContentDraft, "deityIds">,
   deities: Map<string, SearchDeity>,
 ) {
   const unknown = draft.deityIds.filter((id) => !deities.has(id));
@@ -253,20 +254,23 @@ const incomplete = (problems: ReadinessProblem[]) =>
 const millis = (value: unknown) =>
   value instanceof Timestamp ? value.toMillis() : undefined;
 
+export type TransitionRequest = {
+  actor: Actor;
+  id: string;
+  content: DocumentData;
+  privateRecord: DocumentData | undefined;
+  to: ContentStatus;
+  scheduledAt?: string;
+  now: Date;
+};
+
 // D-036 state machine with role rules (doc 08 §3) and required-field gating
-// (readinessProblems; no checklist or provenance gates). Shared by the
-// callable and the scheduled publisher.
-async function applyTransition(
+// (readinessProblems; no checklist or provenance gates). Checks one move and
+// returns the field updates without writing, so the bulk callable can chain
+// DRAFT → READY → PUBLISHED into a single write.
+export async function planTransition(
   tx: Transaction,
-  input: {
-    actor: Actor;
-    id: string;
-    content: DocumentData;
-    privateRecord: DocumentData | undefined;
-    to: ContentStatus;
-    scheduledAt?: string;
-    now: Date;
-  },
+  input: TransitionRequest,
 ) {
   const { actor, id, content, to, now } = input;
   const from = content.status as ContentStatus;
@@ -345,6 +349,13 @@ async function applyTransition(
         })),
       );
   }
+  return { from, updates };
+}
+
+// Shared by the callable and the scheduled publisher.
+async function applyTransition(tx: Transaction, input: TransitionRequest) {
+  const { actor, id, to } = input;
+  const { from, updates } = await planTransition(tx, input);
   tx.update(contentRef(id), updates);
   writeAudit(tx, actor, {
     action: "content.transition",

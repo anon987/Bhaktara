@@ -6,6 +6,7 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
 import * as assets from "./assets";
 import * as banners from "./banners";
+import * as bulk from "./bulk";
 import * as catalog from "./catalog";
 import * as dashboard from "./dashboard";
 import * as content from "./content";
@@ -36,6 +37,10 @@ export const updateContent = admin(content.updateContent);
 export const transitionContentStatus = admin((actor, data) =>
   content.transitionContentStatus(actor, data),
 );
+// Library multi-select: up to 200 items, each in its own transaction.
+export const bulkContent = admin((actor, data) => bulk.bulkContent(actor, data), {
+  timeoutSeconds: 120,
+});
 export const createBanner = admin(banners.createBanner);
 export const updateBanner = admin(banners.updateBanner);
 export const deleteBanner = admin(banners.deleteBanner);
