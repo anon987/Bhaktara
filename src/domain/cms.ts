@@ -223,6 +223,121 @@ export const transitionSchema = z
   .strict();
 export type TransitionInput = z.infer<typeof transitionSchema>;
 
+// ---- Bulk actions (bulkContent callable). Every item is processed on its
+// own (one transaction each), so one failing item never blocks the rest.
+export const BULK_MAX_IDS = 200;
+export const bulkListModes = ["add", "remove", "replace"] as const;
+export type BulkListMode = (typeof bulkListModes)[number];
+const bulkListPatch = <T extends z.ZodType<string>>(value: T) =>
+  z
+    .object({
+      mode: z.enum(bulkListModes),
+      values: z
+        .array(value)
+        .max(40)
+        .refine((list) => new Set(list).size === list.length, {
+          message: "duplicate value",
+        }),
+    })
+    .strict();
+// Metadata only: titles, descriptions, media and the private panel are never
+// changed in bulk.
+export const bulkPatchSchema = z
+  .object({
+    deityIds: bulkListPatch(slugSchema).optional(),
+    categoryIds: bulkListPatch(slugSchema).optional(),
+    tags: bulkListPatch(z.string().trim().min(1).max(60)).optional(),
+    isFeatured: z.boolean().optional(),
+    isShareable: z.boolean().optional(),
+    adEligible: z.boolean().optional(),
+    saveGate: z.enum(["FREE", "REWARDED"]).optional(),
+  })
+  .strict()
+  .refine(
+    (patch) => Object.values(patch).some((value) => value !== undefined),
+    { message: "choose at least one change" },
+  );
+export type BulkPatch = z.infer<typeof bulkPatchSchema>;
+export type BulkListPatch = { mode: BulkListMode; values: string[] };
+
+export const bulkActionSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("transition"),
+      to: z.enum(contentStatuses),
+      scheduledAt: isoInstantSchema.optional(),
+    })
+    .strict(),
+  z.object({ kind: z.literal("update"), patch: bulkPatchSchema }).strict(),
+  z.object({ kind: z.literal("delete") }).strict(),
+]);
+export type BulkAction = z.infer<typeof bulkActionSchema>;
+
+export const bulkContentSchema = z
+  .object({
+    ids: z
+      .array(slugSchema)
+      .min(1)
+      .max(BULK_MAX_IDS)
+      .refine((ids) => new Set(ids).size === ids.length, {
+        message: "duplicate ID",
+      }),
+    action: bulkActionSchema,
+  })
+  .strict()
+  .superRefine((input, ctx) => {
+    if (
+      input.action.kind === "transition" &&
+      input.action.to === "SCHEDULED" &&
+      !input.action.scheduledAt
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["action", "scheduledAt"],
+        message: "a publish time is required to schedule",
+      });
+  });
+export type BulkContentInput = z.infer<typeof bulkContentSchema>;
+
+export type BulkItemResult = {
+  id: string;
+  ok: boolean;
+  // The item's status after the action (current status when it failed and
+  // the item exists). Absent for deleted or missing items.
+  status?: ContentStatus;
+  problems?: ReadinessProblem[];
+  error?: string;
+};
+export type BulkContentResult = { results: BulkItemResult[] };
+
+// Applies an add/remove/replace patch to a list, keeping order and
+// dropping duplicates.
+export function applyListPatch(
+  current: readonly string[],
+  patch: BulkListPatch | undefined,
+): string[] {
+  if (!patch) return [...current];
+  switch (patch.mode) {
+    case "add":
+      return [...new Set([...current, ...patch.values])];
+    case "remove": {
+      const removed = new Set(patch.values);
+      return current.filter((value) => !removed.has(value));
+    }
+    case "replace":
+      return [...new Set(patch.values)];
+  }
+}
+
+// Whether an item may be deleted permanently: archived, or a draft that was
+// never published.
+export const deletableContent = (content: {
+  status?: unknown;
+  publishedAt?: unknown;
+}) =>
+  content.status === "ARCHIVED" ||
+  (content.status === "DRAFT" && content.publishedAt == null);
+
 // D-038/D-041: device saves of wallpapers, ringtones and status are rewarded.
 export const defaultSaveGate = (type: ContentType): "REWARDED" | "FREE" =>
   ["WALLPAPER", "RINGTONE", "STATUS"].includes(type) ? "REWARDED" : "FREE";

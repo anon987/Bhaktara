@@ -18,6 +18,8 @@ import type { FirebaseServices } from "./firebase";
 import { withoutUndefined } from "./callable";
 import {
   BannerInput,
+  BulkContentInput,
+  BulkContentResult,
   ContentDraftInput,
   ContentStatus,
   ContentType,
@@ -102,6 +104,9 @@ export interface AdminApi {
   transitionContent(
     input: TransitionInput,
   ): Promise<{ id: string; from: ContentStatus; to: ContentStatus }>;
+  // Library multi-select: one result per ID, in order; items fail on their
+  // own (see BulkItemResult).
+  bulkContent(input: BulkContentInput): Promise<BulkContentResult>;
   listBanners(): Promise<BannerRecord[]>;
   createBanner(banner: BannerInput): Promise<{ id: string }>;
   updateBanner(id: string, banner: BannerInput): Promise<{ id: string }>;
@@ -241,6 +246,7 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
         "updateContent",
       )({ id, draft }),
     transitionContent: call("transitionContentStatus"),
+    bulkContent: call<BulkContentInput, BulkContentResult>("bulkContent"),
 
     async listBanners() {
       const snapshot = await getDocs(
