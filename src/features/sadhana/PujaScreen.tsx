@@ -7,12 +7,10 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import Animated, {
-  interpolateColor,
+import {
   runOnJS,
   SharedValue,
   useAnimatedReaction,
-  useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 import {
@@ -718,7 +716,9 @@ function DecorButton({
 }
 
 // Which temple is shown: a dot per temple and its name. Both follow the
-// pager as it moves (finger or arrow), not only once it stops.
+// pager as it moves (finger or arrow), not only once it stops. The dots are
+// drawn from the same index as the name: an animated style per dot was put
+// back to its first-render look whenever the name re-rendered.
 function PageDots({
   names,
   scrollX,
@@ -738,12 +738,16 @@ function PageDots({
     },
   );
   if (names.length < 2) return null;
-  const name = names[Math.max(0, Math.min(names.length - 1, index))];
+  const shown = Math.max(0, Math.min(names.length - 1, index));
   return (
     <View style={styles.dots} pointerEvents="none">
       <View style={styles.dotRow}>
         {names.map((_, i) => (
-          <Dot key={i} i={i} scrollX={scrollX} width={width} />
+          <View
+            key={i}
+            testID={i === shown ? "page-dot-active" : undefined}
+            style={[styles.dot, i === shown && styles.dotActive]}
+          />
         ))}
       </View>
       <Txt
@@ -752,39 +756,10 @@ function PageDots({
         adjustsFontSizeToFit
         style={{ color: shrine.maroon, lineHeight: 17 }}
       >
-        {name}
+        {names[shown]}
       </Txt>
     </View>
   );
-}
-
-// Grows and reddens as its temple comes into view.
-function Dot({
-  i,
-  scrollX,
-  width,
-}: {
-  i: number;
-  scrollX: SharedValue<number>;
-  width: number;
-}) {
-  const style = useAnimatedStyle(() => {
-    const near =
-      width > 0
-        ? Math.max(0, 1 - Math.abs(scrollX.get() / width - i))
-        : i === 0
-          ? 1
-          : 0;
-    return {
-      width: 8 + 10 * near,
-      backgroundColor: interpolateColor(
-        near,
-        [0, 1],
-        ["rgba(107, 15, 18, 0.25)", colors.primary],
-      ),
-    };
-  });
-  return <Animated.View style={[styles.dot, style]} />;
 }
 
 const styles = StyleSheet.create({
@@ -872,6 +847,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "rgba(107, 15, 18, 0.25)",
   },
+  dotActive: { width: 18, backgroundColor: colors.primary },
   panel: { position: "absolute", left: 8, right: 8, bottom: 72 },
   reset: {
     flexDirection: "row",
