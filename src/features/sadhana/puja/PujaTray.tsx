@@ -1,5 +1,11 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import {
+  Image,
+  ImageSourcePropType,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,15 +15,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { Check } from "lucide-react-native";
+import { Check, Lock, Play } from "lucide-react-native";
 import { Txt } from "../../../components/ui";
 import { useReducedMotion } from "../../../components/useReducedMotion";
 import { Language } from "../../../i18n/strings";
 import {
   BhogKind,
   bhogNames,
-  FlowerKind,
-  flowerNames,
   GarlandKind,
   garlandNames,
   TrayItem,
@@ -26,13 +30,14 @@ import {
   trayNames,
 } from "../../../domain/puja";
 import { noVisuals, Visuals } from "../../../domain/visuals";
-import { shrine } from "../../../theme/tokens";
+import { colors, shrine } from "../../../theme/tokens";
+import type { MandirDecor } from "../decor/decor";
 import { SlotImage } from "../shrine/Ornaments";
-import { Bhog, Flower, Garland } from "./OfferingArt";
+import { Bhog, Garland } from "./OfferingArt";
 import { TrayIcon } from "./TrayIcons";
 
 export type Drawer =
-  | { item: "pushp"; flowers: FlowerKind[]; garland: GarlandKind }
+  | { item: "pushp"; flowers: MandirDecor[]; garland: GarlandKind }
   | { item: "naivedya"; bhog: BhogKind[] };
 
 // The offering tray (D-054, D-057): eight labelled tiles in two rows. The
@@ -48,6 +53,9 @@ export function PujaTray({
   tapKeys,
   drawer,
   visuals = noVisuals,
+  icons = {},
+  locked = () => false,
+  lockedLabel = "",
   onItem,
   onFlower,
   onGarland,
@@ -60,8 +68,13 @@ export function PujaTray({
   tapKeys: Partial<Record<TrayItem, number>>;
   drawer: Drawer | null;
   visuals?: Visuals;
+  // Images that replace a tile's icon (the chosen bell on the ghanti).
+  icons?: Partial<Record<TrayItem, ImageSourcePropType>>;
+  // Decor flowers that need a rewarded ad first (shown with a lock).
+  locked?: (item: MandirDecor) => boolean;
+  lockedLabel?: string;
   onItem: (item: TrayItem) => void;
-  onFlower: (kind: FlowerKind) => void;
+  onFlower: (item: MandirDecor) => void;
   onGarland: (kind: GarlandKind) => void;
   onBhog: (kind: BhogKind) => void;
 }) {
@@ -71,19 +84,35 @@ export function PujaTray({
         <View style={styles.drawer} accessibilityRole="menu">
           {drawer.item === "pushp" ? (
             <>
-              {drawer.flowers.map((kind) => (
-                <Choice
-                  key={kind}
-                  label={flowerNames[kind][language]}
-                  onPress={() => onFlower(kind)}
-                >
-                  <Flower
-                    kind={kind}
-                    size={38}
-                    imageKey={visuals.flowers[kind]}
-                  />
-                </Choice>
-              ))}
+              {drawer.flowers.map((flower) => {
+                const name = flower.name[language];
+                const isLocked = locked(flower);
+                return (
+                  <Choice
+                    key={flower.id}
+                    label={name}
+                    a11y={isLocked ? `${name}, ${lockedLabel}` : name}
+                    onPress={() => onFlower(flower)}
+                  >
+                    <Image
+                      accessible={false}
+                      source={flower.image}
+                      resizeMode="contain"
+                      fadeDuration={0}
+                      style={[
+                        { width: 42, height: 42 },
+                        isLocked && { opacity: 0.55 },
+                      ]}
+                    />
+                    {isLocked && (
+                      <View style={styles.flowerLock}>
+                        <Play size={9} color="#FFFFFF" fill="#FFFFFF" />
+                        <Lock size={11} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </Choice>
+                );
+              })}
               <Choice
                 label={garlandNames[drawer.garland][language]}
                 onPress={() => onGarland(drawer.garland)}
@@ -119,6 +148,7 @@ export function PujaTray({
                 label={trayLabels[item][language]}
                 hint={trayNames[item][language]}
                 imageKey={visuals.tray[item]}
+                image={icons[item]}
                 done={done.has(item)}
                 glowing={next === item}
                 lit={lit.has(item)}
@@ -139,6 +169,7 @@ function TrayButton({
   label,
   hint,
   imageKey,
+  image,
   done,
   glowing,
   lit,
@@ -150,6 +181,7 @@ function TrayButton({
   label: string;
   hint: string;
   imageKey?: string;
+  image?: ImageSourcePropType;
   done: boolean;
   glowing: boolean;
   lit: boolean;
@@ -220,11 +252,21 @@ function TrayButton({
       )}
       <Animated.View pointerEvents="none" style={[styles.glow, ring]} />
       <Animated.View style={[styles.icon, icon]}>
-        <SlotImage
-          assetKey={imageKey}
-          style={{ width: 58, height: 58 }}
-          fallback={<TrayIcon item={item} size={52} lit={lit} />}
-        />
+        {image ? (
+          <Image
+            accessible={false}
+            source={image}
+            resizeMode="contain"
+            fadeDuration={0}
+            style={{ width: 56, height: 56 }}
+          />
+        ) : (
+          <SlotImage
+            assetKey={imageKey}
+            style={{ width: 58, height: 58 }}
+            fallback={<TrayIcon item={item} size={52} lit={lit} />}
+          />
+        )}
       </Animated.View>
       <Txt
         bold
@@ -245,9 +287,14 @@ function TrayButton({
 
 function Choice({
   label,
+  a11y,
   onPress,
   children,
-}: React.PropsWithChildren<{ label: string; onPress: () => void }>) {
+}: React.PropsWithChildren<{
+  label: string;
+  a11y?: string;
+  onPress: () => void;
+}>) {
   const t = useSharedValue(0);
   const style = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + Math.sin(t.value * Math.PI) * 0.2 }],
@@ -255,7 +302,7 @@ function Choice({
   return (
     <Pressable
       accessibilityRole="menuitem"
-      accessibilityLabel={label}
+      accessibilityLabel={a11y ?? label}
       onPress={() => {
         t.value = 0;
         t.value = withSequence(withTiming(1, { duration: 360 }));
@@ -265,9 +312,9 @@ function Choice({
     >
       <Animated.View style={style}>{children}</Animated.View>
       <Txt
-        size={11}
+        size={12}
         numberOfLines={1}
-        style={{ color: shrine.ink, lineHeight: 15 }}
+        style={{ color: shrine.ink, lineHeight: 17 }}
       >
         {label}
       </Txt>
@@ -301,7 +348,8 @@ const styles = StyleSheet.create({
     borderColor: shrine.line,
   },
   choice: {
-    width: 58,
+    width: 64,
+    minHeight: 72,
     paddingVertical: 6,
     borderRadius: 16,
     alignItems: "center",
@@ -309,6 +357,18 @@ const styles = StyleSheet.create({
     backgroundColor: shrine.card,
     borderWidth: 1,
     borderColor: shrine.lineSoft,
+  },
+  flowerLock: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 1,
+    paddingHorizontal: 4,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
   },
   tray: {
     borderRadius: 24,
