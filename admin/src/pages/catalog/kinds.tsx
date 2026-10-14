@@ -9,11 +9,28 @@ import {
   Tags,
   Target,
 } from "lucide-react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { contentTypes } from "../../domain";
 import { badgeCriteria, challengeMetrics } from "../../../../src/domain/progression";
-import { offeringKinds, type CatalogKind } from "../../../../src/domain/admin";
+import {
+  offeringKinds,
+  offeringUnlocks,
+  templeStageSchema,
+  type AssetPurpose,
+  type CatalogKind,
+  type OfferingKind,
+  type OfferingUnlock,
+  type TempleStage,
+} from "../../../../src/domain/admin";
+import {
+  flowerKinds,
+  flowerNames,
+  forbiddenFlowers,
+  type FlowerKind,
+} from "../../../../src/domain/puja";
 import {
   emptyLocalized,
   LocalizedInput,
@@ -28,8 +45,19 @@ import {
   SwitchField,
   useDeityOptions,
 } from "../../components/panel/inputs";
-import { AssetPicker, type PickedArt } from "../../components/panel/media";
+import {
+  AssetPicker,
+  SoundPicker,
+  type PickedArt,
+  type PickedSound,
+} from "../../components/panel/media";
 import { ContentPicker } from "./ContentPicker";
+import {
+  MurtiPreview,
+  StageEditor,
+  TemplePreview,
+  useTempleOptions,
+} from "./StageEditor";
 
 type Doc = Record<string, unknown>;
 export type RowView = {
@@ -49,6 +77,13 @@ export type KindDef<F> = {
   toInput: (form: F) => unknown;
   row: (data: Doc) => RowView;
   sort: (a: Doc, b: Doc) => number;
+  // Optional grouping of the list (Mandir offerings by kind): a filter and
+  // one heading per group.
+  group?: {
+    label: string;
+    of: (data: Doc) => string;
+    options: { value: string; label: string }[];
+  };
   Form: (props: { value: F; onChange: (value: F) => void }) => ReactNode;
 };
 
@@ -83,14 +118,47 @@ type DeityForm = {
   mandirArt: PickedArt | null;
   shrineArt: PickedArt | null;
   jaapEmblem: PickedArt | null;
+  murtiArt: PickedArt | null;
 };
+
+// The murti on a checkerboard (its transparency shows) and stood in a temple.
+function MurtiField({ value, onChange }: { value: PickedArt | null; onChange: (art: PickedArt | null) => void }) {
+  const temples = useTempleOptions();
+  const [templeId, setTempleId] = useState("");
+  const temple = temples.find((option) => option.value === templeId) ?? temples[0];
+  return (
+    <div className="space-y-2">
+      <Label>Murti</Label>
+      <AssetPicker purpose="deity" label="Murti" value={value} onChange={onChange} />
+      <p className="text-xs text-muted-foreground">
+        The deity alone on a transparent background (PNG or WebP; the transparency is kept), feet at the bottom edge. It stands in whichever temple the devotee swipes to on the Prayer screen.
+      </p>
+      {value && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Transparency</p>
+            <MurtiPreview mediaKey={value.mobile.key} alt="Murti" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">In a temple</p>
+            <TemplePreview templeKey={temple?.key} stage={temple?.stage} murtiKey={value.mobile.key} alt={temple?.label ?? "Temple"} />
+            {temples.length > 1 && (
+              <SelectField id="deity-preview-temple" label="Temple" value={temple?.value ?? ""} options={temples} onChange={setTempleId} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const deity: KindDef<DeityForm> = {
   kind: "deity",
   title: "Deities",
   singular: "deity",
   description: "Deities shown in Explore, Jaap, the puja and the Mandir. Active deities need Mandir art.",
   icon: Sparkles,
-  empty: () => ({ name: emptyLocalized(), description: emptyLocalized(), aliases: "", isActive: false, isMandirEnabled: true, sortOrder: 0, mandirArt: null, shrineArt: null, jaapEmblem: null }),
+  empty: () => ({ name: emptyLocalized(), description: emptyLocalized(), aliases: "", isActive: false, isMandirEnabled: true, sortOrder: 0, mandirArt: null, shrineArt: null, jaapEmblem: null, murtiArt: null }),
   fromDoc: (d) => ({
     name: localizedOf(d.name),
     description: localizedOf(d.description),
@@ -101,6 +169,7 @@ const deity: KindDef<DeityForm> = {
     mandirArt: artOf(d.mandirArt),
     shrineArt: artOf(d.shrineArt),
     jaapEmblem: artOf(d.jaapEmblem),
+    murtiArt: artOf(d.murtiArt),
   }),
   toInput: (f) => ({
     name: f.name,
@@ -112,12 +181,17 @@ const deity: KindDef<DeityForm> = {
     ...(f.mandirArt ? { mandirArt: f.mandirArt } : {}),
     ...(f.shrineArt ? { shrineArt: f.shrineArt } : {}),
     ...(f.jaapEmblem ? { jaapEmblem: f.jaapEmblem } : {}),
+    ...(f.murtiArt ? { murtiArt: f.murtiArt } : {}),
   }),
   row: (d) => ({
     title: localizedOf(d.name).en || "Untitled",
     subtitle: localizedOf(d.name).hi,
     thumb: artOf(d.mandirArt)?.thumb?.key ?? artOf(d.mandirArt)?.mobile.key,
-    badges: [active(bool(d.isActive)), ...(bool(d.isMandirEnabled) ? [{ label: "Mandir", tone: "info" as const }] : [])],
+    badges: [
+      active(bool(d.isActive)),
+      ...(bool(d.isMandirEnabled) ? [{ label: "Mandir", tone: "info" as const }] : []),
+      ...(artOf(d.murtiArt) ? [{ label: "Murti", tone: "info" as const }] : []),
+    ],
   }),
   sort: bySort,
   Form: ({ value: f, onChange: set }) => (
@@ -140,6 +214,7 @@ const deity: KindDef<DeityForm> = {
           The whole temple painted with the deity inside, shown on the Prayer screen. Portrait, about 5 : 6 (for example 1500 × 1800), the deity centred and the altar along the bottom edge; a PNG with a transparent background blends best. Empty: the app draws a marble temple around the Mandir art.
         </p>
       </div>
+      <MurtiField value={f.murtiArt} onChange={(murtiArt) => set({ ...f, murtiArt })} />
       <div className="space-y-2">
         <Label>Jaap emblem</Label>
         <AssetPicker purpose="decor" label="Emblem" value={f.jaapEmblem} onChange={(jaapEmblem) => set({ ...f, jaapEmblem })} />
@@ -373,26 +448,149 @@ const festival: KindDef<FestivalForm> = {
 
 // ---- Mandir offerings ----------------------------------------------------------
 
-type OfferingForm = { name: Localized; kind: string; art: PickedArt | null; deityIds: string[]; unlock: "FREE" | "REWARDED_SINGLE_USE"; startAt: string; endAt: string; sortOrder: number; isActive: boolean };
+export const offeringKindLabels: Record<OfferingKind, string> = {
+  temple: "Temple",
+  light: "Lights",
+  bell: "Bell",
+  flower: "Flower",
+  garland: "Garland",
+  diya: "Diya",
+  ornament: "Ornament",
+  bhog: "Bhog",
+  other: "Other",
+};
+// Decor first: the order of the kind filter and of the groups in the list.
+const offeringKindOrder: OfferingKind[] = ["temple", "light", "bell", "flower", "garland", "diya", "ornament", "bhog", "other"];
+export const unlockLabels: Record<OfferingUnlock, string> = {
+  FREE: "Free",
+  REWARDED: "Unlock with one ad (kept)",
+  REWARDED_SINGLE_USE: "One ad per use",
+};
+const unlockHints: Record<OfferingUnlock, string> = {
+  FREE: "Always available.",
+  REWARDED: "The devotee watches one ad once; it stays unlocked on that phone.",
+  REWARDED_SINGLE_USE: "One ad each time it is used.",
+};
+const unlockBadges: Record<OfferingUnlock, string> = { FREE: "Free", REWARDED: "Ad · kept", REWARDED_SINGLE_USE: "Ad · each use" };
+type Placement = "top" | "bottom" | "sides";
+const placementOptions: { value: Placement; label: string }[] = [
+  { value: "top", label: "Top (hangs over the temple)" },
+  { value: "bottom", label: "Bottom (along the base)" },
+  { value: "sides", label: "Sides (left and right)" },
+];
+// Which library the image comes from, by kind.
+const artPurpose = (kind: OfferingKind): AssetPurpose =>
+  kind === "temple" ? "temple" : kind === "light" || kind === "bell" ? "decor" : "offering";
+const artHints: Partial<Record<OfferingKind, string>> = {
+  temple: "Portrait, about 5 : 6; the sanctum left empty for the deity. Then mark where the deity stands below.",
+  light: "Transparent PNG or WebP, drawn over the temple.",
+  bell: "Transparent PNG or WebP of the bell.",
+  flower: "Transparent PNG or WebP of a single flower.",
+};
+const asKind = (value: unknown): OfferingKind => (offeringKinds as readonly string[]).includes(value as string) ? (value as OfferingKind) : "flower";
+const asUnlock = (value: unknown): OfferingUnlock => (offeringUnlocks as readonly string[]).includes(value as string) ? (value as OfferingUnlock) : "FREE";
+const asFlower = (value: unknown): FlowerKind | "" => (flowerKinds as readonly string[]).includes(value as string) ? (value as FlowerKind) : "";
+const asPlacement = (value: unknown): Placement => (value === "bottom" || value === "sides" ? value : "top");
+const stageOf = (value: unknown): TempleStage | null => {
+  const parsed = templeStageSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+};
+const soundOf = (value: unknown): PickedSound | null => {
+  const sound = value as PickedSound | undefined;
+  return sound?.audio?.key ? sound : null;
+};
+// Deities among `deityIds` that must never receive this flower (tulsi to Shiva…).
+export const forbiddenFor = (flower: FlowerKind | "", deityIds: string[]) =>
+  flower ? deityIds.filter((id) => (forbiddenFlowers[id] ?? []).includes(flower)) : [];
+
+export type OfferingForm = {
+  name: Localized;
+  kind: OfferingKind;
+  art: PickedArt | null;
+  flowerKind: FlowerKind | "";
+  sound: PickedSound | null;
+  placement: Placement;
+  stage: TempleStage | null;
+  deityIds: string[];
+  unlock: OfferingUnlock;
+  startAt: string;
+  endAt: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+function UnlockField({ value, onChange }: { value: OfferingUnlock; onChange: (value: OfferingUnlock) => void }) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">How devotees get it</legend>
+      <RadioGroup value={value} onValueChange={(next) => onChange(next as OfferingUnlock)} className="gap-2">
+        {offeringUnlocks.map((unlock) => (
+          <label key={unlock} htmlFor={`offering-unlock-${unlock}`} className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5">
+            <RadioGroupItem id={`offering-unlock-${unlock}`} value={unlock} className="mt-0.5" />
+            <span className="space-y-0.5">
+              <span className="block text-sm font-medium">{unlockLabels[unlock]}</span>
+              <span className="block text-xs text-muted-foreground">{unlockHints[unlock]}</span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+    </fieldset>
+  );
+}
+
 function OfferingFormView({ value: f, onChange: set }: { value: OfferingForm; onChange: (v: OfferingForm) => void }) {
   const deities = useDeityOptions();
+  const refused = forbiddenFor(f.flowerKind, f.deityIds);
+  const nameOf = (id: string) => deities.find((d) => d.value === id)?.label ?? id;
   return (
     <div className="space-y-5">
       <LocalizedInput id="offering-name" label="Name" required value={f.name} onChange={(name) => set({ ...f, name })} maxLength={60} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField id="offering-kind" label="Kind" value={f.kind} options={offeringKinds.map((k) => ({ value: k, label: k }))} onChange={(kind) => set({ ...f, kind })} />
-        <SelectField id="offering-unlock" label="Unlock" value={f.unlock} options={[{ value: "FREE", label: "Always free" }, { value: "REWARDED_SINGLE_USE", label: "One rewarded ad, one use (D-040)" }]} onChange={(unlock) => set({ ...f, unlock })} />
-      </div>
+      <SelectField id="offering-kind" label="Kind" value={f.kind} options={offeringKindOrder.map((k) => ({ value: k, label: offeringKindLabels[k] }))} onChange={(kind) => set({ ...f, kind })} />
       <div className="space-y-2">
-        <Label>Art</Label>
-        <AssetPicker purpose="offering" label="Art" value={f.art} onChange={(art) => set({ ...f, art })} />
+        <Label>Image</Label>
+        <AssetPicker purpose={artPurpose(f.kind)} label="Image" value={f.art} onChange={(art) => set({ ...f, art })} />
+        {artHints[f.kind] && <p className="text-xs text-muted-foreground">{artHints[f.kind]}</p>}
       </div>
-      <ChipSelect label="Deities" options={deities} value={f.deityIds} onChange={(deityIds) => set({ ...f, deityIds })} hint="None selected: offered to every deity." />
+      {f.kind === "temple" && (
+        <div className="space-y-2">
+          <Label>Where the deity stands</Label>
+          <StageEditor templeKey={f.art?.mobile.key} value={f.stage} onChange={(stage) => set({ ...f, stage })} />
+        </div>
+      )}
+      {f.kind === "bell" && (
+        <div className="space-y-2">
+          <Label>Bell sound</Label>
+          <SoundPicker label="Sound" value={f.sound} onChange={(sound) => set({ ...f, sound })} />
+        </div>
+      )}
+      {f.kind === "light" && (
+        <SelectField id="offering-placement" label="Where it hangs" value={f.placement} options={placementOptions} onChange={(placement) => set({ ...f, placement })} />
+      )}
+      {f.kind === "flower" && (
+        <div className="space-y-2">
+          <SelectField
+            id="offering-flower"
+            label="Which flower"
+            value={f.flowerKind}
+            placeholder="Choose the flower…"
+            options={flowerKinds.map((k) => ({ value: k, label: `${flowerNames[k].en} · ${flowerNames[k].hi}` }))}
+            onChange={(flowerKind) => set({ ...f, flowerKind })}
+          />
+          <p className="text-xs text-muted-foreground">The deity rules use it: a flower is never shown to a deity it must not be offered to.</p>
+        </div>
+      )}
+      <UnlockField value={f.unlock} onChange={(unlock) => set({ ...f, unlock })} />
+      <ChipSelect label="Deities" options={deities} value={f.deityIds} onChange={(deityIds) => set({ ...f, deityIds })} hint="None selected: for every deity." />
+      {refused.length > 0 && (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          {flowerNames[f.flowerKind as FlowerKind].en} must not be offered to {refused.map(nameOf).join(", ")}. Remove {refused.length === 1 ? "that deity" : "those deities"} or choose another flower.
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <DateTimeField id="offering-start" label="Available from (optional)" value={f.startAt} onChange={(startAt) => set({ ...f, startAt })} />
         <DateTimeField id="offering-end" label="Available until (optional)" value={f.endAt} onChange={(endAt) => set({ ...f, endAt })} />
       </div>
-      <SwitchField id="offering-active" label="Active" checked={f.isActive} onChange={(isActive) => set({ ...f, isActive })} />
+      <SwitchField id="offering-active" label="Active" description="Shown in the app" checked={f.isActive} onChange={(isActive) => set({ ...f, isActive })} />
       {sorted(f.sortOrder, (sortOrder) => set({ ...f, sortOrder }), "offering-order")}
     </div>
   );
@@ -401,13 +599,67 @@ const mandirOffering: KindDef<OfferingForm> = {
   kind: "mandirOffering",
   title: "Mandir offerings",
   singular: "offering",
-  description: "Basic diya, flowers and bell are always free; special offerings unlock with one rewarded ad (D-040).",
+  description: "Temples, lights, bells and flowers for the Prayer screen. Each is free or unlocked with a rewarded ad.",
   icon: Flower2,
-  empty: () => ({ name: emptyLocalized(), kind: "flower", art: null, deityIds: [], unlock: "FREE", startAt: "", endAt: "", sortOrder: 0, isActive: true }),
-  fromDoc: (d) => ({ name: localizedOf(d.name), kind: str(d.kind) || "flower", art: artOf(d.art), deityIds: strings(d.deityIds), unlock: d.unlock === "REWARDED_SINGLE_USE" ? "REWARDED_SINGLE_USE" : "FREE", startAt: iso(d.startAt), endAt: iso(d.endAt), sortOrder: num(d.sortOrder), isActive: bool(d.isActive, true) }),
-  toInput: (f) => ({ name: f.name, kind: f.kind, ...(f.art ? { art: f.art } : {}), deityIds: f.deityIds, unlock: f.unlock, ...(f.startAt ? { startAt: f.startAt } : {}), ...(f.endAt ? { endAt: f.endAt } : {}), sortOrder: f.sortOrder, isActive: f.isActive }),
-  row: (d) => ({ title: localizedOf(d.name).en || "Untitled", subtitle: `${str(d.kind)} · ${strings(d.deityIds).length ? strings(d.deityIds).join(", ") : "all deities"}`, thumb: artOf(d.art)?.thumb?.key ?? artOf(d.art)?.mobile.key, badges: [active(bool(d.isActive, true)), { label: d.unlock === "REWARDED_SINGLE_USE" ? "Rewarded" : "Free", tone: "info" }] }),
-  sort: bySort,
+  empty: () => ({ name: emptyLocalized(), kind: "temple", art: null, flowerKind: "", sound: null, placement: "top", stage: null, deityIds: [], unlock: "FREE", startAt: "", endAt: "", sortOrder: 0, isActive: true }),
+  fromDoc: (d) => ({
+    name: localizedOf(d.name),
+    kind: asKind(d.kind),
+    art: artOf(d.art),
+    flowerKind: asFlower(d.flowerKind),
+    sound: soundOf(d.sound),
+    placement: asPlacement(d.placement),
+    stage: stageOf(d.stage),
+    deityIds: strings(d.deityIds),
+    unlock: asUnlock(d.unlock),
+    startAt: iso(d.startAt),
+    endAt: iso(d.endAt),
+    sortOrder: num(d.sortOrder),
+    isActive: bool(d.isActive, true),
+  }),
+  // Only the fields of the chosen kind are sent (the server refuses others).
+  toInput: (f) => ({
+    name: f.name,
+    kind: f.kind,
+    ...(f.art ? { art: f.art } : {}),
+    ...(f.kind === "temple" && f.stage ? { stage: f.stage } : {}),
+    ...(f.kind === "bell" && f.sound ? { sound: f.sound } : {}),
+    ...(f.kind === "light" ? { placement: f.placement } : {}),
+    ...(f.kind === "flower" && f.flowerKind ? { flowerKind: f.flowerKind } : {}),
+    deityIds: f.deityIds,
+    unlock: f.unlock,
+    ...(f.startAt ? { startAt: f.startAt } : {}),
+    ...(f.endAt ? { endAt: f.endAt } : {}),
+    sortOrder: f.sortOrder,
+    isActive: f.isActive,
+  }),
+  row: (d) => {
+    const kind = asKind(d.kind);
+    const unlock = asUnlock(d.unlock);
+    const flower = asFlower(d.flowerKind);
+    return {
+      title: localizedOf(d.name).en || "Untitled",
+      subtitle: [
+        localizedOf(d.name).hi,
+        flower ? flowerNames[flower].en : "",
+        strings(d.deityIds).length ? strings(d.deityIds).join(", ") : "all deities",
+      ].filter(Boolean).join(" · "),
+      thumb: artOf(d.art)?.thumb?.key ?? artOf(d.art)?.mobile.key ?? null,
+      badges: [
+        active(bool(d.isActive, true)),
+        { label: unlockBadges[unlock], tone: "info" },
+        { label: `Order ${num(d.sortOrder)}` },
+        ...(kind === "bell" && !soundOf(d.sound) ? [{ label: "No sound" }] : []),
+      ],
+    };
+  },
+  sort: (a, b) =>
+    offeringKindOrder.indexOf(asKind(a.kind)) - offeringKindOrder.indexOf(asKind(b.kind)) || bySort(a, b),
+  group: {
+    label: "Kind",
+    of: (d) => asKind(d.kind),
+    options: offeringKindOrder.map((k) => ({ value: k, label: offeringKindLabels[k] })),
+  },
   Form: OfferingFormView,
 };
 

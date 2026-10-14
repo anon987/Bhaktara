@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { assetPurposes, type AssetPurpose } from "../../../src/domain/admin";
+import { assetPurposes, isAudioAsset, type AssetPurpose } from "../../../src/domain/admin";
 import { useAdmin } from "../app/context";
 import { can } from "../domain";
 import { ConfirmAction } from "../components/panel/confirm";
@@ -34,7 +34,10 @@ const purposeLabels: Record<AssetPurpose, string> = {
   temple: "Temples",
   background: "Backgrounds",
   decor: "Decor & emblems",
+  sound: "Bell sounds",
 };
+// Sounds are uploaded from the bell editor (Mandir offerings), not here.
+const imagePurposes = assetPurposes.filter((p) => !isAudioAsset(p));
 
 type ImageRow = {
   key: string;
@@ -139,7 +142,7 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
           <DialogTitle>Upload images</DialogTitle>
           <DialogDescription>One image, many, a folder or a ZIP. Each is uploaded to R2 and rendered for phones; names come from the file names.</DialogDescription>
         </DialogHeader>
-        <SelectField id="upload-purpose" label="For" value={purpose} options={assetPurposes.map((p) => ({ value: p, label: purposeLabels[p] }))} onChange={setPurpose} />
+        <SelectField id="upload-purpose" label="For" value={purpose} options={imagePurposes.map((p) => ({ value: p, label: purposeLabels[p] }))} onChange={setPurpose} />
         <MultiDrop accept="image/jpeg,image/png,image/webp" disabled={running} onFiles={add} onError={(message) => toast.error(message)}>
           <p className="mt-1 text-xs text-muted-foreground">JPEG, PNG or WebP · up to 40 MB each · {purpose === "deity" || purpose === "offering" ? "square thumbnail" : "wide thumbnail"}</p>
         </MultiDrop>
@@ -236,7 +239,11 @@ export function MediaLibraryPage() {
                 <SheetDescription>{purposeLabels[selected.purpose]} · {ago(selected.createdAt)}</SheetDescription>
               </SheetHeader>
               <div className="space-y-4 p-4">
-                <MediaThumb mediaKey={selected.media?.mobile?.key} alt={selected.label} className="aspect-[4/3] w-full" />
+                {selected.media?.file && mediaUrl(selected.media.file.key) ? (
+                  <audio controls preload="none" src={mediaUrl(selected.media.file.key)!} className="w-full" aria-label={`Play ${selected.label}`} />
+                ) : (
+                  <MediaThumb mediaKey={selected.media?.mobile?.key} alt={selected.label} className="aspect-[4/3] w-full" />
+                )}
                 {selected.warnings.length > 0 && <p className="rounded-xl bg-chart-2/10 p-3 text-sm">{selected.warnings.join(" ")}</p>}
                 {Object.entries(selected.media ?? {}).map(([name, variant]) => (
                   <div key={name} className="flex items-center gap-2 rounded-xl border p-2 text-sm">

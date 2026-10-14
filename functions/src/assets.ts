@@ -2,7 +2,9 @@
 // Mandir offerings and collection covers are uploaded straight to R2 staging
 // (presigned PUT), rendered by the Cloud Run media processor (banner or deity
 // renditions, doc 22 §A3) and registered in mediaAssets/{assetId}, where the
-// editors pick them. Content audio/video keeps its own processMedia flow.
+// editors pick them. Sounds (bell rings, purpose "sound") skip the processor
+// and are stored as uploaded (audioAssets.ts). Content audio/video keeps its
+// own processMedia flow.
 import { randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError } from "firebase-functions/v2/https";
@@ -10,10 +12,14 @@ import {
   assetMediaType,
   AssetPurpose,
   deleteAssetSchema,
+  isAudioAsset,
   processAssetSchema,
   requestAssetUploadSchema,
 } from "../../src/domain/admin";
+import { UploadMime } from "../../src/domain/cms";
+import { MediaVariant } from "../../src/domain/media";
 import { isStagingKeyFor, ProcessResponse } from "../../src/domain/mediaProcessing";
+import { AudioStore, promoteAudio, r2AudioStore } from "./audioAssets";
 import { Actor, db, parse, requirePermission, writeAudit } from "./core";
 import { ProcessorClient, processorClientFromEnv, toHttpsError } from "./media";
 import { buildUploadSlot, r2ConfigFromEnv, s3Presigner } from "./uploads";
@@ -60,13 +66,64 @@ export async function requestAssetUpload(
   return { assetId, ...slot };
 }
 
+// A sound: checked and copied as-is within R2, then marked READY.
+async function processAudioAsset(
+  actor: Actor,
+  input: { assetId: string; audio?: string },
+  store: AudioStore | null,
+) {
+  if (!store)
+    throw new HttpsError(
+      "failed-precondition",
+      "Media uploads are not configured for this environment.",
+    );
+  const snapshot = await assetRef(input.assetId).get();
+  if (!snapshot.exists) throw new HttpsError("not-found", "Asset not found.");
+  if (!isAudioAsset(snapshot.get("purpose") as AssetPurpose) || !input.audio)
+    throw new HttpsError("invalid-argument", "This asset is not a sound.");
+  if (!isStagingKeyFor(input.assetId, "audio", input.audio))
+    throw new HttpsError("invalid-argument", "That upload does not belong to this asset.");
+  const file: MediaVariant = await promoteAudio({
+    assetId: input.assetId,
+    stagingKey: input.audio,
+    contentType: snapshot.get("contentType") as UploadMime,
+    store,
+  });
+  const media = { file };
+  await db().runTransaction(async (tx) => {
+    tx.update(assetRef(input.assetId), {
+      status: "READY",
+      type: "sound",
+      media,
+      warnings: [],
+      processedAt: FieldValue.serverTimestamp(),
+    });
+    writeAudit(tx, actor, {
+      action: "asset.process",
+      entity: "asset",
+      entityId: input.assetId,
+      beforeSummary: null,
+      afterSummary: { keys: [file.key] },
+    });
+  });
+  return { assetId: input.assetId, media, warnings: [] as string[] };
+}
+
 export async function processAsset(
   actor: Actor,
   data: unknown,
-  deps: { processor?: ProcessorClient | null } = {},
+  deps: { processor?: ProcessorClient | null; audioStore?: AudioStore | null } = {},
 ) {
   requirePermission(actor, "asset.write");
   const input = parse(processAssetSchema, data);
+  if (input.audio) {
+    const config = r2ConfigFromEnv(process.env);
+    const store =
+      deps.audioStore === undefined ? config && r2AudioStore(config) : deps.audioStore;
+    return processAudioAsset(actor, input, store);
+  }
+  if (!input.image) throw new HttpsError("invalid-argument", "Upload an image first.");
+  const image = input.image;
   // Configuration first (as processMedia does), so the panel can ask whether
   // processing works before it creates anything.
   const processor =
@@ -78,12 +135,15 @@ export async function processAsset(
     );
   const snapshot = await assetRef(input.assetId).get();
   if (!snapshot.exists) throw new HttpsError("not-found", "Asset not found.");
-  if (!isStagingKeyFor(input.assetId, "image", input.image))
+  if (!isStagingKeyFor(input.assetId, "image", image))
     throw new HttpsError("invalid-argument", "That upload does not belong to this asset.");
-  const type = assetMediaType(snapshot.get("purpose") as AssetPurpose);
+  const purpose = snapshot.get("purpose") as AssetPurpose;
+  if (isAudioAsset(purpose))
+    throw new HttpsError("invalid-argument", "This asset is a sound; send the audio upload.");
+  const type = assetMediaType(purpose);
   let result: ProcessResponse;
   try {
-    result = await processor({ contentId: input.assetId, type, inputs: { image: input.image } });
+    result = await processor({ contentId: input.assetId, type, inputs: { image } });
   } catch (error) {
     throw toHttpsError(error, input.assetId);
   }

@@ -84,8 +84,10 @@ export const requestAssetUpload = admin(
   (actor, data) => assets.requestAssetUpload(actor, data),
   { secrets: r2Secrets },
 );
+// Sounds are copied within R2 by the function itself, so it needs the keys too.
 export const processAsset = admin((actor, data) => assets.processAsset(actor, data), {
   timeoutSeconds: 540,
+  secrets: r2Secrets,
 });
 export const deleteAsset = admin(assets.deleteAsset);
 

@@ -274,7 +274,8 @@ export const deleteUserSchema = z
 
 // What an uploaded image is for; it decides the renditions. Both keep the
 // image's shape (and a PNG's transparency) at 1080 px wide; "deity" also
-// makes a square thumbnail, "banner" a 320 px wide one.
+// makes a square thumbnail, "banner" a 320 px wide one. "sound" is audio (a
+// bell's ring), stored exactly as uploaded with no renditions.
 export const assetPurposes = [
   "banner",
   "deity",
@@ -285,21 +286,58 @@ export const assetPurposes = [
   "temple",
   "background",
   "decor",
+  // Mandir decor: bell sounds.
+  "sound",
 ] as const;
 export type AssetPurpose = (typeof assetPurposes)[number];
 const tallArt: AssetPurpose[] = ["deity", "offering", "temple", "decor"];
 export const assetMediaType = (purpose: AssetPurpose): "banner" | "deity" =>
   tallArt.includes(purpose) ? "deity" : "banner";
+export const isAudioAsset = (purpose: AssetPurpose) => purpose === "sound";
+
+export const assetImageTypes = ["image/jpeg", "image/png", "image/webp"] as const;
+// Short sounds kept as uploaded: M4A (AAC) or MP3, at most 1 MB.
+export const assetAudioTypes = ["audio/mp4", "audio/mpeg"] as const;
+export const AUDIO_ASSET_MAX_BYTES = 1024 * 1024;
+export type AssetContentType =
+  | (typeof assetImageTypes)[number]
+  | (typeof assetAudioTypes)[number];
+const isAudioType = (type: string) =>
+  (assetAudioTypes as readonly string[]).includes(type);
 
 export const requestAssetUploadSchema = z
   .object({
     purpose: z.enum(assetPurposes),
     label: text(80).min(1),
-    contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    contentType: z.enum([...assetImageTypes, ...assetAudioTypes]),
     bytes: z.number().int().positive(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (isAudioAsset(value.purpose) !== isAudioType(value.contentType))
+      context.addIssue({
+        code: "custom",
+        path: ["contentType"],
+        message: isAudioAsset(value.purpose)
+          ? "a sound must be an M4A or MP3 file"
+          : "must be a JPEG, PNG or WebP image",
+      });
+    if (isAudioType(value.contentType) && value.bytes > AUDIO_ASSET_MAX_BYTES)
+      context.addIssue({
+        code: "custom",
+        path: ["bytes"],
+        message: "a sound must be at most 1 MB",
+      });
+  });
+// The uploaded original: `image` for pictures, `audio` for sounds.
 export const processAssetSchema = z
-  .object({ assetId: slugSchema, image: z.string().min(1).max(200) })
-  .strict();
+  .object({
+    assetId: slugSchema,
+    image: z.string().min(1).max(200).optional(),
+    audio: z.string().min(1).max(200).optional(),
+  })
+  .strict()
+  .refine((value) => !!value.image !== !!value.audio, {
+    message: "needs exactly one uploaded original (image or audio)",
+  });
 export const deleteAssetSchema = z.object({ assetId: slugSchema }).strict();
