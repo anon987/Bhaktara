@@ -39,6 +39,11 @@ export function LyricsField({
   const [filling, setFilling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const working = busy || filling;
+  // Gemini writes the empty side from the filled one; nothing when both
+  // (or neither) are filled.
+  const hasHi = !!value.hi.trim();
+  const hasEn = !!value.en.trim();
+  const fillsFrom = hasHi && !hasEn ? "hi" : hasEn && !hasHi ? "en" : null;
 
   const fill = async () => {
     if (!onFillHinglish) return;
@@ -65,12 +70,18 @@ export function LyricsField({
             type="button"
             variant="outline"
             size="sm"
-            disabled={working || !value.hi.trim()}
-            title={value.hi.trim() ? undefined : "Add the Hindi lyrics first"}
+            disabled={working || !fillsFrom}
+            title={
+              fillsFrom
+                ? undefined
+                : value.hi.trim()
+                  ? "Both languages are filled"
+                  : "Add the Hindi (or Hinglish) lyrics first"
+            }
             onClick={() => void fill()}
           >
             {filling ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            Fill Hinglish with Gemini
+            {fillsFrom === "en" ? "Fill Hindi with Gemini" : "Fill Hinglish with Gemini"}
           </Button>
         )}
         <Toggle variant="outline" size="sm" pressed={preview} onPressedChange={setPreview}>
@@ -117,7 +128,7 @@ export function LyricsField({
                   lang={key === "hi" ? "hi" : "en"}
                   value={value[key]}
                   maxLength={LYRICS_MAX_LENGTH}
-                  disabled={key === "en" && filling}
+                  disabled={filling && key !== fillsFrom}
                   placeholder={hint}
                   onChange={(event) => onChange({ ...value, [key]: event.target.value })}
                   className="min-h-64 font-normal leading-relaxed [field-sizing:fixed]"
@@ -127,7 +138,7 @@ export function LyricsField({
           );
         })}
       </div>
-      {error && <p className="text-sm text-destructive">Could not fill the Hinglish lyrics: {error}</p>}
+      {error && <p className="text-sm text-destructive">Could not fill the lyrics: {error}</p>}
     </fieldset>
   );
 }

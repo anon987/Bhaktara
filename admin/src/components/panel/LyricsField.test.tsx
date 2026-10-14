@@ -58,15 +58,23 @@ describe("LyricsField", () => {
 
     render(<Harness onFillHinglish={async () => Promise.reject(new Error("quota"))} />);
     await userEvent.click(screen.getByRole("button", { name: /Fill Hinglish with Gemini/ }));
-    expect(await screen.findByText(/Could not fill the Hinglish lyrics: quota/)).toBeInTheDocument();
+    expect(await screen.findByText(/Could not fill the lyrics: quota/)).toBeInTheDocument();
   });
 
-  it("disables the Gemini button while busy or without Hindi lyrics", () => {
+  it("offers Hindi from Hinglish when only the Hinglish side is filled", () => {
+    render(<Harness initial={{ hi: "", en: "Sakhi ri" }} onFillHinglish={vi.fn(async () => undefined)} />);
+    expect(screen.getByRole("button", { name: /Fill Hindi with Gemini/ })).toBeEnabled();
+  });
+
+  it("disables the Gemini button while busy, without lyrics or with both sides", () => {
     const fill = vi.fn(async () => undefined);
     const { unmount } = render(<Harness onFillHinglish={fill} busy />);
     expect(screen.getByRole("button", { name: /Fill Hinglish with Gemini/ })).toBeDisabled();
     unmount();
-    render(<Harness initial={{ hi: "", en: "" }} onFillHinglish={fill} />);
+    const empty = render(<Harness initial={{ hi: "", en: "" }} onFillHinglish={fill} />);
+    expect(screen.getByRole("button", { name: /Fill Hinglish with Gemini/ })).toBeDisabled();
+    empty.unmount();
+    render(<Harness initial={{ hi: hindi, en: "Sakhi ri" }} onFillHinglish={fill} />);
     expect(screen.getByRole("button", { name: /Fill Hinglish with Gemini/ })).toBeDisabled();
   });
 });

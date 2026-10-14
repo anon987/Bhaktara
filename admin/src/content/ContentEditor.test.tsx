@@ -6,7 +6,8 @@ import { AdminProvider } from "../app/context";
 import type { AdminRole, ContentStatus, ContentType } from "../domain";
 import type { PanelApi } from "../panelApi";
 import { callableError, fakeApi } from "../test/fakeApi";
-import { ContentEditor } from "./ContentEditor";
+import { ContentEditor, EditorForm } from "./ContentEditor";
+import { m4aFile } from "../test/m4a";
 
 const record = (status: ContentStatus = "DRAFT"): ContentRecord => ({
   id: "hanuman-chalisa",
@@ -339,5 +340,78 @@ describe("ContentEditor status transitions", () => {
     await userEvent.type(await screen.findByLabelText("Title in English"), "x");
     expect(screen.getByRole("button", { name: "Move to READY" })).toBeDisabled();
     expect(screen.getByText(/Save your changes before changing the status/)).toBeInTheDocument();
+  });
+});
+
+describe("ContentEditor lyrics", () => {
+  const hindiLyrics = "[Intro]\nसखी री, आँगन सजा दो,\nआज हनुमत का गुण गाएँ।";
+  const withLyrics = (lyrics: { hi: string; en: string }, type: ContentType = "BHAJAN"): ContentRecord => {
+    const base = record();
+    return { ...base, draft: { ...base.draft, type, lyrics } };
+  };
+
+  it("fills the empty lyrics side with one Gemini call and does nothing when both are filled", async () => {
+    const api = fakeApi({ getContent: vi.fn(async () => withLyrics({ hi: hindiLyrics, en: "" })) });
+    renderEditor(api, "EDITOR", "hanuman-chalisa");
+    const fill = await screen.findByRole("button", { name: /Fill Hinglish with Gemini/ });
+    await userEvent.click(fill);
+    expect(api.localizeText).toHaveBeenCalledWith({ kind: "lyrics", items: [hindiLyrics] });
+    expect(await screen.findByLabelText(/Hinglish lyrics/)).toHaveValue(`Hinglish ${hindiLyrics.length}`);
+    expect(screen.getByLabelText(/Hindi lyrics/)).toHaveValue(hindiLyrics);
+    // Both sides filled now: the button is off, no second call.
+    expect(fill).toBeDisabled();
+    expect(api.localizeText).toHaveBeenCalledTimes(1);
+    // Stored only on Save.
+    expect(api.updateContent).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(vi.mocked(api.updateContent).mock.calls[0][1].lyrics).toEqual({
+      hi: hindiLyrics,
+      en: `Hinglish ${hindiLyrics.length}`,
+    });
+  });
+
+  it("fills Hindi from Hinglish lyrics and shows a failure without changing them", async () => {
+    let fail = true;
+    const api = fakeApi({
+      getContent: vi.fn(async () => withLyrics({ hi: "", en: "Sakhi ri" }, "AARTI")),
+      localizeText: vi.fn(async ({ items }: { items: string[] }) => {
+        if (fail) throw callableError("unavailable", "Gemini could not be reached. Try again in a minute.");
+        return items.map((en) => ({ language: "en" as const, en, hi: "सखी री" }));
+      }),
+    });
+    renderEditor(api, "EDITOR", "hanuman-chalisa");
+    const fill = await screen.findByRole("button", { name: /Fill Hindi with Gemini/ });
+    await userEvent.click(fill);
+    expect(await screen.findByText(/Could not fill the lyrics: Gemini could not be reached/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Hindi lyrics/)).toHaveValue("");
+    fail = false;
+    await userEvent.click(fill);
+    expect(screen.getByLabelText(/Hindi lyrics/)).toHaveValue("सखी री");
+    expect(screen.getByLabelText(/Hinglish lyrics/)).toHaveValue("Sakhi ri");
+  });
+
+  it("shows lyrics for devotional audio only", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "WALLPAPER");
+    await screen.findByLabelText("Name");
+    expect(screen.queryByLabelText(/Hindi lyrics/)).not.toBeInTheDocument();
+  });
+
+  it("reads lyrics from an m4a uploaded in this session into the empty side", async () => {
+    const api = fakeApi();
+    const audio = m4aFile("aarti.m4a", { lyrics: hindiLyrics });
+    render(
+      <AdminProvider api={api} panel={fakePanel()} role="EDITOR">
+        <EditorForm record={withLyrics({ hi: "", en: "" })} onMoved={() => {}} stagedAudio={audio} />
+      </AdminProvider>,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Read from audio file/ }));
+    expect(await screen.findByLabelText(/Hindi lyrics/)).toHaveValue(hindiLyrics);
+    expect(api.localizeText).not.toHaveBeenCalled();
+  });
+
+  it("offers no file read without a staged m4a", async () => {
+    renderEditor(fakeApi({ getContent: vi.fn(async () => withLyrics({ hi: "", en: "" })) }), "EDITOR", "hanuman-chalisa");
+    await screen.findByLabelText(/Hindi lyrics/);
+    expect(screen.queryByRole("button", { name: /Read from audio file/ })).not.toBeInTheDocument();
   });
 });

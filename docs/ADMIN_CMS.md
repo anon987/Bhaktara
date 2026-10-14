@@ -134,7 +134,17 @@ Uploads answer "not configured" until the R2 secrets exist (`R2_UPLOAD_SECRETS=t
 
 ### Gemini titles (`localizeText`)
 
-The uploader fills the other language of each title automatically after files are added (and again from **Fill titles with Gemini**); the content editor has **Fill with Gemini** under the title fields. Gemini detects the language: Hindi (Devanagari) gets a Hinglish English side ("राम का नाम लिए जा" → "Ram Ka Naam Liye Ja"), English or Hinglish gets a Devanagari Hindi side ("Om Jai Jagdish Hare" → "ॐ जय जगदीश हरे"). The callable also accepts `kind: "lyrics"` (one text up to 20,000 characters, converted line by line with line breaks and `[Section]` headers kept) for the coming lyrics field. Until it is configured the callable answers "Gemini is not configured."
+The uploader fills the other language of each title automatically after files are added (and again from **Fill titles with Gemini**); the content editor has **Fill with Gemini** under the title fields. Gemini detects the language: Hindi (Devanagari) gets a Hinglish English side ("राम का नाम लिए जा" → "Ram Ka Naam Liye Ja"), English or Hinglish gets a Devanagari Hindi side ("Om Jai Jagdish Hare" → "ॐ जय जगदीश हरे"). The callable also accepts `kind: "lyrics"` (one text up to 20,000 characters, converted line by line with line breaks and `[Section]` headers kept). Until it is configured the callable answers "Gemini is not configured."
+
+### m4a tags and lyrics in the uploader
+
+When `.m4a` files are added, the uploader reads their iTunes tags in the browser (4 files at a time, only the `moov` box, never the audio) before Gemini runs:
+
+- **Title** (`©nam`) replaces the file-name title: Devanagari goes to the Hindi side, anything else to English. Gemini then fills the other side as usual. A title the operator typed is never replaced.
+- **Lyrics** (`©lyr`), for bhajans, aartis, mantras and chalisas: mostly-Devanagari lyrics go to Hindi, the rest to Hinglish. Each row with lyrics on one side then gets one `localizeText` call (`kind: "lyrics"`, at most 2 at a time) for the other side. Rows with both sides are never sent again; failed rows keep their lyrics and can be retried with **Fill lyrics with Gemini**. Each row shows `Lyrics: Hindi ✓ · Hinglish ✓` (or reading / writing / failed) and opens the lyrics editor; lyrics go into the draft with the titles, and rows changed after their upload offer **Save**.
+- **Album art** (`covr`, JPEG or PNG) becomes the row's cover image (`<id>-cover.jpg|png`, uploaded as the `image` input, so the processor renders the thumbnail from it) when no image with the same name was added. An added image always wins; covers over the image size limit are skipped; **Remove** drops it. The content editor never changes an existing cover from tags.
+
+The content editor shows the same lyrics field for those types, with **Fill Hinglish/Hindi with Gemini** (one call, only when exactly one side is filled) and, after an m4a is uploaded in the Media box in the same session, **Read from audio file**, which puts the file's lyrics into the empty side.
 
 It calls Vertex AI as a service account (no API key; see `functions/src/gemini.ts`). Setup, once per project:
 

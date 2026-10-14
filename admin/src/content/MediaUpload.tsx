@@ -31,12 +31,15 @@ export function MediaUpload({
   type,
   hasMedia = true,
   onProcessed,
+  onStaged,
 }: {
   contentId: string;
   type: ContentType;
   // False: nothing uploaded yet, so the box asks for the first files.
   hasMedia?: boolean;
   onProcessed: () => void;
+  // Each file once it is in staging (the editor reads lyrics from an m4a).
+  onStaged?: (role: MediaInputRole, file: File) => void;
 }) {
   const { api, panel } = useAdmin();
   const rule = mediaInputRules[mediaTypeForContent(type)];
@@ -64,6 +67,7 @@ export function MediaUpload({
       const slot = await api.requestUploadUrl({ contentId, contentType: file.type as UploadMime, bytes: file.size });
       await api.putFile(slot, file, (value) => setProgress({ role, value }));
       setSlots((current) => ({ ...current, [role]: { ...slot, name: file.name } }));
+      onStaged?.(role, file);
     } catch (caught) {
       setError(readableError(caught));
     } finally {

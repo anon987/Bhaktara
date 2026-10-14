@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { FileAudio, Loader2, Sparkles, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { localizeError, placeLocalized, sourceSide } from "./localize";
+import { localizeError, lyricsSide, placeLocalized, sourceSide } from "./localize";
+import { LyricsField } from "../components/panel/LyricsField";
+import { isM4a, readM4aMetadata } from "../lib/m4aMetadata";
 import type { ContentRecord } from "../api";
 import { useLoad } from "../useLoad";
 import { useAdmin } from "../app/context";
@@ -13,7 +15,9 @@ import {
   ContentType,
   contentTypes,
   defaultSaveGate,
+  descriptionRequiredTypes,
   editableStatuses,
+  LYRICS_MAX_LENGTH,
   readinessProblems,
 } from "../domain";
 import { readableError, ReadableError } from "../errors";
@@ -36,6 +40,7 @@ import {
   validateForm,
 } from "./draftForm";
 import { MediaUpload } from "./MediaUpload";
+import type { MediaInputRole } from "../../../src/domain/mediaProcessing";
 import { TransitionPanel } from "./TransitionPanel";
 import { ContentPreview } from "../components/panel/preview";
 import { CreatableMultiSelect } from "../components/panel/CreatableMultiSelect";
@@ -52,6 +57,9 @@ function ExistingContent({ id }: { id: string }) {
   const { api } = useAdmin();
   const [version, setVersion] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
+  // The audio file staged in this session (kept across the reload after
+  // rendering), so the editor can read lyrics from an m4a's tags.
+  const [stagedAudio, setStagedAudio] = useState<File | null>(null);
   const load = useCallback(
     () => api.getContent(id),
     // version: bumped after a status move to reload the item.
@@ -91,6 +99,10 @@ function ExistingContent({ id }: { id: string }) {
         setFlash("Media rendered and saved.");
         setVersion((value) => value + 1);
       }}
+      stagedAudio={stagedAudio}
+      onStaged={(role, file) => {
+        if (role === "audio") setStagedAudio(file);
+      }}
     />
   );
 }
@@ -102,6 +114,9 @@ type FormProps = {
   onMediaProcessed?: () => void;
   // The type a new item starts as (a library section's "New" button).
   initialType?: ContentType;
+  // An audio file uploaded to staging in this session, if any.
+  stagedAudio?: File | null;
+  onStaged?: (role: MediaInputRole, file: File) => void;
 };
 
 const typeNames: Record<ContentType, { one: string; many: string }> = {
@@ -133,7 +148,15 @@ const formatDuration = (value: string) => {
 const listError = (errors: Record<string, string>, field: string) =>
   Object.entries(errors).find(([key]) => key === field || key.startsWith(`${field}.`))?.[1];
 
-export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialType }: FormProps) {
+export function EditorForm({
+  record,
+  flash,
+  onMoved,
+  onMediaProcessed,
+  initialType,
+  stagedAudio = null,
+  onStaged,
+}: FormProps) {
   const { api, role } = useAdmin();
   const isNew = record === null;
   const initial = useMemo(
@@ -216,6 +239,62 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
     }
   };
 
+  // Lyrics: Gemini fills whichever side is empty from the other (one call,
+  // only from the button). Errors show under the lyrics field.
+  const latestLyrics = useRef(form.lyrics);
+  useEffect(() => {
+    latestLyrics.current = form.lyrics;
+  }, [form.lyrics]);
+  const fillLyrics = async () => {
+    const source = sourceSide(form.lyrics);
+    if (!source) return;
+    const sent = form.lyrics[source].trim();
+    let lyrics: DraftForm["lyrics"] | null;
+    try {
+      const [result] = await api.localizeText({ kind: "lyrics", items: [sent] });
+      if (!result) throw new Error("Gemini sent no lyrics. Type them in.");
+      lyrics = placeLocalized(latestLyrics.current, source, sent, result);
+    } catch (caught) {
+      throw new Error(localizeError(caught));
+    }
+    if (!lyrics) return;
+    setSavedMessage(null);
+    setForm((current) => ({ ...current, lyrics }));
+    toast.success(`${source === "hi" ? "Hinglish" : "Hindi"} lyrics filled. Check them, then save.`);
+  };
+
+  // "Read from audio file": the lyrics tag of the m4a staged in this
+  // session go to their script's side, when that side is empty.
+  const audioFile = stagedAudio && isM4a(stagedAudio) ? stagedAudio : null;
+  const [readingFile, setReadingFile] = useState(false);
+  const readLyricsFromFile = async () => {
+    if (!audioFile) return;
+    setReadingFile(true);
+    try {
+      const text = (await readM4aMetadata(audioFile)).lyrics?.trim().slice(0, LYRICS_MAX_LENGTH);
+      if (!text) {
+        toast.info(`${audioFile.name} has no lyrics in its tags.`);
+        return;
+      }
+      const side = lyricsSide(text);
+      const name = side === "hi" ? "Hindi" : "Hinglish";
+      const current = latestLyrics.current[side].trim();
+      if (current === text) {
+        toast.info(`The ${name} lyrics already match the file.`);
+        return;
+      }
+      if (current) {
+        toast.info(`The ${name} lyrics are already filled. Clear them first to use the ones in the file.`);
+        return;
+      }
+      setSavedMessage(null);
+      setForm((value) => ({ ...value, lyrics: { ...value.lyrics, [side]: text } }));
+      toast.success(`${name} lyrics read from ${audioFile.name}. Check them, then save.`);
+    } finally {
+      setReadingFile(false);
+    }
+  };
+
   const save = async () => {
     setSaveError(null);
     setSavedMessage(null);
@@ -242,6 +321,8 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
   };
 
   const isAudio = audioTypes.includes(form.type);
+  // Song lyrics belong to the devotional audio types (bhajan, aarti, mantra, chalisa).
+  const songLyrics = descriptionRequiredTypes.includes(form.type);
   const duration = formatDuration(form.durationSeconds);
   const showSummary = validation.issues.length > 0;
   const names = typeNames[form.type];
@@ -252,6 +333,7 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
       type={form.type}
       hasMedia={hasMedia}
       onProcessed={() => onMediaProcessed?.()}
+      onStaged={onStaged}
     />
   );
 
@@ -385,6 +467,36 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                   onChange={(en) => update("description", { ...form.description, en })}
                   error={fieldErrors["description.en"]}
                 />
+                {songLyrics && (
+                  <div className="col-span-full space-y-2">
+                    <LyricsField
+                      value={form.lyrics}
+                      onChange={(lyrics) => update("lyrics", lyrics)}
+                      onFillHinglish={fillLyrics}
+                      busy={!editable || saving}
+                    />
+                    {audioFile && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          disabled={readingFile || !editable || saving}
+                          onClick={() => void readLyricsFromFile()}
+                        >
+                          {readingFile ? <Loader2 className="animate-spin" /> : <FileAudio />}
+                          Read from audio file
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          Uses the lyrics tag of {audioFile.name}, uploaded in this session.
+                        </span>
+                      </div>
+                    )}
+                    {(fieldErrors["lyrics.hi"] ?? fieldErrors["lyrics.en"]) && (
+                      <p className="field-error">{fieldErrors["lyrics.hi"] ?? fieldErrors["lyrics.en"]}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </fieldset>
