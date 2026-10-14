@@ -29,7 +29,7 @@ import { BEADS } from "./art/MalaRing";
 // streaks, challenges and badges are earned only when the server can record
 // the session. Offline or in fixture mode the practice is kept on the device.
 
-export type PracticeKind = "mala" | "meditation" | "prayer";
+export type PracticeKind = "mala" | "meditation" | "prayer" | "mandir";
 export type Blessing = {
   kind: PracticeKind;
   result: PracticeResult;
@@ -40,6 +40,11 @@ export type PracticeNotice = {
   key: number;
 };
 type Status = "off" | "loading" | "ready" | "offline";
+// The day's Mandir visit as the server answered it (xp: points granted).
+export type MandirVisit = {
+  status: PracticeResult["status"];
+  xp: number;
+};
 
 type ProgressionValue = {
   status: Status;
@@ -59,6 +64,9 @@ type ProgressionValue = {
   // Prayer checklist.
   // The server's status, or null when it could not be reached.
   offerPrayer: (itemIds: string[]) => Promise<PracticeResult["status"] | null>;
+  // Mandir: the daily visit (the diya lit). Null when it could not be
+  // recorded (offline, or no such function on the server yet).
+  visitMandir: (deityId: string) => Promise<MandirVisit | null>;
   blessing: Blessing | null;
   dismissBlessing: () => void;
   // Latest mala result, for the inline jaap celebration.
@@ -165,10 +173,12 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       // screen closes it quietly instead of showing a 0 XP blessing.
       if (result.status === "ALREADY_DONE") return;
       const entry = { kind, result, key: nextKey() };
-      // Every mala gets the inline celebration; milestones get the full sheet.
+      // Every mala gets the inline celebration; milestones get the full sheet
+      // (a Mandir visit shows its own small note).
       if (kind === "mala") setMalaBlessing(entry);
       if (
-        kind !== "mala" ||
+        kind === "meditation" ||
+        kind === "prayer" ||
         result.badgesUnlocked.length > 0 ||
         result.challengesCompleted.length > 0 ||
         result.levelUp ||
@@ -425,6 +435,27 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
     [completeTask, progression, today, celebrate, fail],
   );
 
+  // ---- Mandir ------------------------------------------------------------
+  // Never in the way of the puja: a failure (offline, or a server without
+  // the function yet) is ignored, with no notice.
+  const visitMandir = useCallback(
+    async (deityId: string): Promise<MandirVisit | null> => {
+      if (!progression) return { status: "COMPLETED", xp: 0 };
+      try {
+        const result = await progression.recordMandirVisit({ deityId });
+        celebrate("mandir", result);
+        return { status: result.status, xp: result.xpGranted };
+      } catch (error) {
+        console.warn(
+          "[progression] mandir visit not recorded",
+          (error as { code?: string })?.code ?? String(error),
+        );
+        return null;
+      }
+    },
+    [progression, celebrate],
+  );
+
   const value = useMemo<ProgressionValue>(
     () => ({
       status,
@@ -440,6 +471,7 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       resetMeditation,
       setMeditationMinutes,
       offerPrayer,
+      visitMandir,
       blessing,
       dismissBlessing: () => setBlessing(null),
       malaBlessing,
@@ -458,6 +490,7 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       resetMeditation,
       setMeditationMinutes,
       offerPrayer,
+      visitMandir,
       blessing,
       malaBlessing,
       notice,

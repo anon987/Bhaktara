@@ -3,6 +3,7 @@ import { Image, ImageSourcePropType } from "react-native";
 import { useApp } from "../../../app/providers/AppProvider";
 import { DecorItem, decorFor } from "../../../domain/mandirDecor";
 import { Deity } from "../../../domain/models";
+import type { SaveVia } from "../../../domain/saveGate";
 import {
   RewardedAdPresenter,
   rewardedAdPresenter,
@@ -21,11 +22,15 @@ import {
   murtiFor,
   NO_LIGHT,
   rewardedAdsOn,
+  specialKinds,
+  specialsFor,
   storeUnlock,
-  watchAdToUnlock,
+  watchAdFor,
 } from "./decor";
 
 type Choices = LocalState["mandir"];
+// Decor a single-use ad opens for the whole visit (the rest: one offering).
+const visitKinds = ["temple", "light", "bell"];
 
 const mergeAll = (remote: DecorItem[]) =>
   mergeDecor(bundledDecor, remote, resolveMediaUrl);
@@ -49,14 +54,14 @@ function prefetchSource(source: ImageSourcePropType | undefined) {
 // Download the CDN images ahead (temples first: they fill the screen), so
 // they are on the phone before they are shown.
 function prefetchDecor(items: MandirDecor[]) {
-  const order = ["temple", "light", "bell", "flower"];
+  const order = ["temple", "light", "bell", "flower", ...specialKinds];
   [...items]
     .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))
     .forEach((item) => prefetchSource(item.image));
 }
 
 // Called from the Sadhana screen: fetch the published decor and the deity's
-// murti and download their images before the Prayer screen is opened.
+// murti and download their images before the Mandir is opened.
 export function usePrefetchMandirDecor(deity: Deity | undefined) {
   const { getMandirDecor } = useApp();
   useEffect(() => {
@@ -77,9 +82,10 @@ export function usePrefetchMandirDecor(deity: Deity | undefined) {
   );
 }
 
-// The Prayer screen's mandir: the bundled decor merged with what the admin
-// has published, the devotee's saved temple, light and bell, and unlocking
-// with a rewarded ad (none needed while rewarded ads are switched off).
+// The Mandir's decor: the bundled decor merged with what the admin has
+// published, the devotee's saved temple, light and bell, the special
+// offerings, and unlocking with a rewarded ad (none needed while rewarded
+// ads are switched off).
 export function useMandirDecor(
   deity: Deity | undefined,
   {
@@ -131,6 +137,7 @@ export function useMandirDecor(
     [items, deityId],
   );
   const flowers = useMemo(() => flowersFor(items, deityId), [items, deityId]);
+  const specials = useMemo(() => specialsFor(items, deityId), [items, deityId]);
   const murti = useMemo(
     () => murtiFor(deity, resolveMediaUrl, bundledMurti),
     [deity],
@@ -150,12 +157,18 @@ export function useMandirDecor(
 
   // One rewarded ad for the item. REWARDED: kept for good on this device;
   // REWARDED_SINGLE_USE: this visit (temples, lights, bells) or this one
-  // offering (flowers). Resolves false when the ad was closed early.
+  // offering (flowers, special offerings). Resolves how it was unlocked
+  // ("free" when no ad was needed), or null when the ad was closed early.
   const unlock = useCallback(
-    async (item: MandirDecor): Promise<boolean> => {
-      if (!locked(item)) return true;
-      const ok = await watchAdToUnlock(presenter);
-      if (!ok) return false;
+    async (item: MandirDecor): Promise<SaveVia | null> => {
+      if (!locked(item)) return "free";
+      const via = await watchAdFor(
+        presenter,
+        specialKinds.includes(item.kind)
+          ? "mandir_special_offering"
+          : "unlock_mandir_decor",
+      );
+      if (!via) return null;
       if (item.unlock === "REWARDED")
         update((state) => ({
           ...state,
@@ -164,9 +177,9 @@ export function useMandirDecor(
             unlocked: storeUnlock(item, state.mandir.unlocked),
           },
         }));
-      else if (item.kind !== "flower")
+      else if (visitKinds.includes(item.kind))
         setVisit((ids) => new Set([...ids, item.id]));
-      return true;
+      return via;
     },
     [locked, presenter, update],
   );
@@ -177,6 +190,7 @@ export function useMandirDecor(
     lights,
     bells,
     flowers,
+    specials,
     murti,
     temple,
     light,

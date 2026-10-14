@@ -28,8 +28,9 @@ import {
 import { noVisuals, Visuals } from "../../../domain/visuals";
 import { useReducedMotion } from "../../../components/useReducedMotion";
 import { sanctum } from "../../../theme/tokens";
-import { Diya } from "../art/Diya";
-import type { Box } from "../decor/geometry";
+import { Diya } from "../../sadhana/art/Diya";
+import type { PlacedSpecial } from "../decor/decor";
+import { Box, offerBox } from "../decor/geometry";
 import { PujaEffects } from "./Effects";
 import { Bhog, Flower, Garland, Tilak } from "./OfferingArt";
 
@@ -86,6 +87,7 @@ export function PujaScene({
   offerings,
   flowers,
   garland,
+  specials = [],
   bhog,
   tilak,
   dhoopPlaced,
@@ -113,6 +115,8 @@ export function PujaScene({
   offerings: DeityOfferings;
   flowers: PlacedFlower[];
   garland: GarlandKind | null;
+  // Special offerings (D-040), each at its place round the murti.
+  specials?: PlacedSpecial[];
   bhog: BhogKind[];
   tilak: boolean;
   dhoopPlaced: boolean;
@@ -215,6 +219,32 @@ export function PujaScene({
             />
           </Drop>
         )}
+        {/* Special offerings: on the head, round the neck, above the
+            deity, at the feet or on the altar */}
+        {specials.map((item) => {
+          const box = offerBox(
+            item.place,
+            murti,
+            { width, height },
+            item.aspect,
+            item.slot,
+          );
+          return (
+            <Pop
+              key={item.key}
+              style={{ position: "absolute", left: box.x, top: box.y }}
+            >
+              <Image
+                testID={`special-${item.id}`}
+                accessible={false}
+                source={item.image}
+                resizeMode="contain"
+                fadeDuration={0}
+                style={{ width: box.width, height: box.height }}
+              />
+            </Pop>
+          );
+        })}
         {/* Incense holder */}
         <View
           style={{

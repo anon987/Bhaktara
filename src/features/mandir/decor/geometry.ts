@@ -1,5 +1,5 @@
 import { defaultStage } from "../../../domain/mandirDecor";
-import type { TempleStage } from "../../../domain/admin";
+import type { OfferPlace, TempleStage } from "../../../domain/admin";
 
 export type Box = { x: number; y: number; width: number; height: number };
 
@@ -112,4 +112,89 @@ export function bellBox(
     height: size,
     chain,
   };
+}
+
+// Where a special offering is placed in the scene (width × height), relative
+// to the murti standing there: on the head (a mukut resting on it), round
+// the neck (a garland or haar across the upper chest), above the head (a
+// chhatra), at the feet, or on the altar in front, beside the lamp (slots
+// 0–3: right, left, further right, further left). The picture keeps its
+// aspect (width / height) inside its box.
+export function offerBox(
+  place: OfferPlace,
+  murti: Box,
+  scene: { width: number; height: number },
+  aspect = 1,
+  slot = 0,
+): Box {
+  const fit = (maxWidth: number, maxHeight: number) => {
+    let width = maxWidth;
+    let height = width / aspect;
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * aspect;
+    }
+    return { width, height };
+  };
+  const cx = murti.x + murti.width / 2;
+  const feet = murti.y + murti.height;
+  const centred = (size: { width: number; height: number }, y: number) => ({
+    x: cx - size.width / 2,
+    y,
+    ...size,
+  });
+  switch (place) {
+    case "head": {
+      const size = fit(
+        Math.min(murti.width * 0.55, murti.height * 0.2),
+        murti.height * 0.16,
+      );
+      return centred(size, murti.y + murti.height * 0.08 - size.height);
+    }
+    case "above": {
+      const bottom = murti.y + murti.height * 0.03;
+      const size = fit(
+        Math.min(murti.width * 1.1, murti.height * 0.45),
+        Math.max(1, Math.min(murti.height * 0.35, bottom)),
+      );
+      return centred(size, bottom - size.height);
+    }
+    case "neck":
+      return centred(
+        fit(
+          Math.min(murti.width * 0.85, murti.height * 0.38),
+          murti.height * 0.42,
+        ),
+        murti.y + murti.height * 0.17,
+      );
+    case "feet": {
+      const size = fit(
+        Math.min(murti.width * 0.6, murti.height * 0.3),
+        murti.height * 0.14,
+      );
+      return centred(size, feet - size.height * 0.6);
+    }
+    case "altar": {
+      const room = Math.max(0, scene.height - feet);
+      const size = fit(
+        Math.max(56, murti.height * 0.3),
+        clamp(room * 0.75, 30, murti.height * 0.25),
+      );
+      const gap = Math.max(size.width * 1.1, murti.height * 0.3);
+      const side = slot % 2 === 0 ? 1 : -1;
+      const step = Math.floor(slot / 2) + 1;
+      return {
+        x: clamp(
+          cx + side * step * gap - size.width / 2,
+          0,
+          Math.max(0, scene.width - size.width),
+        ),
+        y: Math.min(
+          scene.height - size.height - 2,
+          feet + room * 0.9 - size.height,
+        ),
+        ...size,
+      };
+    }
+  }
 }
