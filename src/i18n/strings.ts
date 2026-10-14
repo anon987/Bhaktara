@@ -145,16 +145,6 @@ export const strings = {
     "ये रैंक भक्तारा ऐप में आपकी यात्रा के पड़ाव हैं — आपकी भक्ति का माप नहीं।",
   ],
   badges: ["Little milestones", "छोटे-छोटे पड़ाव"],
-  favorites: ["Your favorites", "आपके पसंदीदा"],
-  noFavorites: ["Keep what speaks to you", "मन को भाने वाली सामग्री सहेजें"],
-  noFavoritesHint: [
-    "Tap a heart on any content to find it here.",
-    "किसी सामग्री पर दिल दबाएँ, वह यहाँ दिखेगी।",
-  ],
-  favoritesWaiting: [
-    "Saved on this device. Your favorites will update in your account when you are back online.",
-    "इस डिवाइस पर सहेजा गया। ऑनलाइन होने पर आपके पसंदीदा आपके खाते में भी अपडेट हो जाएँगे।",
-  ],
   settings: ["Settings", "सेटिंग्स"],
   language: ["Language", "भाषा"],
   notifications: ["Daily reminders", "दैनिक अनुस्मारक"],
@@ -514,6 +504,161 @@ export const strings = {
   practiceSound: ["Sound", "ध्वनि"],
   practiceVibration: ["Vibration", "कंपन"],
   practiceSettings: ["Settings", "सेटिंग्स"],
+  // Profile (doc 03 §8): header, stats, milestones, account (doc 21).
+  guestName: ["Guest", "भक्त"],
+  editProfile: ["Edit profile", "प्रोफ़ाइल बदलें"],
+  milestonesTitle: ["Milestones", "उपलब्धियाँ"],
+  milestonesOpen: [
+    "See every milestone on your journey",
+    "अपनी यात्रा की सभी उपलब्धियाँ देखें",
+  ],
+  milestonesEarned: ["earned", "मिलीं"],
+  milestonesOffline: [
+    "Milestones appear when Bhaktara is connected to the internet.",
+    "भक्तारा के इंटरनेट से जुड़ने पर उपलब्धियाँ दिखेंगी।",
+  ],
+  earnedOn: ["Earned on", "मिली"],
+  earned: ["Earned", "मिल गई"],
+  comingSoon: ["Coming soon", "जल्द आएगा"],
+  groupSadhana: ["Sadhana", "साधना"],
+  groupJaap: ["Jaap", "जाप"],
+  groupMeditation: ["Meditation", "ध्यान"],
+  groupMandir: ["Mandir", "मंदिर"],
+  groupChallenges: ["Challenges", "संकल्प"],
+  groupLeague: ["League", "लीग"],
+  groupXp: ["Points", "अंक"],
+  unitTasks: ["tasks", "कार्य"],
+  unitMalas: ["malas", "माला"],
+  unitMinutes: ["minutes", "मिनट"],
+  unitVisits: ["visits", "दर्शन"],
+  unitChallenges: ["challenges", "संकल्प"],
+  statStreak: ["Days in a row", "लगातार दिन"],
+  statMalas: ["Malas", "माला"],
+  statMeditation: ["Meditation minutes", "ध्यान के मिनट"],
+  statMandir: ["Mandir visits", "मंदिर दर्शन"],
+  account: ["Account", "खाता"],
+  keepSafeTitle: ["Keep your progress safe", "अपनी प्रगति सुरक्षित रखें"],
+  keepSafeText: [
+    "Sign in with Google so your streak, points and milestones stay with you even if you change your phone or remove the app. You can also keep using Bhaktara as a guest.",
+    "Google से साइन इन करें, ताकि फ़ोन बदलने या ऐप हटाने पर भी आपकी स्ट्रीक, अंक और उपलब्धियाँ सुरक्षित रहें। आप चाहें तो अतिथि बनकर भी भक्तारा चलाते रहें।",
+  ],
+  signingIn: ["Signing in…", "साइन इन हो रहा है…"],
+  signedInGoogle: ["Signed in with Google", "Google से साइन इन है"],
+  signOut: ["Sign out", "साइन आउट करें"],
+  signingOut: ["Signing out…", "साइन आउट हो रहा है…"],
+  signOutTitle: ["Sign out?", "साइन आउट करें?"],
+  signOutText: [
+    "Your progress stays safe in your Google account and comes back when you sign in again.",
+    "आपकी प्रगति आपके Google खाते में सुरक्षित रहेगी और दोबारा साइन इन करने पर वापस आ जाएगी।",
+  ],
+  signedInTitle: ["You are signed in", "साइन इन हो गया"],
+  signedInText: [
+    "Your progress is now safe in your Google account.",
+    "आपकी प्रगति अब आपके Google खाते में सुरक्षित है।",
+  ],
+  mergedTitle: ["Welcome back", "आपका स्वागत है"],
+  mergedText: [
+    "Your guest progress has been added to your account.",
+    "आपकी अतिथि प्रगति आपके खाते में जोड़ दी गई।",
+  ],
+  mergePending: [
+    "Your guest progress will be added to your account as soon as the internet is on.",
+    "इंटरनेट चालू होते ही आपकी अतिथि प्रगति आपके खाते में जुड़ जाएगी।",
+  ],
+  signInOffline: [
+    "No internet. Please turn on the internet and try again.",
+    "इंटरनेट नहीं है। कृपया इंटरनेट चालू करके फिर कोशिश करें।",
+  ],
+  signInPlayServices: [
+    "Google sign-in needs Google Play services on this phone. Please update Google Play services and try again.",
+    "Google से साइन इन के लिए इस फ़ोन में Google Play सेवाएँ ज़रूरी हैं। कृपया उन्हें अपडेट करके फिर कोशिश करें।",
+  ],
+  signInFailed: [
+    "Sign-in did not work. Please try again.",
+    "साइन इन नहीं हो पाया। कृपया फिर कोशिश करें।",
+  ],
+  addOwnPhoto: [
+    "Add your own photo to your profile.",
+    "अपनी प्रोफ़ाइल में अपनी फ़ोटो लगाएँ।",
+  ],
+  yourName: ["Your name", "आपका नाम"],
+  namePlaceholder: ["e.g. Ramesh Sharma", "जैसे: रमेश शर्मा"],
+  nameHint: [
+    "Hindi or English letters, 2 to 30.",
+    "हिंदी या अंग्रेज़ी अक्षर, 2 से 30 तक।",
+  ],
+  nameShort: [
+    "Please write at least 2 letters.",
+    "कृपया कम से कम 2 अक्षर लिखें।",
+  ],
+  nameLong: [
+    "Please keep your name within 30 letters.",
+    "कृपया नाम 30 अक्षरों के भीतर रखें।",
+  ],
+  nameLetters: [
+    "Please use letters only, without numbers or symbols.",
+    "कृपया केवल अक्षर लिखें, अंक या चिह्न नहीं।",
+  ],
+  saveName: ["Save name", "नाम सहेजें"],
+  savingName: ["Saving…", "सहेजा जा रहा है…"],
+  nameSaved: ["Your name is saved.", "आपका नाम सहेज लिया गया।"],
+  nameOffline: [
+    "No internet. Your name is kept here; tap Save again when the internet is on.",
+    "इंटरनेट नहीं है। आपका लिखा नाम यहीं रखा है; इंटरनेट चालू होने पर फिर से सहेजें दबाएँ।",
+  ],
+  nameRejected: [
+    "This name could not be saved. Please write another name.",
+    "यह नाम सहेजा नहीं जा सका। कृपया कोई और नाम लिखें।",
+  ],
+  yourPhoto: ["Your photo", "आपकी फ़ोटो"],
+  choosePhoto: ["Choose photo", "फ़ोटो चुनें"],
+  takePhoto: ["Take photo", "फ़ोटो खींचें"],
+  removePhoto: ["Remove photo", "फ़ोटो हटाएँ"],
+  photoPreparing: ["Getting your photo ready…", "फ़ोटो तैयार हो रही है…"],
+  photoUploading: ["Sending your photo…", "फ़ोटो भेजी जा रही है…"],
+  photoSaving: ["Saving…", "सहेजा जा रहा है…"],
+  photoSaved: ["Your photo is saved.", "आपकी फ़ोटो सहेज ली गई।"],
+  photoRemoved: ["Your photo is removed.", "आपकी फ़ोटो हटा दी गई।"],
+  photoFailed: [
+    "The photo could not be saved. Please check the internet and try again.",
+    "फ़ोटो सहेजी नहीं जा सकी। कृपया इंटरनेट देखकर फिर कोशिश करें।",
+  ],
+  photoTooLarge: [
+    "This photo is too large. Please choose another one.",
+    "यह फ़ोटो बहुत बड़ी है। कृपया कोई और फ़ोटो चुनें।",
+  ],
+  cameraDenied: [
+    "Bhaktara needs the camera to take your photo. You can allow it in the phone’s Settings, or choose a photo instead.",
+    "फ़ोटो खींचने के लिए भक्तारा को कैमरा चाहिए। आप फ़ोन की सेटिंग्स में अनुमति दे सकते हैं, या कोई फ़ोटो चुन लें।",
+  ],
+  mergeLost: [
+    "Your guest progress could not be joined to your account. Your account’s own progress is safe.",
+    "आपकी अतिथि प्रगति आपके खाते में नहीं जुड़ पाई। आपके खाते की अपनी प्रगति सुरक्षित है।",
+  ],
+  nameFailed: [
+    "The name could not be saved. Please try again.",
+    "नाम सहेजा नहीं जा सका। कृपया फिर कोशिश करें।",
+  ],
+  nameRateLimited: [
+    "You have changed your name many times today. Please try again tomorrow.",
+    "आज आपने नाम कई बार बदला है। कृपया कल फिर कोशिश करें।",
+  ],
+  photoRateLimited: [
+    "You have changed your photo many times today. Please try again tomorrow.",
+    "आज आपने फ़ोटो कई बार बदली है। कृपया कल फिर कोशिश करें।",
+  ],
+  photoRetry: [
+    "The photo could not be saved. Please choose it again.",
+    "फ़ोटो सहेजी नहीं जा सकी। कृपया फ़ोटो दोबारा चुनें।",
+  ],
+  photoUnavailable: [
+    "Photos cannot be added right now. Please try again later.",
+    "अभी फ़ोटो नहीं लगाई जा सकती। कृपया बाद में कोशिश करें।",
+  ],
+  profileOffline: [
+    "Your name and photo can be changed when Bhaktara is connected to the internet.",
+    "भक्तारा के इंटरनेट से जुड़ने पर आप अपना नाम और फ़ोटो बदल सकते हैं।",
+  ],
 } as const;
 export type StringKey = keyof typeof strings;
 export function translate(language: Language, key: StringKey): string {

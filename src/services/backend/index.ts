@@ -6,6 +6,7 @@ import { deviceFavoritesRepository } from "../../repositories/favoritesRepositor
 import { mockContentRepository } from "../../repositories/mockRepository";
 import { ProgressionRepository } from "../../repositories/progressionRepository";
 import { SessionService } from "../auth/session";
+import type { AccountBackend } from "../account/accountClient";
 import { readBackendConfig } from "./config";
 export type Backend = {
   mode: "fixture" | "emulator" | "cloud";
@@ -15,6 +16,8 @@ export type Backend = {
   favorites?: FavoritesRepository;
   // Omitted in fixture mode: practice works but earns nothing (D-050).
   progression?: ProgressionRepository;
+  // Profile, Google sign-in and merge (doc 21). Omitted in fixture mode.
+  account?: AccountBackend;
 };
 let pending: Promise<Backend> | undefined;
 export function getBackend(): Promise<Backend> {
@@ -31,9 +34,16 @@ export function getBackend(): Promise<Backend> {
       // Resolves to client.native.ts (React Native Firebase) on Android/iOS
       // and client.ts (JavaScript SDK) on web.
       const { createFirebaseClient } = await import("../firebase/client");
-      const { content, favorites, session, progression } =
+      const { content, favorites, session, progression, account } =
         await createFirebaseClient(config);
-      return { mode: config.mode, content, favorites, session, progression };
+      return {
+        mode: config.mode,
+        content,
+        favorites,
+        session,
+        progression,
+        account,
+      };
     })().catch((error) => {
       pending = undefined;
       throw error;

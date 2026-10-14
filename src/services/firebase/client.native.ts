@@ -7,8 +7,13 @@ import {
 import {
   connectAuthEmulator,
   getAuth,
+  getIdToken,
+  GoogleAuthProvider,
+  linkWithCredential,
   onAuthStateChanged,
   signInAnonymously,
+  signInWithCredential,
+  signOut,
 } from "@react-native-firebase/auth";
 import * as nativeFirestore from "@react-native-firebase/firestore";
 import {
@@ -25,6 +30,9 @@ import {
   Callable,
   createProgressionRepository,
 } from "../../repositories/progressionRepository";
+import { createAccountRepository } from "../../repositories/accountRepository";
+import { createGoogleSignIn } from "../account/googleSignIn";
+import { readStoredProfile } from "../account/profileStore";
 import { startAppCheck } from "./appCheck";
 import type { FirebaseConfig } from "./client";
 
@@ -100,7 +108,50 @@ export async function createFirebaseClient(config: FirebaseConfig) {
     },
   });
   const firestore = db as unknown as Firestore;
+  const user = () => {
+    const current = auth.currentUser;
+    if (!current) throw new Error("No session");
+    return current;
+  };
   return {
+    account: {
+      callables: createAccountRepository(call),
+      google: createGoogleSignIn(),
+      auth: {
+        current: () =>
+          auth.currentUser && {
+            uid: auth.currentUser.uid,
+            isAnonymous: auth.currentUser.isAnonymous,
+            providerName: auth.currentUser.displayName ?? null,
+            email: auth.currentUser.email ?? null,
+          },
+        getIdToken: () => getIdToken(user()),
+        async linkGoogle(idToken: string) {
+          await linkWithCredential(
+            user(),
+            GoogleAuthProvider.credential(idToken),
+          );
+        },
+        async signInGoogle(idToken: string) {
+          await signInWithCredential(
+            auth,
+            GoogleAuthProvider.credential(idToken),
+          );
+        },
+        signOut: () => signOut(auth),
+        async signInAnonymously() {
+          await signInAnonymously(auth);
+        },
+        readProfile: async (uid: string) =>
+          readStoredProfile(
+            (
+              await firestoreApi.getDocFromServer(
+                firestoreApi.doc(firestore, "users", uid),
+              )
+            ).data(),
+          ),
+      },
+    },
     session,
     content: createFirestoreRepository(firestore, session, firestoreApi),
     favorites: createFirestoreFavoritesRepository(

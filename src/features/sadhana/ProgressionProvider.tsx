@@ -92,7 +92,15 @@ export const newSessionId = () =>
     .slice(2, 10)}`.replace(/[^A-Za-z0-9]/g, "x");
 
 export function ProgressionProvider({ children }: React.PropsWithChildren) {
-  const { progression, local, update, completeTask, ready } = useApp();
+  const {
+    progression,
+    local,
+    update,
+    completeTask,
+    ready,
+    session: user,
+  } = useApp();
+  const uid = user?.uid ?? null;
   const [timezone, setTimezone] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null);
   const [serverStatus, setStatus] = useState<Exclude<Status, "off">>("loading");
@@ -153,6 +161,19 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       listener.remove();
     };
   }, [progression, refresh]);
+
+  // Signing in or out switches the account: its own timezone, progress and
+  // milestones are read afresh.
+  const seenUid = useRef(uid);
+  useEffect(() => {
+    const previous = seenUid.current;
+    seenUid.current = uid;
+    if (!previous || !uid || previous === uid) return;
+    confirmedZone.current = null;
+    setSnapshot(null);
+    setStatus("loading");
+    void refresh();
+  }, [uid, refresh]);
 
   const fail = useCallback((failure: PracticeFailure) => {
     if (failure.kind === "offline") setStatus("offline");

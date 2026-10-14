@@ -1,6 +1,38 @@
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn().mockResolvedValue(null),
   setItem: jest.fn().mockResolvedValue(undefined),
+  removeItem: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Profile photo and Google sign-in need native modules; the profile tests
+// drive the app's own photo and account layers instead.
+jest.mock("expo-image-picker", () => ({
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  launchCameraAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+  launchImageLibraryAsync: jest.fn(async () => ({
+    canceled: true,
+    assets: null,
+  })),
+  CameraType: { front: "front", back: "back" },
+}));
+jest.mock("expo-image-manipulator", () => ({
+  ImageManipulator: { manipulate: jest.fn() },
+  SaveFormat: { JPEG: "jpeg", PNG: "png", WEBP: "webp" },
+}));
+jest.mock("@react-native-google-signin/google-signin", () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(async () => true),
+    signIn: jest.fn(async () => ({ type: "cancelled", data: null })),
+    signOut: jest.fn(async () => null),
+  },
+  isErrorWithCode: () => false,
+  statusCodes: {
+    SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED",
+    IN_PROGRESS: "IN_PROGRESS",
+    PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE",
+  },
 }));
 
 // Icon geometry is checked by the real web bundle. Unit tests only need inert icon hosts.
