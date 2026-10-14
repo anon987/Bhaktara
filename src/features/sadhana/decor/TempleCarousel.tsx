@@ -1,4 +1,11 @@
-import React, { memo, useCallback, useEffect, useRef } from "react";
+import React, {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import {
   FlatList,
   Image,
@@ -9,7 +16,9 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  runOnJS,
   SharedValue,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
@@ -43,11 +52,22 @@ const aspectOf = (event: NativeSyntheticEvent<ImageLoadEventData>) => {
   return width && height ? width / height : undefined;
 };
 
+// The arrows move the pager directly (no screen re-render first).
+export type TempleCarouselHandle = { step: (delta: number) => void };
+
 // A full-width pager of temples (swipe left/right, it snaps to each). The
-// chosen deity's murti stands in every temple's sanctum. Neighbouring pages
-// are rendered ahead so a swipe never shows an empty page. A locked temple is
-// shown dimmed with a lock and an "Unlock with an ad" button.
-export function TempleCarousel({
+// chosen deity's murti stands in every temple's sanctum. Every page is
+// rendered up front (there are only a few) so neither a swipe nor an arrow
+// ever shows an empty page. A locked temple is shown dimmed with a lock and
+// an "Unlock with an ad" button.
+export const TempleCarousel = forwardRef<
+  TempleCarouselHandle,
+  React.ComponentProps<typeof TempleCarouselView>
+>(function TempleCarousel(props, ref) {
+  return <TempleCarouselView {...props} handle={ref} />;
+});
+
+function TempleCarouselView({
   width,
   height,
   temples,
@@ -68,7 +88,9 @@ export function TempleCarousel({
   unlockLabel,
   lockedLabel,
   hint,
+  handle,
 }: {
+  handle?: React.ForwardedRef<TempleCarouselHandle>;
   width: number;
   height: number;
   temples: MandirDecor[];
@@ -114,15 +136,39 @@ export function TempleCarousel({
       scrollX.set(event.contentOffset.x);
     },
   });
-  const settle = (offset: number) => {
-    const index = Math.max(
-      0,
-      Math.min(temples.length - 1, Math.round(offset / width)),
-    );
+  const last = temples.length - 1;
+  // Where an arrow is taking the pager (fast taps add up).
+  const target = useRef<number | null>(null);
+  const settleIndex = (raw: number) => {
+    const index = Math.max(0, Math.min(last, raw));
+    if (target.current === index) target.current = null;
     if (index === shown.current) return;
     shown.current = index;
     onPage(index);
   };
+  const settle = (offset: number) => settleIndex(Math.round(offset / width));
+  useImperativeHandle(handle, () => ({
+    step: (delta: number) => {
+      const from = target.current ?? shown.current;
+      const next = Math.max(0, Math.min(last, from + delta));
+      if (next === from) return;
+      target.current = next;
+      list.current?.scrollToOffset({ offset: next * width, animated: true });
+    },
+  }));
+  // A page is reached when the list rests exactly on it, whether a swipe or
+  // an arrow moved it (Android reports no momentum end for an arrow).
+  useAnimatedReaction(
+    () => {
+      if (width <= 0) return -1;
+      const x = scrollX.get();
+      const i = Math.round(x / width);
+      return Math.abs(x - i * width) < 1 ? i : -1;
+    },
+    (index, previous) => {
+      if (index >= 0 && index !== previous) runOnJS(settleIndex)(index);
+    },
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: MandirDecor }) => (
@@ -184,11 +230,10 @@ export function TempleCarousel({
         index,
       })}
       initialScrollIndex={Math.min(page, Math.max(0, temples.length - 1))}
-      // The page in view and one on each side.
-      initialNumToRender={1}
-      maxToRenderPerBatch={1}
-      windowSize={3}
-      removeClippedSubviews
+      // Every temple at once: a handful of pages, never a blank one.
+      initialNumToRender={temples.length}
+      maxToRenderPerBatch={temples.length}
+      windowSize={2 * temples.length + 1}
       onScroll={onScroll}
       scrollEventThrottle={16}
       onMomentumScrollEnd={(event) => settle(event.nativeEvent.contentOffset.x)}
@@ -283,6 +328,21 @@ const TemplePage = memo(function TemplePage({
         }}
       />
       {glow && !locked && <Halo box={box} />}
+      {murti?.placeholder && (
+        <Image
+          accessible={false}
+          source={murti.placeholder}
+          resizeMode="contain"
+          fadeDuration={0}
+          style={{
+            position: "absolute",
+            left: box.x,
+            top: box.y,
+            width: box.width,
+            height: box.height,
+          }}
+        />
+      )}
       {murti ? (
         <Image
           accessible={false}

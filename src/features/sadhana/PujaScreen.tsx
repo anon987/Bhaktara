@@ -7,7 +7,14 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import Animated, {
+  interpolateColor,
+  runOnJS,
+  SharedValue,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 import {
   Bell,
   ChevronDown,
@@ -37,7 +44,11 @@ import { PetalShower } from "./art/PetalShower";
 import { MandirDecor, templeAfterSwipe } from "./decor/decor";
 import { DecorChooser } from "./decor/DecorChooser";
 import { DecorLayer } from "./decor/DecorLayer";
-import { pageMurtiBox, TempleCarousel } from "./decor/TempleCarousel";
+import {
+  pageMurtiBox,
+  TempleCarousel,
+  TempleCarouselHandle,
+} from "./decor/TempleCarousel";
 import { UnlockSheet } from "./decor/UnlockSheet";
 import { useMandirDecor } from "./decor/useMandirDecor";
 import { beadTick, malaPulse, useDecorSound, useSound } from "./feedback";
@@ -105,6 +116,7 @@ export function PrayerScreen({
   // ---- The temple pager. The page in view; a locked temple can be looked
   // at but only becomes the saved temple once unlocked.
   const scrollX = useSharedValue(0);
+  const carousel = useRef<TempleCarouselHandle>(null);
   const [pageId, setPageId] = useState<string | null>(null);
   const shownTemple =
     (pageId && decor.temples.find((item) => item.id === pageId)) ||
@@ -426,6 +438,7 @@ export function PrayerScreen({
           {deity && stage.width > 0 && shownTemple && murti && (
             <>
               <TempleCarousel
+                ref={carousel}
                 width={stage.width}
                 height={stage.height}
                 temples={decor.temples}
@@ -490,14 +503,14 @@ export function PrayerScreen({
                 <Arrow
                   side="left"
                   label={t("previousTemple")}
-                  onPress={() => onPage(page - 1)}
+                  onPress={() => carousel.current?.step(-1)}
                 />
               )}
               {!hand && page < decor.temples.length - 1 && (
                 <Arrow
                   side="right"
                   label={t("nextTemple")}
-                  onPress={() => onPage(page + 1)}
+                  onPress={() => carousel.current?.step(1)}
                 />
               )}
               {!hand && (
@@ -519,9 +532,9 @@ export function PrayerScreen({
                     onPress={() => togglePanel("bell")}
                   />
                   <PageDots
-                    count={decor.temples.length}
-                    page={page}
-                    name={shownTemple.name[language]}
+                    names={decor.temples.map((item) => item.name[language])}
+                    scrollX={scrollX}
+                    width={stage.width}
                   />
                 </>
               )}
@@ -704,33 +717,74 @@ function DecorButton({
   );
 }
 
-// Which temple is shown: a dot per temple and its name.
+// Which temple is shown: a dot per temple and its name. Both follow the
+// pager as it moves (finger or arrow), not only once it stops.
 function PageDots({
-  count,
-  page,
-  name,
+  names,
+  scrollX,
+  width,
 }: {
-  count: number;
-  page: number;
-  name: string;
+  names: string[];
+  scrollX: SharedValue<number>;
+  width: number;
 }) {
-  if (count < 2) return null;
+  const [index, setIndex] = useState(() =>
+    width > 0 ? Math.round(scrollX.get() / width) : 0,
+  );
+  useAnimatedReaction(
+    () => (width > 0 ? Math.round(scrollX.get() / width) : 0),
+    (next, previous) => {
+      if (next !== previous) runOnJS(setIndex)(next);
+    },
+  );
+  if (names.length < 2) return null;
+  const name = names[Math.max(0, Math.min(names.length - 1, index))];
   return (
     <View style={styles.dots} pointerEvents="none">
       <View style={styles.dotRow}>
-        {Array.from({ length: count }, (_, i) => (
-          <View key={i} style={[styles.dot, i === page && styles.dotOn]} />
+        {names.map((_, i) => (
+          <Dot key={i} i={i} scrollX={scrollX} width={width} />
         ))}
       </View>
       <Txt
         size={13}
         numberOfLines={1}
+        adjustsFontSizeToFit
         style={{ color: shrine.maroon, lineHeight: 17 }}
       >
         {name}
       </Txt>
     </View>
   );
+}
+
+// Grows and reddens as its temple comes into view.
+function Dot({
+  i,
+  scrollX,
+  width,
+}: {
+  i: number;
+  scrollX: SharedValue<number>;
+  width: number;
+}) {
+  const style = useAnimatedStyle(() => {
+    const near =
+      width > 0
+        ? Math.max(0, 1 - Math.abs(scrollX.get() / width - i))
+        : i === 0
+          ? 1
+          : 0;
+    return {
+      width: 8 + 10 * near,
+      backgroundColor: interpolateColor(
+        near,
+        [0, 1],
+        ["rgba(107, 15, 18, 0.25)", colors.primary],
+      ),
+    };
+  });
+  return <Animated.View style={[styles.dot, style]} />;
 }
 
 const styles = StyleSheet.create({
@@ -803,8 +857,8 @@ const styles = StyleSheet.create({
   dots: {
     position: "absolute",
     bottom: 10,
-    left: "32%",
-    right: "32%",
+    left: "28%",
+    right: "28%",
     alignItems: "center",
     paddingVertical: 4,
     paddingHorizontal: 8,
@@ -818,7 +872,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "rgba(107, 15, 18, 0.25)",
   },
-  dotOn: { backgroundColor: colors.primary, width: 18 },
   panel: { position: "absolute", left: 8, right: 8, bottom: 72 },
   reset: {
     flexDirection: "row",

@@ -28,6 +28,7 @@ import {
   StreakHero,
   TodayLamps,
 } from "./SadhanaParts";
+import { usePrefetchMandirDecor } from "./decor/useMandirDecor";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Sadhana">,
@@ -37,7 +38,13 @@ type SectionKey = "today" | "challenges" | "league" | "history";
 const sections: SectionKey[] = ["today", "challenges", "league", "history"];
 
 export function SadhanaScreen({ navigation }: Props) {
-  const { t } = useApp();
+  const { t, catalog, local } = useApp();
+  // Download the mandir's temples and murti ahead, so the Prayer screen opens
+  // on them instead of waiting.
+  const deities = catalog?.deities ?? [];
+  usePrefetchMandirDecor(
+    deities.find((item) => item.id === local.deityId) ?? deities[0],
+  );
   const { status, snapshot } = useProgression();
   const unavailable = useUnavailable();
   const [section, setSection] = useState<SectionKey>("today");
