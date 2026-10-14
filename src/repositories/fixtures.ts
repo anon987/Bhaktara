@@ -317,3 +317,35 @@ export const homeLayouts: Record<HomeLanguage, HomeLayoutSection[]> = {
     sections.quote,
   ),
 };
+// Published mandirOfferings documents for fixture mode. The app bundles the
+// full default decor (assets/mandir); these show admin changes on top of it:
+// marigold lights made free and moved first for a festival (the image key is
+// a placeholder, so the bundled image of the same id is kept), and a
+// switched-off item that the app must skip.
+export const mandirOfferingDocuments: { id: string; data: unknown }[] = [
+  {
+    id: "light-marigold",
+    data: {
+      name: { en: "Marigold lights", hi: "गेंदे की लाइट माला" },
+      kind: "light",
+      art: { mobile: { key: "placeholder/mandir/light-marigold" } },
+      placement: "top",
+      deityIds: [],
+      unlock: "FREE",
+      sortOrder: 5,
+      isActive: true,
+    },
+  },
+  {
+    id: "bell-retired",
+    data: {
+      name: { en: "Old bell", hi: "पुरानी घंटी" },
+      kind: "bell",
+      art: { mobile: { key: "placeholder/mandir/bell-retired" } },
+      deityIds: [],
+      unlock: "FREE",
+      sortOrder: 90,
+      isActive: false,
+    },
+  },
+];

@@ -12,6 +12,7 @@ import { homeLanguages, orderHomeSections } from "../domain/home";
 import { SessionService } from "../services/auth/session";
 import { Banner, contentSchema } from "../domain/models";
 import { deityArtKey, visualsFromDocument } from "../domain/visuals";
+import { DecorItem, decorFromDocument } from "../domain/mandirDecor";
 import { FirestoreApi } from "./firestoreApi";
 
 const cursorSchema = z.object({
@@ -142,6 +143,22 @@ export function createFirestoreRepository(
         sections: orderHomeSections(value.sections),
       };
     },
+    async getMandirDecor() {
+      await session.ensureSession();
+      const result = await getDocsFromServer(
+        query(
+          collection(db, "mandirOfferings"),
+          where("isActive", "==", true),
+          limit(200),
+        ),
+      );
+      // Lenient: a document that does not parse is skipped, not the list.
+      const now = new Date();
+      return result.docs.flatMap((item): DecorItem[] => {
+        const value = decorFromDocument(item.id, item.data(), now);
+        return value ? [value] : [];
+      });
+    },
     async getCatalog() {
       await session.ensureSession();
       const [page, deities, banners, visuals] = await Promise.all([
@@ -176,12 +193,14 @@ export function createFirestoreRepository(
           const value = deityDocumentSchema.parse(data);
           const shrineKey = deityArtKey(data.shrineArt);
           const emblemKey = deityArtKey(data.jaapEmblem);
+          const murtiKey = deityArtKey(data.murtiArt);
           return {
             id: item.id,
             name: value.name,
             artKey: value.mandirArt.mobile.key,
             ...(shrineKey ? { shrineKey } : {}),
             ...(emblemKey ? { emblemKey } : {}),
+            ...(murtiKey ? { murtiKey } : {}),
           };
         }),
         banners: banners.docs

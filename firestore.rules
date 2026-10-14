@@ -81,6 +81,12 @@ service cloud.firestore {
     match /appConfig/{id} {
       allow get: if authenticated() && id in ['gamification', 'sadhana', 'visuals'];
     }
+    // Mandir decor for the Prayer screen (temples, lights, bells, flowers):
+    // active offerings only. Start/end windows are applied by the app.
+    match /mandirOfferings/{id} {
+      allow get: if authenticated() && resource.data.isActive == true;
+      allow list: if authenticated() && resource.data.isActive == true && bounded(200);
+    }
     match /leagueCohorts/{id} {
       allow get: if signedIn();
       allow list: if signedIn() && bounded(30);

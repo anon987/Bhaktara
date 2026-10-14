@@ -38,19 +38,27 @@ export function CatalogPage({ kind }: { kind: CatalogKind }) {
   const { data, error, loading } = useLoad<CatalogRow[]>(load);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [group, setGroup] = useState("all");
   const [editing, setEditing] = useState<{ id?: string; form: unknown } | null>(null);
 
   const rows = useMemo(() => {
     const list = [...(data ?? [])].sort((a, b) => def.sort(a.data, b.data));
     return list
-      .map((row) => ({ row, view: def.row(row.data) }))
-      .filter(({ row, view }) => {
+      .map((row) => ({ row, view: def.row(row.data), group: def.group?.of(row.data) ?? "" }))
+      .filter(({ row, view, group: rowGroup }) => {
         const text = `${view.title} ${view.subtitle ?? ""} ${row.id}`.toLowerCase();
         if (search && !text.includes(search.toLowerCase())) return false;
+        if (group !== "all" && rowGroup !== group) return false;
         const on = view.badges[0]?.tone === "on";
         return filter === "all" || (filter === "on" ? on : !on);
       });
-  }, [data, def, search, filter]);
+  }, [data, def, search, filter, group]);
+  // With a grouping and no group chosen: one heading per group that has rows.
+  const sections = def.group && group === "all"
+    ? def.group.options
+        .map((option) => ({ ...option, rows: rows.filter((item) => item.group === option.value) }))
+        .filter((section) => section.rows.length > 0)
+    : [{ value: "all", label: "", rows }];
 
   const save = useAction(
     async () => {
@@ -107,6 +115,23 @@ export function CatalogPage({ kind }: { kind: CatalogKind }) {
           <ToggleGroupItem value="off">Off</ToggleGroupItem>
         </ToggleGroup>
       </div>
+      {def.group && (
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          aria-label={def.group.label}
+          className="mb-4 flex-wrap"
+          value={group}
+          onValueChange={(value) => value && setGroup(value)}
+        >
+          <ToggleGroupItem value="all">All kinds</ToggleGroupItem>
+          {def.group.options.map((option) => (
+            <ToggleGroupItem key={option.value} value={option.value}>
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      )}
       {error && <ErrorState error={error} onRetry={() => setReload((n) => n + 1)} />}
       {loading && !data && <LoadingState />}
       {data && rows.length === 0 && (
@@ -123,42 +148,51 @@ export function CatalogPage({ kind }: { kind: CatalogKind }) {
           }
         />
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map(({ row, view }) => (
-          <button
-            key={row.id}
-            type="button"
-            onClick={() => setEditing({ id: row.id, form: def.fromDoc(row.data) })}
-            className="text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
-          >
-            <Card className="flex h-full flex-row items-center gap-4 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
-              {view.thumb !== undefined ? (
-                <MediaThumb mediaKey={view.thumb} alt={view.title} className="size-16 shrink-0" />
-              ) : (
-                <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
-                  <def.icon className="size-5" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <p className="truncate font-medium">{view.title}</p>
-                {view.subtitle && <p className="truncate text-sm text-muted-foreground">{view.subtitle}</p>}
-                <div className="flex flex-wrap gap-1">
-                  {view.badges.map((badge) => (
-                    <Badge
-                      key={badge.label}
-                      variant={badge.tone === "on" ? "default" : badge.tone === "info" ? "secondary" : "outline"}
-                      className="font-normal"
-                    >
-                      {badge.label}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <span className="hidden self-start text-[11px] text-muted-foreground sm:block">{ago(row.updatedAt)}</span>
-            </Card>
-          </button>
-        ))}
-      </div>
+      {sections.map((section) => (
+        <section key={section.value} aria-label={section.label || undefined} className="mb-6">
+          {section.label && (
+            <h2 className="mb-3 flex items-baseline gap-2 font-display text-lg">
+              {section.label} <span className="text-sm font-normal text-muted-foreground">{section.rows.length}</span>
+            </h2>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {section.rows.map(({ row, view }) => (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => setEditing({ id: row.id, form: def.fromDoc(row.data) })}
+                className="text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
+              >
+                <Card className="flex h-full flex-row items-center gap-4 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  {view.thumb !== undefined ? (
+                    <MediaThumb mediaKey={view.thumb} alt={view.title} className="size-16 shrink-0" />
+                  ) : (
+                    <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
+                      <def.icon className="size-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <p className="truncate font-medium">{view.title}</p>
+                    {view.subtitle && <p className="truncate text-sm text-muted-foreground">{view.subtitle}</p>}
+                    <div className="flex flex-wrap gap-1">
+                      {view.badges.map((badge) => (
+                        <Badge
+                          key={badge.label}
+                          variant={badge.tone === "on" ? "default" : badge.tone === "info" ? "secondary" : "outline"}
+                          className="font-normal"
+                        >
+                          {badge.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <span className="hidden self-start text-[11px] text-muted-foreground sm:block">{ago(row.updatedAt)}</span>
+                </Card>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
 
       <Sheet open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-xl">

@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { GestureResponderEvent, StyleSheet, View } from "react-native";
+import {
+  GestureResponderEvent,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  View,
+} from "react-native";
 import Animated, {
   Easing,
   SharedValue,
@@ -8,15 +14,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import Svg, {
-  Defs,
-  Ellipse,
-  Line,
-  RadialGradient,
-  Rect,
-  Stop,
-} from "react-native-svg";
-import { useReducedMotion } from "../../../components/useReducedMotion";
+import Svg, { Ellipse, Line, Rect } from "react-native-svg";
 import {
   BhogKind,
   DeityOfferings,
@@ -26,36 +24,39 @@ import {
 import { noVisuals, Visuals } from "../../../domain/visuals";
 import { sanctum } from "../../../theme/tokens";
 import { Diya } from "../art/Diya";
-import { SANCTUM, SHRINE_VIEW, Shrine, deityCentre } from "../art/Shrine";
+import type { Box } from "../decor/geometry";
 import { PujaEffects } from "./Effects";
 import { Bhog, Flower, Garland, Tilak } from "./OfferingArt";
-import { useTilt } from "./useTilt";
 
 export type HandItem = "dhoop" | "deep";
-export type PlacedFlower = { id: number; kind: FlowerKind };
+// A flower offered at the deity's feet, drawn with its decor image.
+export type PlacedFlower = {
+  id: number;
+  decorId: string;
+  image: ImageSourcePropType;
+  kind?: FlowerKind;
+};
 
-// Where things sit in the scene, from the stage size (D-054).
-export function sceneLayout(width: number, height: number) {
-  const size = Math.min(
-    width - 24,
-    (height / SHRINE_VIEW.height) * SHRINE_VIEW.width,
-  );
-  const s = size / SHRINE_VIEW.width;
-  const left = (width - size) / 2;
-  const top = (height - SHRINE_VIEW.height * s) / 2;
-  const at = (x: number, y: number) => ({ x: left + x * s, y: top + y * s });
+// Where things sit in the scene (D-054): round the murti standing in the
+// temple on screen, with the altar line at its feet. `s` scales the drawn
+// offerings with the scene as the old 300 × 360 shrine did.
+export function sceneLayout(width: number, height: number, murti: Box) {
+  const s = Math.max(0.6, Math.min(width / 300, height / 360));
+  const size = Math.min(width, (height * 300) / 360);
+  const cx = murti.x + murti.width / 2;
+  const feet = murti.y + murti.height;
+  // Incense to the left of the murti, bhog to the right.
+  const side = Math.max(murti.width / 2 + 34 * s, 70 * s);
   return {
-    size,
     s,
-    left,
-    top,
-    deity: at(deityCentre.x, deityCentre.y),
-    forehead: at(deityCentre.x, SANCTUM.y + SANCTUM.height * 0.22),
-    altar: top + 300 * s,
-    flowers: at(deityCentre.x, 300),
-    bhog: at(206, 300),
-    dhoop: at(94, 300),
-    lamp: at(deityCentre.x, 312),
+    size,
+    murti,
+    deity: { x: cx, y: murti.y + murti.height / 2 },
+    forehead: { x: cx, y: murti.y + murti.height * 0.2 },
+    flowers: { x: cx, y: feet + 6 * s },
+    bhog: { x: Math.min(width - 34 * s, cx + side), y: feet + 8 * s },
+    dhoop: { x: Math.max(20 * s, cx - side), y: feet + 8 * s },
+    lamp: { x: cx, y: feet + 24 * s },
   };
 }
 
@@ -68,11 +69,20 @@ const slot = (i: number, count: number) => ({
   dy: 0,
 });
 
+// The offerings over the temple: tilak and garland on the deity, flowers,
+// incense, bhog and the lamp at its feet, the shankh's ripples, and the
+// light, smoke and water effects. While the temples are being swiped (or a
+// locked temple is shown) the offerings fade out: they belong to the temple
+// the devotee worships in.
 export function PujaScene({
   width,
   height,
-  artKey,
-  shrineKey,
+  murti,
+  pageWidth,
+  page,
+  scrollX,
+  hidden,
+  drawnDeity,
   visuals = noVisuals,
   offerings,
   flowers,
@@ -81,17 +91,25 @@ export function PujaScene({
   tilak,
   dhoopPlaced,
   deepPlaced,
+  incenseBurning,
   hand,
   waterKey,
   shankhKey,
-  glow,
   onHandDone,
   onAartiPulse,
 }: {
   width: number;
   height: number;
-  artKey: string;
-  shrineKey?: string;
+  // Where the murti stands in the temple on screen.
+  murti: Box;
+  // The temple pager: its page width, the page the offerings belong to and
+  // its scroll position.
+  pageWidth: number;
+  page: number;
+  scrollX: SharedValue<number>;
+  hidden: boolean;
+  // The deity is the app's drawn art (no murti image): draw the tilak on it.
+  drawnDeity: boolean;
   visuals?: Visuals;
   offerings: DeityOfferings;
   flowers: PlacedFlower[];
@@ -100,16 +118,17 @@ export function PujaScene({
   tilak: boolean;
   dhoopPlaced: boolean;
   deepPlaced: boolean;
+  // The incense on the stand is still burning (it burns out after a while).
+  incenseBurning: boolean;
   hand: HandItem | null;
   waterKey: number;
   shankhKey: number;
-  glow: boolean;
   onHandDone: (item: HandItem) => void;
   onAartiPulse: () => void;
 }) {
-  const reduced = useReducedMotion();
-  const tilt = useTilt(!reduced);
-  const L = sceneLayout(width, height);
+  const L = sceneLayout(width, height, murti);
+  const resting = dhoopPlaced && hand !== "dhoop";
+  const burning = resting && incenseBurning;
 
   // Shared positions for the lamp and incense (the effects read them).
   const lampX = useSharedValue(L.lamp.x);
@@ -117,15 +136,15 @@ export function PujaScene({
   const lampOn = useSharedValue(deepPlaced ? 0.5 : 0);
   const dhoopX = useSharedValue(L.dhoop.x);
   const dhoopY = useSharedValue(L.dhoop.y);
-  const dhoopOn = useSharedValue(dhoopPlaced ? 1 : 0);
+  const dhoopOn = useSharedValue(0);
   const restX = useSharedValue(L.dhoop.x);
   const restY = useSharedValue(L.dhoop.y - 34 * L.s);
-  const restOn = useSharedValue(dhoopPlaced ? 1 : 0);
+  const restOn = useSharedValue(burning ? 1 : 0);
 
   useEffect(() => {
     restX.set(L.dhoop.x);
     restY.set(L.dhoop.y - 34 * L.s);
-    restOn.set(dhoopPlaced && hand !== "dhoop" ? 1 : 0);
+    restOn.set(burning ? 1 : withTiming(0, { duration: 1500 }));
     if (hand !== "deep") {
       lampX.set(L.lamp.x);
       lampY.set(L.lamp.y - 20 * L.s);
@@ -137,7 +156,7 @@ export function PujaScene({
     L.lamp.x,
     L.lamp.y,
     L.s,
-    dhoopPlaced,
+    burning,
     deepPlaced,
     hand,
     restX,
@@ -148,100 +167,49 @@ export function PujaScene({
     lampOn,
   ]);
 
-  // 2.5D: the temple turns slightly with the phone; the glow behind and the
-  // offerings in front move by different amounts.
-  const templeStyle = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 900 },
-      { translateX: tilt.x.value * 4 },
-      { rotateY: `${tilt.x.value * 6}deg` },
-      { rotateX: `${-tilt.y.value * 4}deg` },
-    ],
-  }));
-  const backStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -tilt.x.value * 12 },
-      { translateY: -tilt.y.value * 8 },
-    ],
-  }));
-  const frontStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: tilt.x.value * 9 },
-      { translateY: tilt.y.value * 5 },
-    ],
-  }));
+  // Offerings fade while the temples are swiped (UI thread, no re-render).
+  const fade = useAnimatedStyle(() => {
+    if (hidden) return { opacity: 0 };
+    const away = Math.abs(scrollX.value - page * pageWidth);
+    return { opacity: Math.max(0, 1 - away / (pageWidth * 0.3)) };
+  });
 
   return (
-    <View style={{ width, height }}>
-      {/* Back glow */}
+    <View style={{ width, height }} pointerEvents="box-none">
       <Animated.View
-        style={[StyleSheet.absoluteFill, backStyle]}
+        style={[StyleSheet.absoluteFill, fade]}
         pointerEvents="none"
       >
-        <Svg width={width} height={height}>
-          <Defs>
-            <RadialGradient id="puja-back" cx="50%" cy="50%" r="50%">
-              <Stop
-                offset="0"
-                stopColor={sanctum.flame}
-                stopOpacity={glow ? 0.28 : 0.14}
-              />
-              <Stop offset="1" stopColor={sanctum.flame} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Ellipse
-            cx={L.deity.x}
-            cy={L.deity.y}
-            rx={L.size * 0.62}
-            ry={L.size * 0.7}
-            fill="url(#puja-back)"
-          />
-        </Svg>
-      </Animated.View>
-      {/* Temple, deity, tilak and garland */}
-      <Animated.View
-        style={[
-          { position: "absolute", left: L.left, top: L.top },
-          templeStyle,
-        ]}
-      >
-        <Shrine size={L.size} artKey={artKey} imageKey={shrineKey} glow={glow}>
-          {/* A painted temple's deity has its own tilak. */}
-          {tilak && !shrineKey && (
-            <Pop
-              style={{
-                position: "absolute",
-                left: (deityCentre.x - 9) * L.s,
-                top: (SANCTUM.y + SANCTUM.height * 0.16) * L.s,
-              }}
-            >
-              <Tilak style={offerings.tilak} size={18 * L.s} />
-            </Pop>
-          )}
-          {garland && (
-            <Drop
-              style={{
-                position: "absolute",
-                left: (SANCTUM.x - 10) * L.s,
-                top: (SANCTUM.y + 6) * L.s,
-              }}
-              distance={40}
-            >
-              <Garland
-                kind={garland}
-                width={(SANCTUM.width + 20) * L.s}
-                height={SANCTUM.height * 0.62 * L.s}
-                imageKey={visuals.garlands[garland]}
-              />
-            </Drop>
-          )}
-        </Shrine>
-      </Animated.View>
-      {/* Offerings on the altar, in front */}
-      <Animated.View
-        style={[StyleSheet.absoluteFill, frontStyle]}
-        pointerEvents="none"
-      >
+        {/* Tilak (on the app's drawn deity; a murti has its own) */}
+        {tilak && drawnDeity && (
+          <Pop
+            style={{
+              position: "absolute",
+              left: L.forehead.x - 9 * L.s,
+              top: L.forehead.y,
+            }}
+          >
+            <Tilak style={offerings.tilak} size={18 * L.s} />
+          </Pop>
+        )}
+        {/* Garland round the deity */}
+        {garland && (
+          <Drop
+            style={{
+              position: "absolute",
+              left: murti.x - murti.width * 0.05,
+              top: murti.y + murti.height * 0.16,
+            }}
+            distance={40}
+          >
+            <Garland
+              kind={garland}
+              width={murti.width * 1.1}
+              height={murti.height * 0.5}
+              imageKey={visuals.garlands[garland]}
+            />
+          </Drop>
+        )}
         {/* Incense holder */}
         <View
           style={{
@@ -260,8 +228,7 @@ export function PujaScene({
               rx={3}
               fill={sanctum.brass}
             />
-            {dhoopPlaced &&
-              hand !== "dhoop" &&
+            {resting &&
               [-4, 0, 4].map((dx) => (
                 <Line
                   key={dx}
@@ -325,9 +292,10 @@ export function PujaScene({
             )}
           </View>
         )}
-        {/* Flowers at the deity's feet */}
+        {/* Flowers at the deity's feet, drawn with their decor images */}
         {flowers.slice(-FLOWER_LIMIT).map((flower, i, shown) => {
           const p = slot(i, shown.length);
+          const size = 26 * L.s;
           return (
             <Drop
               key={flower.id}
@@ -335,14 +303,16 @@ export function PujaScene({
               spin
               style={{
                 position: "absolute",
-                left: L.flowers.x + p.dx * L.s - 11 * L.s,
-                top: L.flowers.y + p.dy * L.s - 18 * L.s,
+                left: L.flowers.x + p.dx * L.s - size / 2,
+                top: L.flowers.y + p.dy * L.s - size * 0.8,
               }}
             >
-              <Flower
-                kind={flower.kind}
-                size={22 * L.s}
-                imageKey={visuals.flowers[flower.kind]}
+              <Image
+                accessible={false}
+                source={flower.image}
+                resizeMode="contain"
+                fadeDuration={0}
+                style={{ width: size, height: size }}
               />
             </Drop>
           );
@@ -369,6 +339,7 @@ export function PujaScene({
           { x: dhoopX, y: dhoopY, on: dhoopOn },
           { x: restX, y: restY, on: restOn },
         ]}
+        smoking={hand === "dhoop" || burning}
         deity={L.deity}
         waterKey={waterKey}
       />
@@ -491,6 +462,8 @@ function Hand({
     const radius = L.size * 0.36;
     let theta = Math.PI / 2;
     const handle = setInterval(() => {
+      // Done: the item settles by itself; stop ticking.
+      if (p.done) return clearInterval(handle);
       if (Date.now() - p.lastTouch < IDLE_MS) return;
       theta += TAU / 75;
       advance(

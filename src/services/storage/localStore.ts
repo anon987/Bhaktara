@@ -25,6 +25,17 @@ export const localStateSchema = z
       .default({ sound: true, vibration: true }),
     // One-time hints already shown (e.g. "wallpaperSwipe").
     seenHints: z.array(z.string()).default([]),
+    // Prayer screen mandir decor: the devotee's temple, light and bell (null:
+    // the first free one; lightId "none": no lights) and the decor unlocked
+    // for good on this device with a rewarded ad.
+    mandir: z
+      .object({
+        templeId: z.string().nullable(),
+        lightId: z.string().nullable(),
+        bellId: z.string().nullable(),
+        unlocked: z.array(z.string()),
+      })
+      .default({ templeId: null, lightId: null, bellId: null, unlocked: [] }),
     days: z.record(
       z.string(),
       z.object({
@@ -52,6 +63,7 @@ export const initialState: LocalState = {
   },
   practice: { sound: true, vibration: true },
   seenHints: [],
+  mandir: { templeId: null, lightId: null, bellId: null, unlocked: [] },
   days: {},
 };
 const KEY = "bhaktara.local.v1";

@@ -36,6 +36,8 @@ const ids = {
   audit: "admin-rules-audit",
   festival: "admin-rules-festival",
   asset: "admin-rules-asset",
+  liveOffering: "admin-rules-live-offering",
+  hiddenOffering: "admin-rules-hidden-offering",
 };
 
 before(async () => {
@@ -69,6 +71,8 @@ before(async () => {
     await setDoc(doc(db, "festivals", ids.festival), { isPublished: false });
     await setDoc(doc(db, "deities", "admin-rules-inactive"), { isActive: false });
     await setDoc(doc(db, "mediaAssets", ids.asset), { purpose: "banner", createdAt: new Date() });
+    await setDoc(doc(db, "mandirOfferings", ids.liveOffering), { kind: "temple", isActive: true });
+    await setDoc(doc(db, "mandirOfferings", ids.hiddenOffering), { kind: "bell", isActive: false });
     await setDoc(doc(db, "appConfig", "puja"), { version: 1 });
     await setDoc(doc(db, "appConfig", "puja", "versions", "1"), { savedAt: new Date() });
   });
@@ -85,6 +89,8 @@ after(async () => {
     await deleteDoc(doc(db, "festivals", ids.festival));
     await deleteDoc(doc(db, "deities", "admin-rules-inactive"));
     await deleteDoc(doc(db, "mediaAssets", ids.asset));
+    await deleteDoc(doc(db, "mandirOfferings", ids.liveOffering));
+    await deleteDoc(doc(db, "mandirOfferings", ids.hiddenOffering));
     await deleteDoc(doc(db, "appConfig", "puja", "versions", "1"));
     await deleteDoc(doc(db, "appConfig", "puja"));
   });
@@ -176,6 +182,34 @@ test("panel v2 reads: catalogue, config history and the media library", async ()
   const forged = as("SUPER_ADMIN", "anonymous");
   await assertFails(getDoc(doc(forged, "festivals", ids.festival)));
   await assertFails(getDoc(doc(forged, "mediaAssets", ids.asset)));
+});
+
+test("Mandir offerings: the app reads active ones, staff read all", async () => {
+  // Guests (anonymous sign-in) and signed-in devotees see active decor only.
+  for (const db of [as(null, "anonymous"), as(null)]) {
+    await assertSucceeds(getDoc(doc(db, "mandirOfferings", ids.liveOffering)));
+    await assertFails(getDoc(doc(db, "mandirOfferings", ids.hiddenOffering)));
+    await assertSucceeds(
+      getDocs(query(collection(db, "mandirOfferings"), where("isActive", "==", true), limit(200))),
+    );
+    // Lists must filter on isActive and stay bounded.
+    await assertFails(getDocs(query(collection(db, "mandirOfferings"), limit(200))));
+    await assertFails(
+      getDocs(query(collection(db, "mandirOfferings"), where("isActive", "==", true), limit(201))),
+    );
+    await assertFails(getDocs(query(collection(db, "mandirOfferings"), where("isActive", "==", true))));
+    await assertFails(setDoc(doc(db, "mandirOfferings", "forged"), { isActive: true }));
+  }
+  const signedOut = env.unauthenticatedContext().firestore();
+  await assertFails(getDoc(doc(signedOut, "mandirOfferings", ids.liveOffering)));
+  // Catalogue staff still read hidden ones (the editor lists everything).
+  for (const role of adminRoles) {
+    const db = as(role);
+    const expect = can(role, "catalog.read") ? assertSucceeds : assertFails;
+    await expect(getDoc(doc(db, "mandirOfferings", ids.hiddenOffering)));
+    await expect(getDocs(query(collection(db, "mandirOfferings"), limit(200))));
+    await assertFails(setDoc(doc(db, "mandirOfferings", ids.liveOffering), { isActive: false }));
+  }
 });
 
 test("role claims on anonymous or signed-out sessions grant nothing", async () => {

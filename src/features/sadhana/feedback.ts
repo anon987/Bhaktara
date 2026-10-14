@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
-import { createAudioPlayer, type AudioPlayer } from "expo-audio";
+import {
+  createAudioPlayer,
+  type AudioPlayer,
+  type AudioSource,
+} from "expo-audio";
 import { useApp } from "../../app/providers/AppProvider";
 import { usePlayer } from "../player/PlayerProvider";
 
@@ -65,6 +69,38 @@ export function useSound() {
           }, strike * gapMs);
       } catch {
         // Sound is a nicety; practice continues without it.
+      }
+    },
+    [playing],
+  );
+}
+
+// A mandir decor bell's own sound (bundled or from the CDN), one player per
+// bell. Same rules as the puja sounds: silent during a bhajan or aarti and
+// when the devotee turned sound off.
+export function useDecorSound() {
+  const { playing } = usePlayer();
+  const players = useRef(new Map<string, AudioPlayer>());
+  useEffect(() => {
+    const current = players.current;
+    return () => {
+      for (const player of current.values()) player.remove();
+      current.clear();
+    };
+  }, []);
+  return useCallback(
+    (id: string, source: AudioSource) => {
+      if (playing || !prefs.sound) return;
+      try {
+        let player = players.current.get(id);
+        if (!player) {
+          player = createAudioPlayer(source);
+          players.current.set(id, player);
+        }
+        void player.seekTo(0);
+        player.play();
+      } catch {
+        // Sound is a nicety; the puja continues without it.
       }
     },
     [playing],

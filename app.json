@@ -44,11 +44,22 @@
           "supportsBackgroundPlayback": false
         }
       ],
-      "./plugins/withPictureInPicture"
+      "./plugins/withPictureInPicture",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
     ],
     "scheme": "bhaktara",
     "splash": {
       "backgroundColor": "#FBF7EF"
     }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
   }
 }

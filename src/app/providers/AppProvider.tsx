@@ -17,6 +17,7 @@ import {
 import { localPracticeDay, remainingAt } from "../../domain/practice";
 import { Backend, getBackend } from "../../services/backend";
 import { ContentQuery, ContentRepository } from "../../repositories/contracts";
+import { DecorItem } from "../../domain/mandirDecor";
 import { ProgressionRepository } from "../../repositories/progressionRepository";
 import { Language, StringKey, translate } from "../../i18n/strings";
 import { analytics } from "../../services/analytics";
@@ -54,6 +55,9 @@ type AppContextValue = {
   searchContent: ContentRepository["search"];
   getContent: ContentRepository["getById"];
   getHome: ContentRepository["getHome"];
+  // Published mandir decor; empty before the backend is ready, when the
+  // repository has none or the read fails (the bundled set is then used).
+  getMandirDecor: () => Promise<DecorItem[]>;
   setCatalogMode: (mode: CatalogMode) => void;
   toggleFavorite: (id: string) => void;
   favoritesStatus: FavoritesStatus;
@@ -180,6 +184,11 @@ export function AppProvider({
     },
     [backend],
   );
+  const getMandirDecor = useCallback(async (): Promise<DecorItem[]> => {
+    const content = backend?.content;
+    if (!content?.getMandirDecor) return [];
+    return content.getMandirDecor().catch(() => []);
+  }, [backend]);
   useEffect(() => {
     if (!ready) return;
     const handle = setTimeout(() => {
@@ -315,6 +324,7 @@ export function AppProvider({
       searchContent,
       getContent,
       getHome,
+      getMandirDecor,
       setCatalogMode,
       toggleFavorite: (id) => {
         analytics.track("content_favorite", { content_id: id });
@@ -359,6 +369,7 @@ export function AppProvider({
       searchContent,
       getContent,
       getHome,
+      getMandirDecor,
       sync,
       pendingFavorites,
       refreshFavorites,
