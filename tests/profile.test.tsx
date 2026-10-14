@@ -48,6 +48,15 @@ jest.mock("../src/features/sadhana/ProgressionProvider", () => ({
   ...jest.requireActual("../src/features/sadhana/ProgressionProvider"),
   useOptionalProgression: () => mockProgression.current,
 }));
+// The file transport is native (expo-file-system).
+const mockTransport = { size: jest.fn(), put: jest.fn() };
+jest.mock("../src/features/profile/photoTransport", () => ({
+  // Forwarded at call time: the imports load before mockTransport is set.
+  photoTransport: {
+    size: (...args: unknown[]) => mockTransport.size(...args),
+    put: (...args: unknown[]) => mockTransport.put(...args),
+  },
+}));
 // The picker and resizer are native; the upload sequence stays real.
 jest.mock("../src/features/profile/photo", () => ({
   ...jest.requireActual("../src/features/profile/photo"),
@@ -468,14 +477,8 @@ describe("Edit profile", () => {
       photo: { uri: "file:///picked.jpg", width: 1200, height: 900 },
     });
     jest.mocked(preparePhoto).mockResolvedValue("file:///cache/avatar.jpg");
-    const blob = { size: 48_000 };
-    const fetchMock = jest.fn(async (url: string) =>
-      url.startsWith("file:")
-        ? { blob: async () => blob }
-        : { ok: true, status: 200 },
-    );
-    const realFetch = global.fetch;
-    global.fetch = fetchMock as unknown as typeof fetch;
+    mockTransport.size.mockResolvedValue(48_000);
+    mockTransport.put.mockResolvedValue({ status: 200, body: "" });
     try {
       const { backend, account } = fakeAccount(guestUser);
       renderScreen(EditProfileScreen, backend, noPending());
@@ -498,20 +501,17 @@ describe("Edit profile", () => {
         contentType: "image/jpeg",
         bytes: 48_000,
       });
-      expect(fetchMock).toHaveBeenCalledWith(UPLOAD.uploadUrl, {
-        method: "PUT",
-        headers: UPLOAD.headers,
-        body: blob,
-      });
+      expect(mockTransport.put).toHaveBeenCalledWith(
+        UPLOAD.uploadUrl,
+        "file:///cache/avatar.jpg",
+        UPLOAD.headers,
+      );
       expect(updateProfile).toHaveBeenCalledWith({ photoKey: UPLOAD.key });
       // Request → PUT → save, in that order.
-      const putCall = fetchMock.mock.calls.findIndex(
-        ([url]) => url === UPLOAD.uploadUrl,
-      );
       expect(
         requestProfilePhotoUpload.mock.invocationCallOrder[0],
-      ).toBeLessThan(fetchMock.mock.invocationCallOrder[putCall]);
-      expect(fetchMock.mock.invocationCallOrder[putCall]).toBeLessThan(
+      ).toBeLessThan(mockTransport.put.mock.invocationCallOrder[0]);
+      expect(mockTransport.put.mock.invocationCallOrder[0]).toBeLessThan(
         updateProfile.mock.invocationCallOrder[0],
       );
 
@@ -522,7 +522,7 @@ describe("Edit profile", () => {
       expect(updateProfile).toHaveBeenLastCalledWith({ photoKey: null });
       expect(await screen.findByText("Your photo is removed.")).toBeTruthy();
     } finally {
-      global.fetch = realFetch;
+      jest.clearAllMocks();
     }
   });
 
@@ -532,12 +532,11 @@ describe("Edit profile", () => {
       photo: { uri: "file:///picked.jpg", width: 512, height: 512 },
     });
     jest.mocked(preparePhoto).mockResolvedValue("file:///cache/avatar.jpg");
-    const realFetch = global.fetch;
-    global.fetch = jest.fn(async (url: string) =>
-      url.startsWith("file:")
-        ? { blob: async () => ({ size: 1000 }) }
-        : { ok: false, status: 403 },
-    ) as unknown as typeof fetch;
+    mockTransport.size.mockResolvedValue(1000);
+    mockTransport.put.mockResolvedValue({
+      status: 403,
+      body: "<Error><Code>SignatureDoesNotMatch</Code></Error>",
+    });
     try {
       const { backend, account } = fakeAccount(guestUser);
       renderScreen(EditProfileScreen, backend, noPending());
@@ -556,7 +555,7 @@ describe("Edit profile", () => {
       ).toBeTruthy();
       expect(account.callables.updateProfile).not.toHaveBeenCalled();
     } finally {
-      global.fetch = realFetch;
+      jest.clearAllMocks();
     }
   });
 });

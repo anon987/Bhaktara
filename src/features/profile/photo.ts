@@ -2,6 +2,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { PROFILE_PHOTO_MAX_BYTES, ProfileResult } from "../../domain/account";
 import type { AccountRepository } from "../../repositories/accountRepository";
+import { photoTransport, PhotoTransport } from "./photoTransport";
 
 // The devotee's own photo: picked or taken, cropped square, resized to at
 // most 512 px JPEG on the device, then uploaded to a signed URL (doc 21,
@@ -78,38 +79,41 @@ export class PhotoUploadError extends Error {
   }
 }
 
-// requestProfilePhotoUpload → PUT the bytes → updateProfile({ photoKey }).
+// requestProfilePhotoUpload → PUT the file → updateProfile({ photoKey }).
 export async function uploadProfilePhoto(
   uri: string,
   {
     callables,
-    fetchImpl = fetch,
+    transport = photoTransport,
     onStep,
   }: {
     callables: Pick<
       AccountRepository,
       "requestProfilePhotoUpload" | "updateProfile"
     >;
-    fetchImpl?: typeof fetch;
+    transport?: PhotoTransport;
     onStep?: (step: UploadStep) => void;
   },
 ): Promise<ProfileResult> {
   onStep?.("preparing");
-  const blob = await (await fetchImpl(uri)).blob();
-  if (blob.size > PROFILE_PHOTO_MAX_BYTES)
+  const bytes = await transport.size(uri);
+  if (bytes > PROFILE_PHOTO_MAX_BYTES)
     throw new PhotoUploadError("tooLarge", "photo too large");
   onStep?.("uploading");
   const upload = await callables.requestProfilePhotoUpload({
     contentType: "image/jpeg",
-    bytes: blob.size,
+    bytes,
   });
-  const response = await fetchImpl(upload.uploadUrl, {
-    method: "PUT",
-    headers: upload.headers,
-    body: blob,
-  });
-  if (!response.ok)
+  const response = await transport.put(upload.uploadUrl, uri, upload.headers);
+  if (response.status < 200 || response.status >= 300) {
+    if (__DEV__)
+      console.warn(
+        "[profile] photo upload refused",
+        response.status,
+        response.body.slice(0, 400),
+      );
     throw new PhotoUploadError("uploading", `upload failed ${response.status}`);
+  }
   onStep?.("saving");
   return callables.updateProfile({ photoKey: upload.key });
 }
