@@ -19,6 +19,7 @@ import {
 import { addDays, bhaktiDayAt } from "../../src/domain/progression";
 import { isAdminRole } from "../../src/domain/cms";
 import { Actor, adminAuth, db, parse, requirePermission, writeAudit } from "./core";
+import { openLeagueRows } from "./profile";
 
 const iso = (value: unknown) =>
   value instanceof Timestamp ? value.toDate().toISOString() : null;
@@ -204,6 +205,9 @@ export async function moderateUser(actor: Actor, data: unknown) {
   await db().runTransaction(async (tx) => {
     const user = await tx.get(userRef);
     if (!user.exists) throw new HttpsError("not-found", "No such user.");
+    // A reset name also leaves the running league boards (D-042).
+    const leagueRows =
+      input.action === "resetDisplayName" ? await openLeagueRows(tx, input.uid) : [];
     if (input.action === "flag")
       tx.set(
         statsRef,
@@ -212,7 +216,10 @@ export async function moderateUser(actor: Actor, data: unknown) {
       );
     if (input.action === "unflag")
       tx.set(statsRef, { flags: { suspicious: false } }, { merge: true });
-    if (input.action === "resetDisplayName") tx.update(userRef, { displayName: null });
+    if (input.action === "resetDisplayName") {
+      tx.update(userRef, { displayName: null });
+      for (const row of leagueRows) tx.update(row, { displayName: null });
+    }
     if (input.action === "note")
       tx.set(
         adminRef,

@@ -30,15 +30,16 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if owner(uid);
       // Server creates the profile. Clients may only update these preferences.
+      // displayName and photoKey change only through updateProfile (profanity
+      // filter, uploaded-photo check, league copies), timezone through
+      // setTimezone; merge markers and limits are server fields.
       allow update: if owner(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'language', 'mandirDeityId', 'notificationPreferences', 'photoUrl'
+          'language', 'mandirDeityId', 'notificationPreferences'
         ])
         && request.resource.data.language in ['hi', 'en']
         && (request.resource.data.mandirDeityId == null ||
           (request.resource.data.mandirDeityId is string && request.resource.data.mandirDeityId.size() <= 100))
-        && (request.resource.data.photoUrl == null ||
-          (request.resource.data.photoUrl is string && request.resource.data.photoUrl.size() <= 2048))
         && request.resource.data.notificationPreferences.keys().hasAll(['dailyReminder', 'reminderTime', 'newContent', 'festivals', 'league'])
         && request.resource.data.notificationPreferences.keys().hasOnly(['dailyReminder', 'reminderTime', 'newContent', 'festivals', 'league'])
         && request.resource.data.notificationPreferences.dailyReminder is bool

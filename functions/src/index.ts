@@ -4,6 +4,7 @@ import { CallableOptions, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
+import * as accountMerge from "./accountMerge";
 import * as assets from "./assets";
 import * as banners from "./banners";
 import * as bulk from "./bulk";
@@ -13,6 +14,7 @@ import * as content from "./content";
 import { Actor, actorFrom } from "./core";
 import * as home from "./home";
 import * as media from "./media";
+import * as profile from "./profile";
 import * as progression from "./progression";
 import { setAdminRole as setRole } from "./roles";
 import { requestUploadUrl as uploadSlot } from "./uploads";
@@ -150,8 +152,9 @@ export const publishScheduledContent = onSchedule(
 // activities and the server decides XP, streaks, challenges and badges.
 const player = <T>(
   handler: (player: progression.Player, data: unknown) => Promise<T>,
+  options: CallableOptions = {},
 ) =>
-  onCall((request) =>
+  onCall(options, (request) =>
     handler(progression.playerFrom(request.auth), request.data),
   );
 
@@ -163,6 +166,35 @@ export const completePrayerChecklist = player(
 );
 // D-058: the diya lit in the Mandir tab is the daily Mandir visit.
 export const recordMandirVisit = player(progression.recordMandirVisit);
+
+// Profile and account (doc 21, D-042). Guests may edit their name and photo;
+// photos go straight to R2 (presigned PUT), so these need the R2 keys.
+export const updateProfile = player((p, data) => profile.updateProfile(p, data), {
+  secrets: r2Secrets,
+});
+export const requestProfilePhotoUpload = player(
+  (p, data) => profile.requestProfilePhotoUpload(p, data),
+  { secrets: r2Secrets },
+);
+// Signed-in accounts only; copies the guest's data in batches.
+export const mergeGuestAccount = player(
+  (p, data) => accountMerge.mergeGuestAccount(p, data),
+  { timeoutSeconds: 300 },
+);
+
+// Doc 08 §4: delete the data of guests merged more than 7 days ago.
+export const cleanupMergedGuests = onSchedule(
+  {
+    schedule: "30 3 * * *",
+    timeZone: "Asia/Kolkata",
+    timeoutSeconds: 540,
+    secrets: r2Secrets,
+  },
+  async () => {
+    const result = await accountMerge.cleanupMergedGuests();
+    if (result.cleaned) logger.info("Cleaned up merged guests", result);
+  },
+);
 
 // Doc 08 §4: close ended daily and weekly challenges after the 04:00 rollover.
 export const expireChallenges = onSchedule(

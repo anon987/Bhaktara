@@ -2,4 +2,9 @@
   <color name="splashscreen_background">#FFFFFF</color>
   <color name="iconBackground">#FBF7EF</color>
   <color name="colorPrimary">#023c69</color>
+  <color name="expoCropToolbarColor">#FF9933</color>
+  <color name="expoCropToolbarIconColor">#FFFFFF</color>
+  <color name="expoCropToolbarActionTextColor">#FFFFFF</color>
+  <color name="expoCropBackButtonIconColor">#FFFFFF</color>
+  <color name="expoCropBackgroundColor">#3A0F0C</color>
 </resources>

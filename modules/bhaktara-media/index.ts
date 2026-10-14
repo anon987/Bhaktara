@@ -71,6 +71,11 @@ export interface BhaktaraMediaModule {
    * Missing in dev clients built before it was added.
    */
   isAppInstalled?(packageName: string): boolean;
+  /**
+   * The Firebase project's OAuth web client ID (default_web_client_id from
+   * google-services.json), or null. Missing in builds before it was added.
+   */
+  googleWebClientId?(): string | null;
 }
 
 // Null on iOS, web, Jest and dev clients built before this module existed.

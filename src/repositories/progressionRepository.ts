@@ -1,6 +1,7 @@
 import type { Firestore } from "firebase/firestore";
 import {
   addDays,
+  BadgeCriteria,
   badgeSchema,
   bhaktiDayAt,
   challengePeriodKey,
@@ -45,6 +46,11 @@ export type BadgeView = {
   description: Localized;
   iconKey: string;
   unlocked: boolean;
+  // What earns it (doc 10 §7), for the progress shown on locked medallions.
+  criteriaType: BadgeCriteria;
+  criteriaValue: number | string;
+  // When it was earned (users/{uid}/badges/{id}.unlockedAt), if known.
+  unlockedAt: Date | null;
 };
 export type ProgressSnapshot = {
   timezone: string;
@@ -180,6 +186,7 @@ export function createProgressionRepository(
         daysSnap,
         challengeSnap,
         badgeSnap,
+        earnedSnap,
       ] = await Promise.all([
         getDoc("userStats", id),
         getDoc("appConfig", "gamification"),
@@ -212,6 +219,13 @@ export function createProgressionRepository(
             api.limit(50),
           ),
         ),
+        // Earned dates only; a failed read keeps the milestones without them.
+        api
+          .getDocsFromServer(
+            api.query(api.collection(db, "users", id, "badges"), api.limit(50)),
+          )
+          .then((snap) => snap.docs)
+          .catch(() => []),
       ]);
       const config =
         gamificationConfigSchema.safeParse(gamificationSnap.data()).data ??
@@ -259,6 +273,9 @@ export function createProgressionRepository(
       const unlocked = new Set(
         Array.isArray(stats.badgeIds) ? (stats.badgeIds as string[]) : [],
       );
+      const earnedAt = new Map(
+        earnedSnap.map((snap) => [snap.id, toDate(snap.get("unlockedAt"))]),
+      );
       const badges: BadgeView[] = badgeSnap.docs.flatMap((snap) => {
         const parsed = badgeSchema.safeParse(snap.data());
         return parsed.success
@@ -269,6 +286,11 @@ export function createProgressionRepository(
                 description: parsed.data.description,
                 iconKey: parsed.data.iconKey,
                 unlocked: unlocked.has(snap.id),
+                criteriaType: parsed.data.criteriaType,
+                criteriaValue: parsed.data.criteriaValue,
+                unlockedAt: unlocked.has(snap.id)
+                  ? (earnedAt.get(snap.id) ?? null)
+                  : null,
               },
             ]
           : [];

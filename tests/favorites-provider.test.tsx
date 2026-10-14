@@ -3,7 +3,6 @@ import { Button, Text } from "react-native";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider, useApp } from "../src/app/providers/AppProvider";
-import { FavoriteList } from "../src/features/profile/FavoriteList";
 import { Backend } from "../src/services/backend";
 import { mockContentRepository } from "../src/repositories/mockRepository";
 import { deviceFavoritesRepository } from "../src/repositories/favoritesRepository";
@@ -33,7 +32,6 @@ function Probe() {
         onPress={() => toggleFavorite("bhajan-1")}
       />
       <Button title="Toggle aarti" onPress={() => toggleFavorite("aarti-1")} />
-      <FavoriteList onSelect={() => undefined} />
     </>
   );
 }
@@ -99,8 +97,6 @@ test("fixture mode keeps favorites on the device only, in add order", async () =
     pending: 0,
     waiting: false,
   });
-  await waitFor(() => expect(screen.getByText("Shiva aarti")).toBeTruthy());
-  expect(screen.getByText("A morning with Krishna")).toBeTruthy();
   fireEvent.press(screen.getByText("Toggle aarti"));
   expect(read(screen, "favorites")).toEqual(["bhajan-1"]);
   expect(store.read).not.toHaveBeenCalled();
@@ -153,8 +149,6 @@ test("a session migrates device favorites, then toggles update optimistically", 
   expect(repository.add).toHaveBeenCalledWith("chalisa-1", undefined);
   expect(store.saved.migrated).toEqual(["guest"]);
   expect(read(screen, "status")).toMatchObject({ source: "account" });
-  await waitFor(() => expect(screen.getByText("Hanuman Chalisa")).toBeTruthy());
-  expect(screen.getByText("Shiva aarti")).toBeTruthy();
 
   let release!: () => void;
   jest.mocked(repository.add).mockImplementationOnce(
@@ -206,11 +200,7 @@ test("offline toggles stay on the device and say they will sync", async () => {
   );
   fireEvent.press(screen.getByText("Toggle bhajan"));
   await waitFor(() =>
-    expect(
-      screen.getByText(
-        "Saved on this device. Your favorites will update in your account when you are back online.",
-      ),
-    ).toBeTruthy(),
+    expect(read(screen, "status")).toMatchObject({ waiting: true }),
   );
   expect(read(screen, "favorites")).toEqual(["bhajan-1"]);
   expect(read(screen, "status")).toEqual({

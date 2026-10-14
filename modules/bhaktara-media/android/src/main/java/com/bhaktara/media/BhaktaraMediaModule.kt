@@ -114,6 +114,13 @@ class BhaktaraMediaModule : Module() {
       SAFE_PACKAGE_NAME.matches(packageName) && isInstalled(packageName)
     }
 
+    // The OAuth web client (type 3) that the Google Services plugin copies from
+    // google-services.json; Google sign-in needs it to return an ID token.
+    Function("googleWebClientId") {
+      val id = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+      if (id == 0) null else context.getString(id)
+    }
+
     Function("canSetWallpaper") {
       val manager = WallpaperManager.getInstance(context)
       manager.isWallpaperSupported && manager.isSetWallpaperAllowed

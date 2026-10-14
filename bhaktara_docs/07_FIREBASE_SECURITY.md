@@ -39,7 +39,7 @@ Users cannot:
 
 Anonymous users cannot read `leagueCohorts` or `leagueMembers` (D-019).
 
-Owner-writable fields on `users/{uid}` are limited to: `language`, `mandirDeityId`, `notificationPreferences`, `photoUrl`. `displayName` and `timezone` are changed via functions.
+Owner-writable fields on `users/{uid}` are limited to: `language`, `mandirDeityId`, `notificationPreferences`. `displayName` and `photoKey` are changed only via `updateProfile`, and `timezone` via `setTimezone`.
 
 ## Media storage (Cloudflare R2 — D-031)
 

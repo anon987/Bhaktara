@@ -1,20 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Award,
-  CircleDot,
-  Crown,
-  Flag,
-  Flame,
-  Flower2,
-  LucideIcon,
-  Sparkles,
-  Star,
-  Sun,
-  Sunrise,
-  TrendingUp,
-} from "lucide-react-native";
+import { Flower2 } from "lucide-react-native";
 import { Txt } from "../../components/ui";
 import { useApp } from "../../app/providers/AppProvider";
 import { addDays, rankNames, SadhanaTask } from "../../domain/progression";
@@ -28,6 +15,7 @@ import { Diya } from "./art/Diya";
 import { GarlandProgress } from "./art/GarlandProgress";
 import { MiniLamp } from "./art/MiniLamp";
 import { useOptionalProgression, useProgression } from "./ProgressionProvider";
+import { Medallion } from "../profile/ProfileParts";
 
 // Real progress when the server has answered; the catalog's sample values
 // (marked as samples by callers) otherwise.
@@ -324,43 +312,25 @@ export function LampCalendar() {
   );
 }
 
-const badgeIcons: Record<string, LucideIcon> = {
-  lotus: Flower2,
-  diya: Flame,
-  sun: Sun,
-  mala: CircleDot,
-  om: Sparkles,
-  sunrise: Sunrise,
-  temple: Award,
-  flag: Flag,
-  arrow: TrendingUp,
-  crown: Crown,
-  star: Star,
-};
-
-// Milestones as brass medallions; locked ones wait quietly.
+// Milestones as 3D medallions; locked ones wait quietly.
 export function Milestones({ badges }: { badges: BadgeView[] }) {
   const { t, local } = useApp();
   return (
     <View style={styles.medals}>
       {badges.map((badge) => {
-        const Icon = badgeIcons[badge.iconKey] ?? Award;
         return (
           <View
             key={badge.id}
-            style={[styles.medal, !badge.unlocked && { opacity: 0.45 }]}
+            style={styles.medal}
             accessibilityLabel={`${badge.name[local.language]}: ${
               badge.unlocked ? badge.description[local.language] : t("notYet")
             }`}
           >
-            <View
-              style={[styles.medalCircle, badge.unlocked && styles.medalLit]}
-            >
-              <Icon
-                size={28}
-                color={badge.unlocked ? sanctum.night : colors.muted}
-              />
-            </View>
+            <Medallion
+              iconKey={badge.iconKey}
+              earned={badge.unlocked}
+              size={64}
+            />
             <Txt bold size={13} style={{ textAlign: "center" }}>
               {badge.name[local.language]}
             </Txt>
@@ -444,15 +414,4 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   medals: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   medal: { width: "30%", alignItems: "center", gap: 4, paddingVertical: 6 },
-  medalCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.pale,
-    borderWidth: 2,
-    borderColor: colors.line,
-  },
-  medalLit: { backgroundColor: sanctum.brass, borderColor: sanctum.brassLight },
 });
