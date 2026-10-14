@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import {
   Image,
   ImageResizeMode,
@@ -24,7 +24,7 @@ import Svg, {
 import { useApp } from "../../../app/providers/AppProvider";
 import { resolveMediaUrl } from "../../../services/media/config";
 import { fonts, serif, shrine } from "../../../theme/tokens";
-import { MangoLeaf, MarigoldShape } from "../art/Marigold";
+import { MangoLeaf, MarigoldBlooms } from "../art/Marigold";
 
 // An image chosen in the admin panel (D-057), or the app's own drawing when
 // the slot is empty, the CDN is not configured or the image fails to load.
@@ -178,8 +178,9 @@ export function FlankLines({
 }
 
 // Bandhanwar of marigold and jasmine strands with mango leaves, hanging from
-// a garland along the top of the screen.
-export function MarigoldToran({
+// a garland along the top of the screen. Memoised: drawn once, not again on
+// every tap of the page below.
+export const MarigoldToran = memo(function MarigoldToran({
   height = 72,
   assetKey,
 }: {
@@ -189,6 +190,10 @@ export function MarigoldToran({
   const { width } = useWindowDimensions();
   const strands = Math.max(8, Math.round(width / 40));
   const gap = width / strands;
+  const strandList = Array.from({ length: strands }, (_, i) => {
+    const long = i % 2 === 0;
+    return { x: gap / 2 + i * gap, long, blooms: long ? 2 : 1 };
+  });
   return (
     <View
       accessible={false}
@@ -202,66 +207,63 @@ export function MarigoldToran({
         fallback={
           <Svg width={width} height={height}>
             {/* The garland along the top */}
-            {Array.from({ length: Math.ceil(width / 11) + 1 }, (_, i) => (
-              <MarigoldShape
-                key={`g${i}`}
-                cx={i * 11}
-                cy={7 + (i % 2) * 2}
-                r={7}
+            <MarigoldBlooms
+              blooms={Array.from(
+                { length: Math.ceil(width / 11) + 1 },
+                (_, i) => ({ cx: i * 11, cy: 7 + (i % 2) * 2, r: 7 }),
+              )}
+            />
+            {strandList.map(({ x, blooms }) => (
+              <Line
+                key={x}
+                x1={x}
+                y1={10}
+                x2={x}
+                y2={14 + blooms * 13}
+                stroke="#7A5A2A"
+                strokeWidth={0.8}
               />
             ))}
-            {Array.from({ length: strands }, (_, i) => {
-              const x = gap / 2 + i * gap;
-              const long = i % 2 === 0;
-              const blooms = long ? 2 : 1;
-              return (
-                <G key={i}>
-                  <Line
-                    x1={x}
-                    y1={10}
-                    x2={x}
-                    y2={14 + blooms * 13}
-                    stroke="#7A5A2A"
-                    strokeWidth={0.8}
-                  />
-                  {Array.from({ length: blooms }, (_, b) => (
-                    <MarigoldShape
-                      key={b}
-                      cx={x}
-                      cy={20 + b * 13}
-                      r={b === blooms - 1 ? 7.5 : 6.5}
-                    />
-                  ))}
-                  {/* Jasmine buds between the marigolds */}
-                  <Ellipse
-                    cx={x}
-                    cy={26 + (blooms - 1) * 13}
-                    rx={2.4}
-                    ry={3.4}
-                    fill="#FFFDF5"
-                    stroke="#E6DCC4"
-                    strokeWidth={0.5}
-                  />
-                  <Circle
-                    cx={x}
-                    cy={31 + (blooms - 1) * 13}
-                    r={1.6}
-                    fill="#C0281F"
-                  />
-                  <MangoLeaf
-                    x={x}
-                    y={33 + (blooms - 1) * 13}
-                    length={long ? 18 : 15}
-                  />
-                </G>
-              );
-            })}
+            <MarigoldBlooms
+              blooms={strandList.flatMap(({ x, blooms }) =>
+                Array.from({ length: blooms }, (_, b) => ({
+                  cx: x,
+                  cy: 20 + b * 13,
+                  r: b === blooms - 1 ? 7.5 : 6.5,
+                })),
+              )}
+            />
+            {strandList.map(({ x, blooms, long }) => (
+              <G key={x}>
+                {/* Jasmine buds between the marigolds */}
+                <Ellipse
+                  cx={x}
+                  cy={26 + (blooms - 1) * 13}
+                  rx={2.4}
+                  ry={3.4}
+                  fill="#FFFDF5"
+                  stroke="#E6DCC4"
+                  strokeWidth={0.5}
+                />
+                <Circle
+                  cx={x}
+                  cy={31 + (blooms - 1) * 13}
+                  r={1.6}
+                  fill="#C0281F"
+                />
+                <MangoLeaf
+                  x={x}
+                  y={33 + (blooms - 1) * 13}
+                  length={long ? 18 : 15}
+                />
+              </G>
+            ))}
           </Svg>
         }
       />
     </View>
   );
-}
+});
 
 // The parchment ground: a faint temple arch with pillars and lotus sprays,
 // or the admin's background image (D-057).

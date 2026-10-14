@@ -1,56 +1,62 @@
 import React from "react";
-import Svg, { Circle, G, Path } from "react-native-svg";
+import Svg, { G, Path } from "react-native-svg";
 import { sanctum } from "../../../theme/tokens";
+import { circlePath } from "./svgPaths";
 
-// Marigold (genda) bloom drawn at (cx, cy) inside a parent <Svg>.
-export function MarigoldShape({
-  cx,
-  cy,
-  r,
+export type Bloom = { cx: number; cy: number; r: number };
+
+// Marigold (genda) blooms drawn inside a parent <Svg>. All the blooms share
+// three paths (outer petals, inner petals, hearts) rather than 18 circles
+// each: a toran hangs dozens of them.
+export function MarigoldBlooms({
+  blooms,
   faded = false,
 }: {
-  cx: number;
-  cy: number;
-  r: number;
+  blooms: Bloom[];
   faded?: boolean;
 }) {
   const outer = faded ? "#8C6A4A" : sanctum.marigoldDeep;
   const inner = faded ? "#A88762" : sanctum.marigold;
   const petals = 10;
+  let outerPetals = "";
+  let innerPetals = "";
+  let hearts = "";
+  for (const { cx, cy, r } of blooms) {
+    for (let i = 0; i < petals; i++) {
+      const angle = (i / petals) * Math.PI * 2;
+      outerPetals += circlePath(
+        cx + Math.cos(angle) * r * 0.62,
+        cy + Math.sin(angle) * r * 0.62,
+        r * 0.42,
+      );
+    }
+    for (let i = 0; i < 7; i++) {
+      const angle = (i / 7) * Math.PI * 2 + 0.3;
+      innerPetals += circlePath(
+        cx + Math.cos(angle) * r * 0.3,
+        cy + Math.sin(angle) * r * 0.3,
+        r * 0.36,
+      );
+    }
+    hearts += circlePath(cx, cy, r * 0.2);
+  }
   return (
     <G opacity={faded ? 0.45 : 1}>
-      {Array.from({ length: petals }, (_, i) => {
-        const angle = (i / petals) * Math.PI * 2;
-        return (
-          <Circle
-            key={`o${i}`}
-            cx={cx + Math.cos(angle) * r * 0.62}
-            cy={cy + Math.sin(angle) * r * 0.62}
-            r={r * 0.42}
-            fill={outer}
-          />
-        );
-      })}
-      {Array.from({ length: 7 }, (_, i) => {
-        const angle = (i / 7) * Math.PI * 2 + 0.3;
-        return (
-          <Circle
-            key={`i${i}`}
-            cx={cx + Math.cos(angle) * r * 0.3}
-            cy={cy + Math.sin(angle) * r * 0.3}
-            r={r * 0.36}
-            fill={inner}
-          />
-        );
-      })}
-      <Circle
-        cx={cx}
-        cy={cy}
-        r={r * 0.2}
-        fill={faded ? "#6E5238" : "#B5470B"}
-      />
+      <Path d={outerPetals} fill={outer} />
+      <Path d={innerPetals} fill={inner} />
+      <Path d={hearts} fill={faded ? "#6E5238" : "#B5470B"} />
     </G>
   );
+}
+
+// One marigold bloom drawn at (cx, cy).
+export function MarigoldShape({
+  cx,
+  cy,
+  r,
+  faded = false,
+}: Bloom & { faded?: boolean }) {
+  return <MarigoldBlooms blooms={[{ cx, cy, r }]} faded={faded} />;
 }
 
 // Mango leaf hanging from (x, y), pointing down.

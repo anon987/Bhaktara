@@ -58,7 +58,7 @@ function Wrapper({
   );
 }
 // Screens only call goBack in these isolated tests; navigation behavior is checked in the smoke run.
-const navigation = { goBack: jest.fn() };
+const navigation = { goBack: jest.fn(), addListener: () => () => undefined };
 beforeEach(() => {
   jest
     .spyOn(localStore, "read")
@@ -87,7 +87,8 @@ const state = (screen: {
 }) => JSON.parse(screen.getByTestId("state").props.children);
 const tap = (screen: { getByTestId(id: string): unknown }, times: number) => {
   for (let count = 0; count < times; count++)
-    fireEvent.press(screen.getByTestId("jaap-counter") as never);
+    // Beads are counted on touch-down.
+    fireEvent(screen.getByTestId("jaap-counter") as never, "pressIn");
 };
 
 test("fixture mode: 108 taps complete one mala on the device, earning nothing", async () => {
@@ -122,7 +123,10 @@ test("yesterday's leftover beads do not count toward today (D-051)", async () =>
   );
   await waitFor(() => expect(screen.getByText("0 malas today")).toBeTruthy());
   tap(screen, 8);
-  expect(state(screen).jaapCount).toBe(8);
+  // App state takes the count once tapping pauses.
+  await waitFor(() => expect(state(screen).jaapCount).toBe(8), {
+    timeout: 5000,
+  });
   expect(state(screen).days).toEqual({});
 });
 
