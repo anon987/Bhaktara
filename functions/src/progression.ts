@@ -214,7 +214,7 @@ export const defaultNotificationPreferences = {
 
 // Profiles are server-created (rules deny client creation). The first
 // practice call, or setTimezone at app start, creates users/{uid}.
-function newProfile(
+export function newProfile(
   player: Player,
   timezone: string,
   language: "hi" | "en",
@@ -222,7 +222,8 @@ function newProfile(
 ) {
   return {
     displayName: null,
-    photoUrl: null,
+    // An asset key under users/{uid}/photo.* (D-031), set by updateProfile.
+    photoKey: null,
     language,
     mandirDeityId: null,
     notificationPreferences: defaultNotificationPreferences,
@@ -234,7 +235,7 @@ function newProfile(
   };
 }
 
-const storedTimezone = (user: DocumentSnapshot) => {
+export const storedTimezone = (user: DocumentSnapshot) => {
   const value = user.get("timezone");
   return typeof value === "string" && isValidTimeZone(value)
     ? value

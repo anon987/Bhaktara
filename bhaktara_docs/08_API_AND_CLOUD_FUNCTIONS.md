@@ -36,7 +36,8 @@ The client never asks for XP. It reports **activities**, and the server decides 
 | Function | Input | Server behaviour |
 |---|---|---|
 | `setTimezone` | `{ timezone }` | Validates the IANA name. At most 1 change per 24 h. |
-| `updateDisplayName` | `{ displayName }` | 2–24 characters, profanity filter (Hindi + English + Hinglish list). Updates the current week's `leagueMembers` doc. |
+| `updateProfile` | `{ displayName?, photoKey? }` | Name 2–30 letters (any script), profanity filter (Hindi + English + Hinglish list); photo must be the user's own uploaded key. Updates the current week's `leagueMembers` doc. (Was `updateDisplayName`; see the 2026-10-14 checkpoint.) |
+| `requestProfilePhotoUpload` | `{ contentType, bytes }` | Presigned R2 PUT for `users/{uid}/photo.*` (JPEG/WebP, ≤ 1 MB, 10 min). |
 | `getLeagueBoard` | `{}` | Signed-in only. Returns the cohort board for the current week. May read directly from Firestore instead if rules allow. |
 
 ### Accounts (doc 21)
@@ -159,3 +160,18 @@ Every practice call returns a `PracticeResult`: XP granted, ledger lines (GRANTE
 - **Config:** `appConfig/gamification` and `appConfig/sadhana` are cached per instance for 60 s (not in the emulator); missing or invalid documents fall back to the doc 10 defaults with an error log.
 - **`expireChallenges`** runs daily at 04:05 IST and marks ended ACTIVE `userChallenges` as EXPIRED (index `status` + `expiresAt`).
 - Deferred to M3: `recordContentListen`, weekly league XP. (`recordMandirVisit` added 2026-10-14, D-058.)
+
+## Implementation checkpoint — 2026-10-14 (profile and account)
+
+Contracts are in `src/domain/account.ts`, the client is in `src/repositories/accountRepository.ts`, and the rules are in doc 21's 2026-10-14 checkpoint. Errors are `HttpsError`s with `details.reason`.
+
+| Callable | Input | Result | Errors (code / reason) |
+|---|---|---|---|
+| `updateProfile` (guests allowed) | `{ displayName?, photoKey?: string \| null }`, at least one, strict | `ProfileResult { displayName, photoKey }` | `invalid-argument` (schema, issues[]) · `invalid-argument` / `DISPLAY_NAME_NOT_ALLOWED` · `resource-exhausted` / `RATE_LIMITED` (more than 5 name changes per practice day) · `invalid-argument` / `PHOTO_KEY_INVALID` (not `users/{uid}/photo.{hex16}.{jpg\|webp}`) · `failed-precondition` / `PHOTO_NOT_UPLOADED` · `invalid-argument` / `PHOTO_TOO_LARGE` · `invalid-argument` / `PHOTO_TYPE_INVALID` · `failed-precondition` / `UPLOADS_NOT_CONFIGURED` |
+| `requestProfilePhotoUpload` (guests allowed) | `{ contentType: image/jpeg \| image/webp, bytes: 1..1048576 }`, strict | `ProfilePhotoUpload { key, uploadUrl, headers: { Content-Type, Cache-Control }, expiresAt }` (10 min) | `invalid-argument` (schema) · `resource-exhausted` / `RATE_LIMITED` (more than 10 per practice day) · `failed-precondition` / `UPLOADS_NOT_CONFIGURED` |
+| `mergeGuestAccount` (non-anonymous only) | `{ guestIdToken }` (20–8192 chars), strict | `MergeSummary { alreadyMerged, xpAdded, badgesAdded, favoritesAdded, daysAdded }` | `permission-denied` / `SIGN_IN_REQUIRED` · `invalid-argument` (schema) · `invalid-argument` / `GUEST_TOKEN_INVALID` · `invalid-argument` / `GUEST_TOKEN_EXPIRED` · `failed-precondition` / `GUEST_NOT_ANONYMOUS` · `invalid-argument` / `SAME_ACCOUNT` · `not-found` / `GUEST_NOT_FOUND` · `failed-precondition` / `ALREADY_MERGED_ELSEWHERE` |
+
+- The upload URL signs `Content-Type`, `Content-Length` (= `bytes`) and `Cache-Control`. The app must PUT a body of exactly `bytes` bytes with exactly the returned headers.
+- `cleanupMergedGuests` is implemented (daily 03:30 IST; merges older than 7 days; at most 50 per run).
+- The moderator `resetDisplayName` (admin `moderateUser`) now also clears the name on running league rows.
+- `updateProfile`, `requestProfilePhotoUpload` and `cleanupMergedGuests` bind the R2 secrets like the asset callables (`R2_UPLOAD_SECRETS=true`). Without R2 configuration, photo calls answer `UPLOADS_NOT_CONFIGURED`, and name changes still work.

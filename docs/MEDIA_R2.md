@@ -105,3 +105,9 @@ Use `--clear` whenever this value changes; Metro caches inlined `EXPO_PUBLIC_*` 
 - `npm test`: key/URL/base validation, schema rejection of URLs, remote art with fallback (`tests/media.test.tsx`).
 - `npm run media:publish -- --dry-run …`: every type was exercised with synthetic inputs, including rejection of short ringtones, undersized wallpapers, missing inputs, unsafe IDs, missing credentials and non-dev buckets. EXIF/GPS stripping was confirmed on JPEG input.
 - After provisioning: publish one asset, fetch it with `curl -I` through the CDN hostname, and confirm `cache-control`, `content-type` and `cf-cache-status` on the second request.
+
+## Profile photos (doc 21, 2026-10-14)
+
+`requestProfilePhotoUpload` presigns a PUT to `users/{uid}/photo.{hex16}.{jpg|webp}` in the media bucket. The signed headers are `Content-Type`, `Content-Length` and `Cache-Control: public, max-age=31536000, immutable`. `updateProfile` then HEADs the object, reads its first 12 bytes, and deletes the replaced photo. So the Functions R2 token needs object read, write and delete on `users/`. That is the same object read/write token the asset callables already use. The photos are public through the CDN like all other media; only the random key protects them.
+
+CORS: the Android app uploads with native `fetch`, so no CORS rule is needed. A browser build (Expo web) that uploads photos needs a PUT rule for its origin that allows the `Content-Type` and `Cache-Control` request headers. The current PUT rule in `infra/r2/cors.json` covers only the admin origins and `Content-Type`. Browsers set `Content-Length` themselves from the body, which must match the declared size. Abandoned uploads (a slot requested but never saved) stay in `users/` until a lifecycle or cleanup job removes them; the 10-per-day limit bounds them.

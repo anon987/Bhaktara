@@ -49,7 +49,7 @@ before(async () => {
     await setDoc(doc(db, "users", "alice"), {
       language: "hi",
       mandirDeityId: null,
-      photoUrl: null,
+      photoKey: null,
       displayName: "Guest",
       timezone: "Asia/Kolkata",
       isAnonymous: true,
@@ -126,6 +126,11 @@ test("profile preferences are owner-only and cannot inject progression or privil
     { isAdmin: true },
     { timezone: "UTC" },
     { displayName: "Unreviewed" },
+    // Name and photo go through updateProfile only (filter, upload check).
+    { photoKey: "users/alice/photo.0123456789abcdef.jpg" },
+    { photoUrl: "https://example.com/me.jpg" },
+    { profileLimits: { day: "2026-10-14", nameChanges: 0, photoUploads: 0 } },
+    { mergedInto: "someone" },
     { language: "fr" },
     { notificationPreferences: { dailyReminder: "yes" } },
   ]) {

@@ -33,6 +33,8 @@ export type Presign = (input: {
   contentType: string;
   bytes: number;
   expiresIn: number;
+  // Stored with the object and signed, so the uploader must send it as is.
+  cacheControl?: string;
 }) => Promise<string>;
 
 // The AWS SDK is loaded on first use so the other functions start quickly.
@@ -61,11 +63,16 @@ export function s3Presigner(config: R2Config, client?: S3Client): Presign {
         Key: input.key,
         ContentType: input.contentType,
         ContentLength: input.bytes,
+        CacheControl: input.cacheControl,
       }),
       {
         expiresIn: input.expiresIn,
         // The browser must send exactly the declared type and size.
-        signableHeaders: new Set(["content-type", "content-length"]),
+        signableHeaders: new Set([
+          "content-type",
+          "content-length",
+          ...(input.cacheControl ? ["cache-control"] : []),
+        ]),
       },
     );
   };
