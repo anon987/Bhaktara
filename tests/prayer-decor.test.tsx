@@ -398,13 +398,21 @@ describe("Prayer screen decor", () => {
   it("swiping onto a locked temple keeps the saved one", async () => {
     jest.spyOn(remoteConfig, "getBoolean").mockReturnValue(true);
     const screen = await openPrayer();
+    // An arrow scrolls the pager; the page counts once the list rests on it.
+    const arrive = (page: number) =>
+      fireEvent(screen.getByTestId("temple-carousel"), "momentumScrollEnd", {
+        nativeEvent: { contentOffset: { x: page * 390, y: 0 } },
+      });
     fireEvent.press(screen.getByLabelText("Next temple"));
+    arrive(1);
     expect(state(screen).mandir.templeId).toBe("temple-wooden");
     // The golden temple needs an ad: looking at it does not choose it.
     fireEvent.press(screen.getByLabelText("Next temple"));
+    arrive(2);
     expect(state(screen).mandir.templeId).toBe("temple-wooden");
     fireEvent.press(screen.getByLabelText("Previous temple"));
     fireEvent.press(screen.getByLabelText("Previous temple"));
+    arrive(0);
     expect(state(screen).mandir.templeId).toBe("temple-marble");
   });
 

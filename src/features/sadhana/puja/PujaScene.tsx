@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated as RNAnimated,
+  Easing as RNEasing,
   GestureResponderEvent,
   Image,
   ImageSourcePropType,
@@ -8,10 +10,12 @@ import {
 } from "react-native";
 import Animated, {
   Easing,
+  Keyframe,
+  runOnJS,
   SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import Svg, { Ellipse, Line, Rect } from "react-native-svg";
@@ -22,6 +26,7 @@ import {
   GarlandKind,
 } from "../../../domain/puja";
 import { noVisuals, Visuals } from "../../../domain/visuals";
+import { useReducedMotion } from "../../../components/useReducedMotion";
 import { sanctum } from "../../../theme/tokens";
 import { Diya } from "../art/Diya";
 import type { Box } from "../decor/geometry";
@@ -63,12 +68,6 @@ export function sceneLayout(width: number, height: number, murti: Box) {
 // At most this many flowers rest at the deity's feet; a new one replaces the
 // oldest, so the altar never fills up.
 export const FLOWER_LIMIT = 7;
-// One row at the deity's feet, centred on however many flowers there are.
-const slot = (i: number, count: number) => ({
-  dx: (i - (count - 1) / 2) * 15,
-  dy: 0,
-});
-
 // The offerings over the temple: tilak and garland on the deity, flowers,
 // incense, bhog and the lamp at its feet, the shankh's ripples, and the
 // light, smoke and water effects. While the temples are being swiped (or a
@@ -167,12 +166,18 @@ export function PujaScene({
     lampOn,
   ]);
 
-  // Offerings fade while the temples are swiped (UI thread, no re-render).
-  const fade = useAnimatedStyle(() => {
-    if (hidden) return { opacity: 0 };
-    const away = Math.abs(scrollX.value - page * pageWidth);
-    return { opacity: Math.max(0, 1 - away / (pageWidth * 0.3)) };
-  });
+  // Offerings hide while the temples are swiped and return once the pager
+  // rests on their page. Plain state, not an animated style: that was put
+  // back to its first frame (often unseen) on every re-render, so offered
+  // flowers never showed.
+  const [away, setAway] = useState(false);
+  useAnimatedReaction(
+    () => Math.abs(scrollX.get() - page * pageWidth) > 1,
+    (next, previous) => {
+      if (next !== previous) runOnJS(setAway)(next);
+    },
+  );
+  const fade = { opacity: hidden || away ? 0 : 1 };
 
   return (
     <View style={{ width, height }} pointerEvents="box-none">
@@ -292,31 +297,21 @@ export function PujaScene({
             )}
           </View>
         )}
-        {/* Flowers at the deity's feet, drawn with their decor images */}
-        {flowers.slice(-FLOWER_LIMIT).map((flower, i, shown) => {
-          const p = slot(i, shown.length);
-          const size = 26 * L.s;
-          return (
-            <Drop
-              key={flower.id}
-              distance={L.size * 0.5}
-              spin
-              style={{
-                position: "absolute",
-                left: L.flowers.x + p.dx * L.s - size / 2,
-                top: L.flowers.y + p.dy * L.s - size * 0.8,
-              }}
-            >
-              <Image
-                accessible={false}
-                source={flower.image}
-                resizeMode="contain"
-                fadeDuration={0}
-                style={{ width: size, height: size }}
-              />
-            </Drop>
-          );
-        })}
+        {/* Pushpa vrishti: each offered flower showers over the deity and
+            one of it comes to rest at the feet */}
+        {flowers.slice(-FLOWER_LIMIT).map((flower) => (
+          <FlowerShower
+            key={flower.id}
+            seed={flower.id}
+            image={flower.image}
+            murti={murti}
+            rest={{
+              x: L.flowers.x + ((flower.id % FLOWER_LIMIT) - 3) * 15 * L.s,
+              y: L.flowers.y,
+            }}
+            size={26 * L.s}
+          />
+        ))}
         {/* The lamp, resting on the altar after the aarti */}
         {deepPlaced && hand !== "deep" && (
           <View
@@ -595,20 +590,23 @@ function Hand({
   );
 }
 
+// Offerings arrive with an entering animation and then rest on a plain
+// style: an animated style here was put back to its first frame (unseen)
+// whenever the scene re-rendered, so offered flowers vanished.
+
 // Scale-in for a new offering.
+const popIn = new Keyframe({
+  0: { opacity: 0.28, transform: [{ scale: 0.2 }] },
+  62: { opacity: 1, transform: [{ scale: 1.15 }] },
+  100: { opacity: 1, transform: [{ scale: 1 }] },
+}).duration(420);
+
 function Pop({ children, style }: React.PropsWithChildren<{ style?: object }>) {
-  const scale = useSharedValue(0.2);
-  useEffect(() => {
-    scale.value = withSequence(
-      withTiming(1.15, { duration: 260 }),
-      withTiming(1, { duration: 160 }),
-    );
-  }, [scale]);
-  const animated = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: Math.min(1, scale.value * 1.4),
-  }));
-  return <Animated.View style={[style, animated]}>{children}</Animated.View>;
+  return (
+    <Animated.View entering={popIn} style={style}>
+      {children}
+    </Animated.View>
+  );
 }
 
 // An offering falling into place (flowers drift down to the deity's feet).
@@ -622,19 +620,166 @@ function Drop({
   distance: number;
   spin?: boolean;
 }>) {
-  const t = useSharedValue(0);
+  const [entering] = useState(() => {
+    const at = (t: number) => ({
+      opacity: Math.min(1, t * 2),
+      transform: [
+        { translateY: (1 - t) * -distance },
+        { translateX: Math.sin(t * Math.PI * 2) * (spin ? 8 : 0) },
+        { rotate: `${(1 - t) * (spin ? 160 : 0)}deg` },
+      ],
+    });
+    // Ease-out quad, sampled so the sway follows the fall.
+    const frames: Record<string, ReturnType<typeof at>> = {};
+    for (let k = 0; k <= 8; k++) {
+      const p = k / 8;
+      frames[Math.round(p * 100)] = at(1 - (1 - p) * (1 - p));
+    }
+    return new Keyframe(
+      frames as unknown as ConstructorParameters<typeof Keyframe>[0],
+    ).duration(900);
+  });
+  return (
+    <Animated.View entering={entering} style={style}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// Small deterministic PRNG (mulberry32): each shower differs, render stays
+// pure.
+function seeded(seed: number) {
+  let state = (seed * 2654435761) >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SHOWER_COUNT = 12;
+
+// One offering's shower of its flower from above the temple onto the
+// murti. Petal 0 comes to rest at the feet; the others fade as they reach
+// them. React Native's native-driven Animated keeps its last frame through
+// re-renders.
+function FlowerShower({
+  seed,
+  image,
+  murti,
+  rest,
+  size,
+}: {
+  seed: number;
+  image: ImageSourcePropType;
+  murti: Box;
+  rest: { x: number; y: number };
+  size: number;
+}) {
+  const reduced = useReducedMotion();
+  const [petals] = useState(() => {
+    const random = seeded(seed);
+    const cx = murti.x + murti.width / 2;
+    const feet = murti.y + murti.height;
+    return Array.from({ length: SHOWER_COUNT }, (_, i) => {
+      const x = cx + (random() - 0.5) * murti.width * 1.8;
+      const y = -size - random() * 60;
+      const end =
+        i === 0
+          ? { x: rest.x, y: rest.y - size * 0.8 }
+          : {
+              x: x + (random() - 0.5) * 40,
+              y: murti.y + random() * (feet - murti.y) - size / 2,
+            };
+      return {
+        x,
+        y,
+        dx: end.x - x - size / 2,
+        dy: end.y - y,
+        sway: (random() > 0.5 ? 1 : -1) * (10 + random() * 22),
+        spin: (random() > 0.5 ? 1 : -1) * (180 + random() * 360),
+        scale: i === 0 ? 1 : 0.7 + random() * 0.5,
+        delay: i === 0 ? 300 : random() * 700,
+        duration: 1600 + random() * 900,
+        progress: new RNAnimated.Value(reduced ? 1 : 0),
+      };
+    });
+  });
   useEffect(() => {
-    t.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) });
-  }, [t]);
-  const animated = useAnimatedStyle(() => ({
-    opacity: Math.min(1, t.value * 2),
-    transform: [
-      { translateY: (1 - t.value) * -distance },
-      { translateX: Math.sin(t.value * Math.PI * 2) * (spin ? 8 : 0) },
-      { rotate: `${(1 - t.value) * (spin ? 160 : 0)}deg` },
-    ],
-  }));
-  return <Animated.View style={[style, animated]}>{children}</Animated.View>;
+    if (reduced) return;
+    const runs = petals.map((petal) =>
+      RNAnimated.timing(petal.progress, {
+        toValue: 1,
+        duration: petal.duration,
+        delay: petal.delay,
+        easing: RNEasing.inOut(RNEasing.quad),
+        useNativeDriver: true,
+      }),
+    );
+    RNAnimated.parallel(runs).start();
+    return () => runs.forEach((run) => run.stop());
+  }, [petals, reduced]);
+  return (
+    <>
+      {petals.map((petal, i) =>
+        reduced && i > 0 ? null : (
+          <RNAnimated.View
+            key={i}
+            style={{
+              position: "absolute",
+              left: petal.x,
+              top: petal.y,
+              opacity: petal.progress.interpolate(
+                i === 0
+                  ? { inputRange: [0, 0.08, 1], outputRange: [0, 1, 1] }
+                  : {
+                      inputRange: [0, 0.08, 0.75, 1],
+                      outputRange: [0, 1, 1, 0],
+                    },
+              ),
+              transform: [
+                {
+                  translateX: petal.progress.interpolate({
+                    inputRange: [0, 0.25, 0.5, 0.75, 1],
+                    outputRange: [
+                      0,
+                      petal.dx * 0.25 + petal.sway,
+                      petal.dx * 0.5,
+                      petal.dx * 0.75 - petal.sway,
+                      petal.dx,
+                    ],
+                  }),
+                },
+                {
+                  translateY: petal.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, petal.dy],
+                  }),
+                },
+                {
+                  rotate: petal.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [`${petal.spin}deg`, "0deg"],
+                  }),
+                },
+                { scale: petal.scale },
+              ],
+            }}
+          >
+            <Image
+              accessible={false}
+              source={image}
+              resizeMode="contain"
+              fadeDuration={0}
+              style={{ width: size, height: size }}
+            />
+          </RNAnimated.View>
+        ),
+      )}
+    </>
+  );
 }
 
 // The shankh's sound made visible: golden rings spreading from the deity.

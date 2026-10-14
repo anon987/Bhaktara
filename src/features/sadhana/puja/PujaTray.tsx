@@ -60,6 +60,7 @@ export function PujaTray({
   onFlower,
   onGarland,
   onBhog,
+  lights,
 }: {
   language: Language;
   done: ReadonlySet<TrayItem>;
@@ -77,7 +78,19 @@ export function PujaTray({
   onFlower: (item: MandirDecor) => void;
   onGarland: (kind: GarlandKind) => void;
   onBhog: (kind: BhogKind) => void;
+  // The temple lights tile, shown where the tilak used to be.
+  lights?: {
+    label: string;
+    image?: ImageSourcePropType;
+    icon: React.ReactNode;
+    selected: boolean;
+    onPress: () => void;
+  };
 }) {
+  // The tilak is not offered from the tray; the lights take its place.
+  const tiles = trayItems.map((item) =>
+    item === "chandan" ? ("lights" as const) : item,
+  );
   return (
     <View style={styles.wrap}>
       {drawer && (
@@ -139,24 +152,28 @@ export function PujaTray({
         </View>
       )}
       <View style={styles.tray}>
-        {[trayItems.slice(0, 4), trayItems.slice(4)].map((row, r) => (
+        {[tiles.slice(0, 4), tiles.slice(4)].map((row, r) => (
           <View key={r} style={styles.row}>
-            {row.map((item) => (
-              <TrayButton
-                key={item}
-                item={item}
-                label={trayLabels[item][language]}
-                hint={trayNames[item][language]}
-                imageKey={visuals.tray[item]}
-                image={icons[item]}
-                done={done.has(item)}
-                glowing={next === item}
-                lit={lit.has(item)}
-                selected={drawer?.item === item}
-                tapKey={tapKeys[item] ?? 0}
-                onPress={() => onItem(item)}
-              />
-            ))}
+            {row.map((item) =>
+              item === "lights" ? (
+                lights && <LightsButton key={item} {...lights} />
+              ) : (
+                <TrayButton
+                  key={item}
+                  item={item}
+                  label={trayLabels[item][language]}
+                  hint={trayNames[item][language]}
+                  imageKey={visuals.tray[item]}
+                  image={icons[item]}
+                  done={done.has(item)}
+                  glowing={next === item}
+                  lit={lit.has(item)}
+                  selected={drawer?.item === item}
+                  tapKey={tapKeys[item] ?? 0}
+                  onPress={() => onItem(item)}
+                />
+              ),
+            )}
           </View>
         ))}
       </View>
@@ -281,6 +298,63 @@ function TrayButton({
           <Check size={14} color="#FFFFFF" strokeWidth={3} />
         </View>
       )}
+    </Pressable>
+  );
+}
+
+// Opens the temple lights chooser; shows the chosen lights.
+function LightsButton({
+  label,
+  image,
+  icon,
+  selected,
+  onPress,
+}: {
+  label: string;
+  image?: ImageSourcePropType;
+  icon: React.ReactNode;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tile,
+        selected && styles.tileDone,
+        pressed && { transform: [{ scale: 0.97 }] },
+      ]}
+    >
+      {selected && (
+        <LinearGradient
+          colors={["#FFF1D2", shrine.saffronLight]}
+          style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+        />
+      )}
+      <View style={styles.icon}>
+        {image ? (
+          <Image
+            accessible={false}
+            source={image}
+            resizeMode="contain"
+            fadeDuration={0}
+            style={{ width: 56, height: 56 }}
+          />
+        ) : (
+          icon
+        )}
+      </View>
+      <Txt
+        bold
+        size={15}
+        numberOfLines={1}
+        style={{ color: shrine.maroon, textAlign: "center", lineHeight: 20 }}
+      >
+        {label}
+      </Txt>
     </Pressable>
   );
 }

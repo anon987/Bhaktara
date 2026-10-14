@@ -7,7 +7,12 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import {
+  runOnJS,
+  SharedValue,
+  useAnimatedReaction,
+  useSharedValue,
+} from "react-native-reanimated";
 import {
   Bell,
   ChevronDown,
@@ -20,6 +25,8 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
+import { DevotionalArt } from "../../components/DevotionalArt";
+import { resolveMediaUrl } from "../../services/media/config";
 import { Txt } from "../../components/ui";
 import { useReducedMotion } from "../../components/useReducedMotion";
 import {
@@ -34,13 +41,18 @@ import { colors, shrine } from "../../theme/tokens";
 import { noVisuals } from "../../domain/visuals";
 import { usePlayer } from "../player/PlayerProvider";
 import { PetalShower } from "./art/PetalShower";
-import { MandirDecor, templeAfterSwipe } from "./decor/decor";
+import { bundledMurti } from "./decor/bundled";
+import { MandirDecor, murtiFor, templeAfterSwipe } from "./decor/decor";
 import { DecorChooser } from "./decor/DecorChooser";
 import { DecorLayer } from "./decor/DecorLayer";
-import { pageMurtiBox, TempleCarousel } from "./decor/TempleCarousel";
+import {
+  pageMurtiBox,
+  TempleCarousel,
+  TempleCarouselHandle,
+} from "./decor/TempleCarousel";
 import { UnlockSheet } from "./decor/UnlockSheet";
 import { useMandirDecor } from "./decor/useMandirDecor";
-import { beadTick, malaPulse, useDecorSound, useSound } from "./feedback";
+import { useDecorSound, useSound } from "./feedback";
 import { useProgression } from "./ProgressionProvider";
 import {
   FLOWER_LIMIT,
@@ -105,6 +117,7 @@ export function PrayerScreen({
   // ---- The temple pager. The page in view; a locked temple can be looked
   // at but only becomes the saved temple once unlocked.
   const scrollX = useSharedValue(0);
+  const carousel = useRef<TempleCarouselHandle>(null);
   const [pageId, setPageId] = useState<string | null>(null);
   const shownTemple =
     (pageId && decor.temples.find((item) => item.id === pageId)) ||
@@ -204,7 +217,6 @@ export function PrayerScreen({
     if (!recordedRef.current && required.every((id) => next.has(id))) {
       recordedRef.current = true;
       setPetals((key) => key + 1);
-      malaPulse();
       void offerPrayer(required);
     }
   };
@@ -248,7 +260,6 @@ export function PrayerScreen({
 
   const onItem = (item: TrayItem) => {
     tapped(item);
-    beadTick();
     setPanel(null);
     switch (item) {
       case "kalash":
@@ -297,7 +308,6 @@ export function PrayerScreen({
   };
 
   const offerFlower = (item: MandirDecor) => {
-    beadTick();
     // Read the ID now: the updater may run after later taps.
     const id = (flowerId.current += 1);
     setFlowers((values) =>
@@ -341,7 +351,9 @@ export function PrayerScreen({
     clearAltar();
   };
 
-  const next = trayItems.find((item) => !done.has(item)) ?? null;
+  // The tilak is no longer on the tray, so it is never the next item.
+  const next =
+    trayItems.find((item) => item !== "chandan" && !done.has(item)) ?? null;
   const lit = new Set<TrayItem>();
   if (hand === "dhoop" || placed.has("dhoop")) lit.add("dhoop");
   if (hand === "deep" || placed.has("deep")) lit.add("deep");
@@ -363,61 +375,64 @@ export function PrayerScreen({
     locked: t("lockedDecor"),
   };
 
+  // The deity picker stands in the header in place of the title; each
+  // deity is shown with a small round image of them.
+  const picker = deity && (
+    <View style={styles.deityBar}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${t("chooseDeity")}: ${deity.name[language]}`}
+        accessibilityState={{ expanded: choosing }}
+        disabled={deities.length < 2}
+        onPress={() => setChoosing((value) => !value)}
+        style={({ pressed }) => [styles.picker, pressed && { opacity: 0.85 }]}
+      >
+        <DeityAvatar deity={deity} size={38} />
+        <SerifText size={20} numberOfLines={1} style={{ flexShrink: 1 }}>
+          {deity.name[language]}
+        </SerifText>
+        {deities.length > 1 &&
+          (choosing ? (
+            <ChevronUp size={20} color={shrine.maroon} />
+          ) : (
+            <ChevronDown size={20} color={shrine.maroon} />
+          ))}
+      </Pressable>
+      {choosing && (
+        <View style={styles.menu} accessibilityRole="menu">
+          <ScrollView style={{ maxHeight: 340 }}>
+            {deities.map((item) => {
+              const selected = item.id === deity.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="menuitem"
+                  accessibilityState={{ selected }}
+                  onPress={() => changeDeity(item.id)}
+                  style={[styles.menuItem, selected && styles.menuItemSelected]}
+                >
+                  <DeityAvatar deity={item} size={44} />
+                  <SerifText size={18} bold={selected} style={{ flexShrink: 1 }}>
+                    {item.name[language]}
+                  </SerifText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <ShrinePage
       title={t("prarthanaShort")}
+      header={picker}
+      settingsButton={false}
       background="prayerBackground"
       onBack={navigation.goBack}
     >
       <View style={styles.body}>
-        {deity && (
-          <View style={styles.deityBar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t("chooseDeity")}: ${deity.name[language]}`}
-              accessibilityState={{ expanded: choosing }}
-              disabled={deities.length < 2}
-              onPress={() => setChoosing((value) => !value)}
-              style={({ pressed }) => [
-                styles.picker,
-                pressed && { opacity: 0.85 },
-              ]}
-            >
-              <SerifText size={20}>{deity.name[language]}</SerifText>
-              {deities.length > 1 &&
-                (choosing ? (
-                  <ChevronUp size={20} color={shrine.maroon} />
-                ) : (
-                  <ChevronDown size={20} color={shrine.maroon} />
-                ))}
-            </Pressable>
-            {choosing && (
-              <View style={styles.menu} accessibilityRole="menu">
-                <ScrollView style={{ maxHeight: 280 }}>
-                  {deities.map((item) => {
-                    const selected = item.id === deity.id;
-                    return (
-                      <Pressable
-                        key={item.id}
-                        accessibilityRole="menuitem"
-                        accessibilityState={{ selected }}
-                        onPress={() => changeDeity(item.id)}
-                        style={[
-                          styles.menuItem,
-                          selected && styles.menuItemSelected,
-                        ]}
-                      >
-                        <SerifText size={18} bold={selected}>
-                          {item.name[language]}
-                        </SerifText>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-        )}
         <View
           testID="puja-stage"
           style={styles.stage}
@@ -426,6 +441,7 @@ export function PrayerScreen({
           {deity && stage.width > 0 && shownTemple && murti && (
             <>
               <TempleCarousel
+                ref={carousel}
                 width={stage.width}
                 height={stage.height}
                 temples={decor.temples}
@@ -490,26 +506,18 @@ export function PrayerScreen({
                 <Arrow
                   side="left"
                   label={t("previousTemple")}
-                  onPress={() => onPage(page - 1)}
+                  onPress={() => carousel.current?.step(-1)}
                 />
               )}
               {!hand && page < decor.temples.length - 1 && (
                 <Arrow
                   side="right"
                   label={t("nextTemple")}
-                  onPress={() => onPage(page + 1)}
+                  onPress={() => carousel.current?.step(1)}
                 />
               )}
               {!hand && (
                 <>
-                  <DecorButton
-                    side="left"
-                    label={t("decorLights")}
-                    image={decor.light?.image}
-                    icon={<Sparkles size={26} color={shrine.maroon} />}
-                    selected={panel === "light"}
-                    onPress={() => togglePanel("light")}
-                  />
                   <DecorButton
                     side="right"
                     label={t("decorBell")}
@@ -519,9 +527,9 @@ export function PrayerScreen({
                     onPress={() => togglePanel("bell")}
                   />
                   <PageDots
-                    count={decor.temples.length}
-                    page={page}
-                    name={shownTemple.name[language]}
+                    names={decor.temples.map((item) => item.name[language])}
+                    scrollX={scrollX}
+                    width={stage.width}
                   />
                 </>
               )}
@@ -538,7 +546,6 @@ export function PrayerScreen({
                       labels={decorLabels}
                       none={t("noLights")}
                       onChoose={(item) => {
-                        beadTick();
                         if (!item) decor.chooseLight(null);
                         else withUnlock(item, () => decor.chooseLight(item.id));
                       }}
@@ -555,7 +562,6 @@ export function PrayerScreen({
                       labels={decorLabels}
                       onChoose={(item) => {
                         if (!item) return;
-                        beadTick();
                         withUnlock(item, () => {
                           decor.chooseBell(item.id);
                           // Hear it as it is chosen.
@@ -582,15 +588,20 @@ export function PrayerScreen({
           icons={bell ? { ghanti: bell.image } : {}}
           locked={decor.locked}
           lockedLabel={t("lockedDecor")}
+          lights={{
+            label: t("decorLights"),
+            image: decor.light?.image,
+            icon: <Sparkles size={44} color={shrine.maroon} />,
+            selected: panel === "light",
+            onPress: () => togglePanel("light"),
+          }}
           onItem={onItem}
           onFlower={(item) => withUnlock(item, () => offerFlower(item))}
           onGarland={(kind) => {
-            beadTick();
             setGarland(kind);
             mark("pushp");
           }}
           onBhog={(kind) => {
-            beadTick();
             setBhog((values) => [
               ...values.filter((value) => value !== kind),
               kind,
@@ -704,30 +715,83 @@ function DecorButton({
   );
 }
 
-// Which temple is shown: a dot per temple and its name.
-function PageDots({
-  count,
-  page,
-  name,
+// A deity's murti in a small gold-ringed circle, cropped to the face and
+// shoulders (the drawn art when there is no murti).
+function DeityAvatar({
+  deity,
+  size,
 }: {
-  count: number;
-  page: number;
-  name: string;
+  deity: { id: string; artKey: string; murtiKey?: string };
+  size: number;
 }) {
-  if (count < 2) return null;
+  const murti = murtiFor(deity, resolveMediaUrl, bundledMurti);
+  return (
+    <View
+      style={[
+        styles.avatar,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}
+    >
+      {murti ? (
+        <Image
+          accessible={false}
+          source={murti.source}
+          defaultSource={
+            typeof murti.placeholder === "number" ? murti.placeholder : undefined
+          }
+          resizeMode="cover"
+          fadeDuration={0}
+          style={{ width: size, height: size * 1.9 }}
+        />
+      ) : (
+        <DevotionalArt assetKey={deity.artKey} size={size} square />
+      )}
+    </View>
+  );
+}
+
+// Which temple is shown: a dot per temple and its name. Both follow the
+// pager as it moves (finger or arrow), not only once it stops. The dots are
+// drawn from the same index as the name: an animated style per dot was put
+// back to its first-render look whenever the name re-rendered.
+function PageDots({
+  names,
+  scrollX,
+  width,
+}: {
+  names: string[];
+  scrollX: SharedValue<number>;
+  width: number;
+}) {
+  const [index, setIndex] = useState(() =>
+    width > 0 ? Math.round(scrollX.get() / width) : 0,
+  );
+  useAnimatedReaction(
+    () => (width > 0 ? Math.round(scrollX.get() / width) : 0),
+    (next, previous) => {
+      if (next !== previous) runOnJS(setIndex)(next);
+    },
+  );
+  if (names.length < 2) return null;
+  const shown = Math.max(0, Math.min(names.length - 1, index));
   return (
     <View style={styles.dots} pointerEvents="none">
       <View style={styles.dotRow}>
-        {Array.from({ length: count }, (_, i) => (
-          <View key={i} style={[styles.dot, i === page && styles.dotOn]} />
+        {names.map((_, i) => (
+          <View
+            key={i}
+            testID={i === shown ? "page-dot-active" : undefined}
+            style={[styles.dot, i === shown && styles.dotActive]}
+          />
         ))}
       </View>
       <Txt
         size={13}
         numberOfLines={1}
+        adjustsFontSizeToFit
         style={{ color: shrine.maroon, lineHeight: 17 }}
       >
-        {name}
+        {names[shown]}
       </Txt>
     </View>
   );
@@ -735,11 +799,12 @@ function PageDots({
 
 const styles = StyleSheet.create({
   body: { flex: 1, gap: 6, paddingHorizontal: 14, paddingBottom: 10 },
-  deityBar: { alignItems: "center", zIndex: 3, marginTop: 4 },
+  deityBar: { alignItems: "center", alignSelf: "stretch" },
   picker: {
     minHeight: 56,
-    minWidth: 220,
-    paddingHorizontal: 22,
+    maxWidth: "100%",
+    paddingLeft: 9,
+    paddingRight: 16,
     borderRadius: 28,
     flexDirection: "row",
     alignItems: "center",
@@ -752,7 +817,7 @@ const styles = StyleSheet.create({
   menu: {
     position: "absolute",
     top: 62,
-    minWidth: 220,
+    minWidth: 240,
     paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: shrine.ivory,
@@ -764,7 +829,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  menuItem: { minHeight: 56, justifyContent: "center", paddingHorizontal: 20 },
+  menuItem: {
+    minHeight: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+  },
+  avatar: {
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: shrine.gold,
+    backgroundColor: shrine.card,
+  },
   menuItemSelected: { backgroundColor: "rgba(255, 153, 51, 0.18)" },
   // Full width: the temples run edge to edge.
   stage: { flex: 1, overflow: "hidden", marginHorizontal: -14 },
@@ -803,8 +880,8 @@ const styles = StyleSheet.create({
   dots: {
     position: "absolute",
     bottom: 10,
-    left: "32%",
-    right: "32%",
+    left: "28%",
+    right: "28%",
     alignItems: "center",
     paddingVertical: 4,
     paddingHorizontal: 8,
@@ -818,7 +895,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "rgba(107, 15, 18, 0.25)",
   },
-  dotOn: { backgroundColor: colors.primary, width: 18 },
+  dotActive: { width: 18, backgroundColor: colors.primary },
   panel: { position: "absolute", left: 8, right: 8, bottom: 72 },
   reset: {
     flexDirection: "row",

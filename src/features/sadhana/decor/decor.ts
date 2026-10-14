@@ -24,7 +24,12 @@ export type MandirDecor = Omit<DecorItem, "imageKey" | "soundKey"> & {
 };
 
 // The deity alone on a transparent background.
-export type Murti = { source: ImageSourcePropType; aspect?: number };
+export type Murti = {
+  source: ImageSourcePropType;
+  aspect?: number;
+  // The bundled murti, drawn while a CDN one loads.
+  placeholder?: ImageSourcePropType;
+};
 
 // lightId saved for "No lights".
 export const NO_LIGHT = "none";
@@ -73,8 +78,13 @@ export function murtiFor(
 ): Murti | null {
   if (!deity) return null;
   const uri = deity.murtiKey ? resolve(deity.murtiKey) : null;
-  if (uri) return { source: { uri } };
-  return bundled(deity.id);
+  const local = bundled(deity.id);
+  if (uri)
+    return {
+      source: { uri },
+      ...(local ? { placeholder: local.source } : {}),
+    };
+  return local;
 }
 
 // Flowers for the deity's drawer: decor flowers whose traditional kind suits

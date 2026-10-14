@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Image, ImageSourcePropType } from "react-native";
 import { useApp } from "../../../app/providers/AppProvider";
 import { DecorItem, decorFor } from "../../../domain/mandirDecor";
 import { Deity } from "../../../domain/models";
@@ -26,6 +27,56 @@ import {
 
 type Choices = LocalState["mandir"];
 
+const mergeAll = (remote: DecorItem[]) =>
+  mergeDecor(bundledDecor, remote, resolveMediaUrl);
+// A temple only on the CDN (no bundled copy) shows the default mandir while
+// its image loads, never an empty sanctum.
+const defaultTemple = bundledDecor.find((item) => item.kind === "temple");
+function withDefaultTemple(items: MandirDecor[]): MandirDecor[] {
+  if (!defaultTemple) return items;
+  return items.map((item) =>
+    item.kind === "temple" && !item.placeholder && isRemote(item.image)
+      ? { ...item, placeholder: defaultTemple.image }
+      : item,
+  );
+}
+const isRemote = (source: ImageSourcePropType | undefined) =>
+  !!source && typeof source === "object" && "uri" in source && !!source.uri;
+function prefetchSource(source: ImageSourcePropType | undefined) {
+  if (source && isRemote(source))
+    Image.prefetch((source as { uri: string }).uri).catch(() => undefined);
+}
+// Download the CDN images ahead (temples first: they fill the screen), so
+// they are on the phone before they are shown.
+function prefetchDecor(items: MandirDecor[]) {
+  const order = ["temple", "light", "bell", "flower"];
+  [...items]
+    .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))
+    .forEach((item) => prefetchSource(item.image));
+}
+
+// Called from the Sadhana screen: fetch the published decor and the deity's
+// murti and download their images before the Prayer screen is opened.
+export function usePrefetchMandirDecor(deity: Deity | undefined) {
+  const { getMandirDecor } = useApp();
+  useEffect(() => {
+    let active = true;
+    getMandirDecor()
+      .then((remote) => {
+        if (active) prefetchDecor(mergeAll(remote));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [getMandirDecor]);
+  useEffect(
+    () =>
+      prefetchSource(murtiFor(deity, resolveMediaUrl, bundledMurti)?.source),
+    [deity],
+  );
+}
+
 // The Prayer screen's mandir: the bundled decor merged with what the admin
 // has published, the devotee's saved temple, light and bell, and unlocking
 // with a rewarded ad (none needed while rewarded ads are switched off).
@@ -52,10 +103,8 @@ export function useMandirDecor(
       active = false;
     };
   }, [getMandirDecor]);
-  const items = useMemo(
-    () => mergeDecor(bundledDecor, remote, resolveMediaUrl),
-    [remote],
-  );
+  const items = useMemo(() => withDefaultTemple(mergeAll(remote)), [remote]);
+  useEffect(() => prefetchDecor(items), [items]);
 
   // Read once per visit: Remote Config only changes between app starts.
   const [adsOn] = useState(() => rewardedAdsOn(config));
@@ -86,6 +135,7 @@ export function useMandirDecor(
     () => murtiFor(deity, resolveMediaUrl, bundledMurti),
     [deity],
   );
+  useEffect(() => prefetchSource(murti?.source), [murti]);
 
   const temple = chosen(temples, saved.templeId, locked);
   const light =
