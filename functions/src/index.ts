@@ -13,6 +13,7 @@ import * as dashboard from "./dashboard";
 import * as content from "./content";
 import { Actor, actorFrom } from "./core";
 import * as home from "./home";
+import * as localize from "./localize";
 import * as media from "./media";
 import * as profile from "./profile";
 import * as progression from "./progression";
@@ -68,6 +69,40 @@ export const requestUploadUrl = admin(
   {
     secrets: r2Secrets,
   },
+);
+
+// Hindi ⇄ English/Hinglish titles and lyrics (Gemini 2.5 Flash on Vertex AI,
+// signed in as a service account; see gemini.ts and localize.ts). Lyrics can
+// take a while, hence 120 s. Four values are needed:
+// GEMINI_PROJECT, GEMINI_SA_EMAIL, GEMINI_SA_KEY_ID and GEMINI_SA_PRIVATE_KEY
+// (the PEM from the key's JSON file; escaped "\n" sequences are fine).
+// - Deployed: create each secret once with
+//     firebase functions:secrets:set GEMINI_PROJECT --project <projectId>
+//   (and the same for the other three), then add GEMINI_SECRETS=true to
+//   functions/.env.<projectId> and redeploy localizeText. Like the R2
+//   keys, the secrets are only declared when that flag is set, so deploys
+//   work before they exist; until then the callable answers "Gemini is not
+//   configured."
+// - Emulator: put the four values in functions/.env.local (Git-ignored), with
+//   the private key on one line in double quotes, e.g.
+//     GEMINI_SA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
+// The model is the plain env var GEMINI_MODEL (not a secret) in
+// functions/.env, functions/.env.<projectId> or functions/.env.local; it
+// defaults to gemini-3.1-flash-lite (served from locations/global).
+// The service account needs the Vertex AI User role in GEMINI_PROJECT.
+const geminiSecrets =
+  process.env.FUNCTIONS_EMULATOR === "true" ||
+  process.env.GEMINI_SECRETS !== "true"
+    ? []
+    : [
+        defineSecret("GEMINI_PROJECT"),
+        defineSecret("GEMINI_SA_EMAIL"),
+        defineSecret("GEMINI_SA_KEY_ID"),
+        defineSecret("GEMINI_SA_PRIVATE_KEY"),
+      ];
+export const localizeText = admin(
+  (actor, data) => localize.localizeText(actor, data),
+  { timeoutSeconds: 120, secrets: geminiSecrets },
 );
 
 // Admin panel v2 (doc 09 §1): dashboard, catalogue, config, users, assets.

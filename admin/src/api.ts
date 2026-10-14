@@ -125,7 +125,16 @@ export interface AdminApi {
     file: Blob,
     onProgress: (fraction: number) => void,
   ): Promise<void>;
+  // Gemini detects each text's language and writes the other side: Hindi in
+  // → Hinglish `en`; English or Hinglish in → Devanagari `hi`. Results come
+  // in input order. Titles: at most MAX_LOCALIZE_TITLES per call; lyrics:
+  // exactly one text, line breaks and [Section] headers kept.
+  localizeText(input: LocalizeInput): Promise<LocalizedText[]>;
 }
+
+export const MAX_LOCALIZE_TITLES = 50;
+export type LocalizeInput = { kind: "title" | "lyrics"; items: string[] };
+export type LocalizedText = Localized & { language: "hi" | "en" };
 
 export const toIso = (value: unknown): string | null =>
   value instanceof Timestamp
@@ -300,6 +309,15 @@ export function firebaseApi({ db, functions }: FirebaseServices): AdminApi {
     },
 
     requestUploadUrl: call("requestUploadUrl"),
+    // The function may take up to 120 s (long lyrics).
+    localizeText: async (input) =>
+      (
+        await httpsCallable<LocalizeInput, { items: LocalizedText[] }>(
+          functions,
+          "localizeText",
+          { timeout: 130_000 },
+        )(input)
+      ).data.items,
 
     putFile(slot, file, onProgress) {
       // XHR rather than fetch for upload progress. The presigned URL signs

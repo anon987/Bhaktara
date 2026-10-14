@@ -1,4 +1,5 @@
-import type { AdminApi } from "../../api";
+import { MAX_LOCALIZE_TITLES, type AdminApi, type LocalizedText } from "../../api";
+import { placeLocalized, sourceSide, type Side } from "../../content/localize";
 import { draftFromForm, emptyForm } from "../../content/draftForm";
 import type { ContentType, UploadMime } from "../../domain";
 import type { MediaInputRole } from "../../../../src/domain/mediaProcessing";
@@ -25,6 +26,11 @@ export type UploadRow = PlannedItem & {
   warnings: string[];
   // Moved to READY after rendering (BatchDefaults.markReady).
   ready?: boolean;
+  // Titles changed outside the row's own inputs (Gemini) after its draft
+  // was created; the row offers Save until they are stored.
+  titleUnsaved?: boolean;
+  // Sides the editor typed into; Gemini never overwrites them.
+  typed?: Partial<Record<Side, boolean>>;
 };
 export type BatchDefaults = {
   deityIds: string[];
@@ -35,10 +41,18 @@ export type BatchDefaults = {
   markReady: boolean;
 };
 
+// A file name in Devanagari only is a Hindi title; anything else starts on
+// the English side. Gemini then fills the other side (and moves a title it
+// reads as the other language).
+export function titleFromName(name: string): UploadRow["title"] {
+  const title = titleFromFileName(name);
+  return /[ऀ-ॿ]/.test(title) && !/[A-Za-z]/.test(title) ? { hi: title, en: "" } : { hi: "", en: title };
+}
+
 export const rowFromPlan = (item: PlannedItem): UploadRow => ({
   ...item,
   id: slugFromFileName(item.name),
-  title: { hi: "", en: titleFromFileName(item.name) },
+  title: titleFromName(item.name),
   stage: "waiting",
   progress: 0,
   warnings: [],
@@ -219,4 +233,55 @@ export async function saveTitles(api: AdminApi, contentId: string, title: { hi: 
   const record = await api.getContent(contentId);
   if (!record) throw new Error("The item no longer exists.");
   await api.updateContent(contentId, { ...record.draft, title: { hi: title.hi.trim(), en: title.en.trim() } });
+}
+
+// Rows Gemini fills: one side has a title, the other is empty, and the row is
+// not in the middle of an upload (the draft takes the title when created).
+export const needsLocalizing = (row: UploadRow) => {
+  if (row.stage !== "waiting" && row.stage !== "error" && row.stage !== "done") return false;
+  const source = sourceSide(row.title);
+  return !!source && row.title[source].trim().length <= 200;
+};
+
+export type LocalizedRow = { key: string; source: Side; sent: string; result: LocalizedText };
+
+// Asks Gemini about every row that needs it, at most MAX_LOCALIZE_TITLES per
+// call. Nothing is applied here: on a failure the rows stay as they are.
+export async function localizeRowTitles(
+  api: AdminApi,
+  rows: UploadRow[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<LocalizedRow[]> {
+  const pending = rows.filter(needsLocalizing).map((row) => {
+    const source = sourceSide(row.title)!;
+    return { key: row.key, source, sent: row.title[source].trim() };
+  });
+  const answers: LocalizedRow[] = [];
+  for (let start = 0; start < pending.length; start += MAX_LOCALIZE_TITLES) {
+    const batch = pending.slice(start, start + MAX_LOCALIZE_TITLES);
+    const results = await api.localizeText({ kind: "title", items: batch.map((item) => item.sent) });
+    batch.forEach((item, index) => {
+      if (results[index]) answers.push({ ...item, result: results[index] });
+    });
+    onProgress?.(start + batch.length, pending.length);
+  }
+  return answers;
+}
+
+// Puts each answer on the right side of the latest rows. Sides the editor
+// typed into are never overwritten, and a row whose title changed while
+// Gemini was working is left alone. Rows whose draft exists are marked
+// unsaved.
+export function withLocalizedTitles(rows: UploadRow[], answers: LocalizedRow[]): { rows: UploadRow[]; count: number } {
+  const byKey = new Map(answers.map((answer) => [answer.key, answer]));
+  let count = 0;
+  const next = rows.map((row) => {
+    const answer = byKey.get(row.key);
+    if (!answer || !needsLocalizing(row)) return row;
+    const title = placeLocalized(row.title, answer.source, answer.sent, answer.result, row.typed);
+    if (!title) return row;
+    count += 1;
+    return { ...row, title, titleUnsaved: row.contentId ? true : row.titleUnsaved };
+  });
+  return { rows: next, count };
 }

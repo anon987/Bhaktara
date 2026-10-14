@@ -131,3 +131,16 @@ Root `eslint .` lints `admin/` (the `@/` alias is resolved by TypeScript) and ig
 An operator account needs a role first: sign in once, then `GOOGLE_CLOUD_QUOTA_PROJECT=bhaktara-dev npm run admin:grant-role -- --email <email> --role SUPER_ADMIN --project dev --confirm-project bhaktara-dev` (with user Application Default Credentials the Auth Admin API needs a quota project), then sign out and in again to refresh the claim. Later roles can be granted on the **Staff roles** page. The operator account `informdhananjay@gmail.com` holds SUPER_ADMIN on `bhaktara-dev` since 2026-10-06.
 
 Uploads answer "not configured" until the R2 secrets exist (`R2_UPLOAD_SECRETS=true` in `functions/.env.bhaktara-dev`), and rendering needs the Cloud Run media processor (`MEDIA_PROCESSOR_URL`; [MEDIA_PROCESSOR.md](MEDIA_PROCESSOR.md)). Browsers upload straight to R2, so the bucket needs the PUT rule in `infra/r2/cors.json` (admin origins, `Content-Type` header); apply it with `npx wrangler r2 bucket cors set bhaktara-media-dev --file infra/r2/cors.json` or in the Cloudflare dashboard (R2 → bucket → Settings → CORS policy).
+
+### Gemini titles (`localizeText`)
+
+The uploader fills the other language of each title automatically after files are added (and again from **Fill titles with Gemini**); the content editor has **Fill with Gemini** under the title fields. Gemini detects the language: Hindi (Devanagari) gets a Hinglish English side ("राम का नाम लिए जा" → "Ram Ka Naam Liye Ja"), English or Hinglish gets a Devanagari Hindi side ("Om Jai Jagdish Hare" → "ॐ जय जगदीश हरे"). The callable also accepts `kind: "lyrics"` (one text up to 20,000 characters, converted line by line with line breaks and `[Section]` headers kept) for the coming lyrics field. Until it is configured the callable answers "Gemini is not configured."
+
+It calls Vertex AI as a service account (no API key; see `functions/src/gemini.ts`). Setup, once per project:
+
+1. In the Google Cloud project that runs Gemini, create a service account with the **Vertex AI User** role and a JSON key.
+2. Store four secrets from that key: `firebase functions:secrets:set GEMINI_PROJECT --project <projectId>` (the Vertex project ID), then the same for `GEMINI_SA_EMAIL` (`client_email`), `GEMINI_SA_KEY_ID` (`private_key_id`) and `GEMINI_SA_PRIVATE_KEY` (`private_key`, pasted as is; escaped `\n` sequences are fine).
+3. Add `GEMINI_SECRETS=true` to `functions/.env.<projectId>` (Git-ignored) and redeploy `localizeText`. Optionally set `GEMINI_MODEL` there (a plain env var, not a secret; default `gemini-3.1-flash-lite`, served from `locations/global`).
+4. For the emulator, put all four values (and optionally `GEMINI_MODEL`) in `functions/.env.local`, the key on one line in double quotes: `GEMINI_SA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"`.
+
+Each call logs only counts and token usage (`Gemini usage`: prompt, candidate and thought tokens), never the text, the key or the token.

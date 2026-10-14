@@ -49,6 +49,8 @@ coverage/
 .env
 .env.*
 !.env.example
+# Firebase emulator secret overrides (functions/.secret.local)
+.secret.local
 *.keystore
 !android/app/debug.keystore
 
