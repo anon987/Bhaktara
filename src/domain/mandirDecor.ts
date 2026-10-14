@@ -92,11 +92,9 @@ export function decorFromDocument(
 }
 
 // Items of one kind for a deity (empty deityIds: every deity), in order.
-export function decorFor(
-  items: DecorItem[],
-  kind: OfferingKind,
-  deityId?: string,
-): DecorItem[] {
+export function decorFor<
+  T extends Pick<DecorItem, "id" | "kind" | "deityIds" | "sortOrder">,
+>(items: T[], kind: OfferingKind, deityId?: string): T[] {
   return items
     .filter(
       (item) =>
