@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  BackHandler,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import {
   Bell,
@@ -168,6 +175,22 @@ export function PrayerScreen({
       setUnlocking({ item, then: () => chooseTemple(item.id) }),
     [chooseTemple],
   );
+
+  // The phone's Back closes what is open (the unlock sheet, a chooser, the
+  // offering drawer, the deity list) before it leaves the screen.
+  const overlayOpen = !!unlocking || !!panel || !!drawer || choosing;
+  useEffect(() => {
+    if (!overlayOpen) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (unlocking) {
+        if (!adRunning) setUnlocking(null);
+      } else if (panel) setPanel(null);
+      else if (drawer) setDrawer(null);
+      else setChoosing(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [overlayOpen, unlocking, adRunning, panel, drawer]);
 
   // Offerings made in this visit. The day's prayer is recorded the moment
   // the last required one is made (the server credits it once per day).
