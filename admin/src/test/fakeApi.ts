@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { AdminApi } from "../api";
+import type { AdminApi, LocalizeInput } from "../api";
 import type { BulkContentInput } from "../domain";
 
 // A fully stubbed AdminApi; tests override the calls they care about.
@@ -30,6 +30,14 @@ export function fakeApi(overrides: Partial<AdminApi> = {}): AdminApi {
       throw new Error("not stubbed");
     }),
     putFile: vi.fn(async () => {}),
+    // Devanagari in → Hinglish "en"; anything else → Devanagari "hi".
+    localizeText: vi.fn(async ({ items }: LocalizeInput) =>
+      items.map((text) =>
+        /[ऀ-ॿ]/.test(text)
+          ? { language: "hi" as const, hi: text, en: `Hinglish ${text.length}` }
+          : { language: "en" as const, en: text, hi: `हिन्दी ${text}` },
+      ),
+    ),
     ...overrides,
   };
 }

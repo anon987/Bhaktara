@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { UploadCloud } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { localizeError, placeLocalized, sourceSide } from "./localize";
 import type { ContentRecord } from "../api";
 import { useLoad } from "../useLoad";
 import { useAdmin } from "../app/context";
@@ -179,6 +181,41 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
           : current.saveGate,
     }));
 
+  // Gemini fills the empty title side from the other one: Hindi gets its
+  // Hinglish spelling, English or Hinglish gets Hindi. The result stays
+  // editable and is only stored on Save.
+  const [filling, setFilling] = useState(false);
+  const latestTitle = useRef(form.title);
+  useEffect(() => {
+    latestTitle.current = form.title;
+  }, [form.title]);
+  const titleSource = sourceSide(form.title);
+  const fillTitle = async () => {
+    const source = sourceSide(form.title);
+    if (!source) return;
+    const sent = form.title[source].trim();
+    setFilling(true);
+    try {
+      const [result] = await api.localizeText({ kind: "title", items: [sent] });
+      if (!result) throw new Error("Gemini sent no title. Type it in.");
+      const title = placeLocalized(latestTitle.current, source, sent, result);
+      if (!title) return;
+      setSavedMessage(null);
+      setForm((current) => ({ ...current, title }));
+      toast.success(
+        result.language === source
+          ? `${source === "hi" ? "English (Hinglish)" : "Hindi"} title filled. Check it, then save.`
+          : `That title is ${result.language === "hi" ? "Hindi" : "English"}, so it moved to its own field and the other was filled. Check them, then save.`,
+      );
+    } catch (caught) {
+      toast.error("Gemini could not fill the title", {
+        description: localizeError(caught),
+      });
+    } finally {
+      setFilling(false);
+    }
+  };
+
   const save = async () => {
     setSaveError(null);
     setSavedMessage(null);
@@ -312,6 +349,27 @@ export function EditorForm({ record, flash, onMoved, onMediaProcessed, initialTy
                   onChange={(en) => update("title", { ...form.title, en })}
                   error={fieldErrors["title.en"]}
                 />
+                <div className="col-span-full -mt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    disabled={filling || !titleSource}
+                    onClick={() => void fillTitle()}
+                  >
+                    {filling ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    {filling ? "Filling…" : "Fill with Gemini"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {titleSource === "hi"
+                      ? "Writes the English title as Hinglish (Hindi in Roman letters)."
+                      : titleSource === "en"
+                        ? "Writes the Hindi title in Devanagari."
+                        : form.title.hi.trim()
+                          ? "Both titles are filled."
+                          : "Type one title; Gemini fills the other."}
+                  </span>
+                </div>
                 <TextField
                   label="Description in Hindi"
                   lang="hi"

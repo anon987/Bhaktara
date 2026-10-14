@@ -127,6 +127,45 @@ describe("ContentEditor form", () => {
     );
   });
 
+  it("fills the empty title side with Gemini and leaves it editable", async () => {
+    const api = fakeApi({
+      localizeText: vi.fn(async ({ items }: { items: string[] }) =>
+        items.map((text) =>
+          text === "Om Jai Jagdish Hare"
+            ? { language: "en" as const, en: text, hi: "ॐ जय जगदीश हरे" }
+            : { language: "hi" as const, hi: text, en: "Ram Ka Naam Liye Ja" },
+        ),
+      ),
+    });
+    renderEditor(api, "EDITOR", undefined, fakePanel(), "AARTI");
+    const fill = await screen.findByRole("button", { name: /Fill with Gemini/ });
+    expect(fill).toBeDisabled();
+    const hindi = screen.getByLabelText("Title in Hindi");
+    const english = screen.getByLabelText("Title in English");
+
+    // English in → Devanagari Hindi.
+    await userEvent.type(english, "Om Jai Jagdish Hare");
+    await userEvent.click(fill);
+    expect(api.localizeText).toHaveBeenCalledWith({ kind: "title", items: ["Om Jai Jagdish Hare"] });
+    expect(hindi).toHaveValue("ॐ जय जगदीश हरे");
+    expect(english).toHaveValue("Om Jai Jagdish Hare");
+    await userEvent.type(hindi, "!");
+    expect(hindi).toHaveValue("ॐ जय जगदीश हरे!");
+    // Both sides filled: nothing to do.
+    expect(fill).toBeDisabled();
+
+    // Hindi in → Hinglish English.
+    await userEvent.clear(english);
+    await userEvent.clear(hindi);
+    await userEvent.click(hindi);
+    await userEvent.paste("राम का नाम लिए जा");
+    await userEvent.click(fill);
+    expect(english).toHaveValue("Ram Ka Naam Liye Ja");
+    expect(hindi).toHaveValue("राम का नाम लिए जा");
+    expect(api.localizeText).toHaveBeenCalledTimes(2);
+    expect(api.createContent).not.toHaveBeenCalled();
+  });
+
   it("flags invalid fields instantly and does not call the server", async () => {
     const api = fakeApi();
     renderEditor(api, "EDITOR");

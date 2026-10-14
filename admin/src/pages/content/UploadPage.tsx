@@ -14,6 +14,7 @@ import {
   Music4,
   RotateCcw,
   Save,
+  Sparkles,
   Trash2,
   UploadCloud,
   type LucideIcon,
@@ -37,7 +38,18 @@ import { EmptyState, PageHeader } from "../../components/panel/page";
 import { MediaThumb } from "../../components/panel/media";
 import { AudioPlayer, audioVariant, isAudio, VisualTile } from "../../components/panel/preview";
 import { typeInfo } from "./ContentLibraryPage";
-import { rowFromPlan, runUpload, saveTitles, uploadsUnavailable, type BatchDefaults, type UploadRow } from "./uploadPipeline";
+import { localizeError } from "../../content/localize";
+import {
+  localizeRowTitles,
+  needsLocalizing,
+  rowFromPlan,
+  runUpload,
+  saveTitles,
+  uploadsUnavailable,
+  withLocalizedTitles,
+  type BatchDefaults,
+  type UploadRow,
+} from "./uploadPipeline";
 
 const icons: Record<ContentType, LucideIcon> = {
   BHAJAN: Music4,
@@ -134,11 +146,13 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
     setFiles(all);
     setNotice(null);
     replan(type, all);
+    void fillTitles(type, true);
   };
   const chooseType = (next: ContentType) => {
     if (running) return;
     setType(next);
     replan(next, files);
+    void fillTitles(next, true);
   };
   const removeRow = (key: string) => {
     const row = rowsRef.current.find((item) => item.key === key);
@@ -173,6 +187,45 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
     else if (done) {
       const ready = rowsRef.current.filter((row) => row.ready).length;
       toast.success(ready ? `${ready} of ${done} uploaded and READY to publish.` : `${done} drafts created with their media.`);
+    }
+  };
+
+  // Gemini fills the empty side of each title (Hindi ⇄ Hinglish/English),
+  // automatically after files are added and again from the button. Sides
+  // the editor typed into are never replaced; on a failure nothing changes.
+  const [filling, setFilling] = useState<{ done: number; total: number } | null>(null);
+  const fillingRef = useRef(false);
+  const fillAgain = useRef(false);
+  const toFill = useMemo(() => rows.filter(needsLocalizing).length, [rows]);
+  const fillTitles = async (forType: ContentType, auto: boolean) => {
+    // Wallpaper names never reach the app.
+    if (forType === "WALLPAPER") return;
+    if (fillingRef.current) {
+      fillAgain.current = true;
+      return;
+    }
+    const total = rowsRef.current.filter(needsLocalizing).length;
+    if (!total) {
+      if (!auto) toast.info("Every title already has both Hindi and English.");
+      return;
+    }
+    fillingRef.current = true;
+    setFilling({ done: 0, total });
+    try {
+      const answers = await localizeRowTitles(api, rowsRef.current, (done) => setFilling({ done, total }));
+      const next = withLocalizedTitles(rowsRef.current, answers);
+      commit(next.rows);
+      if (next.count) toast.success(`Gemini filled ${next.count} title${next.count === 1 ? "" : "s"}. Check them before uploading.`, { id: "gemini-titles" });
+      else if (!auto) toast.info("Nothing to fill: the titles changed while Gemini was working.", { id: "gemini-titles" });
+    } catch (error) {
+      toast.error("Gemini could not fill the titles", { id: "gemini-titles", description: localizeError(error) });
+    } finally {
+      fillingRef.current = false;
+      setFilling(null);
+      if (fillAgain.current) {
+        fillAgain.current = false;
+        void fillTitles(forType, true);
+      }
     }
   };
 
@@ -273,10 +326,39 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
             <CardDescription>
               {type === "WALLPAPER"
                 ? "Names come from the file names; wallpapers need nothing else."
-                : "Edit the titles if you like; the Hindi title can also be added later in the editor."}
+                : "Gemini fills the other language of each title from the file name; edit them if you like."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
+            {type !== "WALLPAPER" && (
+              <div className="pb-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={running || !!filling || toFill === 0}
+                    onClick={() => void fillTitles(type, false)}
+                  >
+                    {filling ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    {filling ? "Filling titles…" : "Fill titles with Gemini"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {filling
+                      ? `Gemini is writing ${filling.total} title${filling.total === 1 ? "" : "s"} (${filling.done} of ${filling.total} done)…`
+                      : toFill
+                        ? `${toFill} title${toFill === 1 ? " has" : "s have"} only one language. Hindi gets its Hinglish spelling; English gets Hindi. Text you typed is kept.`
+                        : "Every title has both Hindi and English."}
+                  </p>
+                </div>
+                {filling && (
+                  <Progress
+                    value={Math.max(10, (filling.done / filling.total) * 100)}
+                    className="mt-2 h-1 animate-pulse"
+                    aria-label="Gemini progress"
+                  />
+                )}
+              </div>
+            )}
             {rows.map((row) => (
               <UploadRowCard
                 key={row.key}
@@ -285,7 +367,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
                 busy={running}
                 onChange={(patch) => updateRow(row.key, patch)}
                 onRemove={() => removeRow(row.key)}
-                onSaved={() => updateRow(row.key, { warnings: row.warnings })}
+                onSaved={() => updateRow(row.key, { titleUnsaved: false })}
                 api={api}
               />
             ))}
@@ -309,7 +391,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
               <Button variant="outline" onClick={() => navigate(paths.page(sectionForType(type)))}><ExternalLink /> Open {info.many}</Button>
             )}
             {(running || counts.waiting > 0) && (
-              <Button disabled={running} onClick={() => void start()}>
+              <Button disabled={running || !!filling} onClick={() => void start()}>
                 {running ? <Loader2 className="animate-spin" /> : <UploadCloud />}
                 {running ? "Uploading…" : `Upload ${counts.waiting} ${counts.waiting === 1 ? info.one : info.many.toLowerCase()}`}
               </Button>
@@ -342,8 +424,9 @@ function UploadRowCard({
   const [saving, setSaving] = useState(false);
   const done = row.stage === "done";
   const editable = row.stage === "waiting" || row.stage === "error" || done;
-  const setTitle = (title: UploadRow["title"]) => {
-    onChange({ title });
+  // The side typed into is the editor's: Gemini never overwrites it.
+  const setTitle = (side: "hi" | "en", value: string) => {
+    onChange({ title: { ...row.title, [side]: value }, typed: { ...row.typed, [side]: true } });
     if (done) setDirty(true);
   };
   const save = async () => {
@@ -383,15 +466,15 @@ function UploadRowCard({
           </div>
         </div>
         {type === "WALLPAPER" ? <div className="flex-1" /> : <div className="grid flex-1 gap-2 sm:grid-cols-2">
-          <Input aria-label={`English title for ${row.name}`} value={row.title.en} disabled={!editable || busy && !done} placeholder="English title" onChange={(event) => setTitle({ ...row.title, en: event.target.value })} />
-          <Input aria-label={`Hindi title for ${row.name}`} lang="hi" value={row.title.hi} disabled={!editable || busy && !done} placeholder="हिन्दी शीर्षक" onChange={(event) => setTitle({ ...row.title, hi: event.target.value })} />
+          <Input aria-label={`English title for ${row.name}`} value={row.title.en} disabled={!editable || busy && !done} placeholder="English title" onChange={(event) => setTitle("en", event.target.value)} />
+          <Input aria-label={`Hindi title for ${row.name}`} lang="hi" value={row.title.hi} disabled={!editable || busy && !done} placeholder="हिन्दी शीर्षक" onChange={(event) => setTitle("hi", event.target.value)} />
         </div>}
         <div className="flex items-center gap-2 lg:w-72 lg:justify-end">
           {done && isAudio(type) && (
             <AudioPlayer iconOnly mediaKey={audioVariant(type, row.media)?.key} title={title} />
           )}
           <StageBadge row={row} />
-          {done && dirty && (
+          {done && (dirty || row.titleUnsaved) && (
             <Button size="sm" disabled={saving} onClick={() => void save()}><Save /> Save</Button>
           )}
           {done && row.contentId && (
