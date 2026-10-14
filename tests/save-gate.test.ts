@@ -79,7 +79,8 @@ test("with rewarded ads on, the presenter decides and failures never block the s
   await expect(
     unlockSave(item, "save_status", { presenter, config: adsOn }),
   ).resolves.toEqual({ unlocked: true, via: "fallback" });
-  // No ad SDK before M4: the default presenter is a permanent no-fill.
+  // The default presenter is the AdMob one; the SDK fake in tests/setup.ts
+  // never fills, so the save still goes ahead (doc 11 §4).
   await expect(rewardedAdPresenter.show("save_ringtone")).resolves.toBe(
     "no-fill",
   );
