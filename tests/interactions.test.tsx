@@ -154,10 +154,12 @@ test("the puja is performed from the tray of offerings (D-054)", async () => {
   fireEvent(screen.getByTestId("puja-stage"), "layout", {
     nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 360 } },
   });
-  // Optional offerings: kalash, bell, tilak.
+  // Optional offerings: kalash, bell. The temple lights stand where the
+  // tilak was.
   fireEvent.press(screen.getByLabelText("Sprinkle water from the kalash"));
   fireEvent.press(screen.getByLabelText("Ring the bell"));
-  fireEvent.press(screen.getByLabelText("Apply the chandan-roli tilak"));
+  expect(screen.queryByLabelText("Apply the chandan-roli tilak")).toBeNull();
+  expect(screen.getByLabelText("Lights")).toBeTruthy();
   // Decor flowers suited to Shiva (the first deity): bel leaf, dhatura…
   // never tulsi.
   fireEvent.press(screen.getByLabelText("Offer flowers and a garland"));

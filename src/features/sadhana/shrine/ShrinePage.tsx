@@ -26,16 +26,21 @@ import {
 // The Prayer and Jaap screens (D-057): a sunlit marble shrine on parchment
 // under a marigold toran. Round back and settings buttons flank a centred
 // maroon serif title. Images chosen in the admin panel replace the drawn
-// ground, toran and divider.
+// ground, toran and divider. A screen can put its own control (the Prayer
+// screen's deity picker) in place of the title, and leave out settings.
 export function ShrinePage({
   title,
   subtitle,
+  header,
+  settingsButton = true,
   background,
   onBack,
   children,
 }: React.PropsWithChildren<{
   title: string;
   subtitle?: string;
+  header?: React.ReactNode;
+  settingsButton?: boolean;
   background: SceneSlot;
   onBack: () => void;
 }>) {
@@ -49,27 +54,35 @@ export function ShrinePage({
       <StatusBar style="dark" />
       <MarigoldToran assetKey={scenes.toran} />
       <SafeAreaView edges={["top", "left", "right"]} style={styles.fill}>
-        <View style={styles.header}>
+        <View style={[styles.header, header ? styles.headerOver : null]}>
           <RoundButton label={t("close")} onPress={onBack}>
             <ChevronLeft size={28} color={shrine.maroon} />
           </RoundButton>
           <View style={styles.titles}>
-            <SerifText size={40} accessibilityRole="header">
-              {title}
-            </SerifText>
-            {subtitle ? (
-              <SerifText size={17} bold={false} color={shrine.ink}>
-                {subtitle}
-              </SerifText>
-            ) : null}
+            {header ?? (
+              <>
+                <SerifText size={40} accessibilityRole="header">
+                  {title}
+                </SerifText>
+                {subtitle ? (
+                  <SerifText size={17} bold={false} color={shrine.ink}>
+                    {subtitle}
+                  </SerifText>
+                ) : null}
+              </>
+            )}
           </View>
-          <RoundButton
-            label={t("practiceSettings")}
-            selected={settings}
-            onPress={() => setSettings((open) => !open)}
-          >
-            <Settings size={24} color={shrine.maroon} />
-          </RoundButton>
+          {settingsButton ? (
+            <RoundButton
+              label={t("practiceSettings")}
+              selected={settings}
+              onPress={() => setSettings((open) => !open)}
+            >
+              <Settings size={24} color={shrine.maroon} />
+            </RoundButton>
+          ) : (
+            <View style={styles.roundSpace} />
+          )}
         </View>
         <LotusDivider width={220} assetKey={scenes.divider} />
         {settings && <SettingsPanel />}
@@ -267,7 +280,10 @@ const styles = StyleSheet.create({
     paddingTop: 44,
     gap: 8,
   },
+  // A header control's menu opens over the page below.
+  headerOver: { zIndex: 10 },
   titles: { flex: 1, alignItems: "center" },
+  roundSpace: { width: 54, height: 54 },
   round: {
     width: 54,
     height: 54,
