@@ -178,6 +178,41 @@ export const strings = {
   ],
   buffering: ["Loading…", "लोड हो रहा है…"],
   lyrics: ["Lyrics", "बोल"],
+  // Full-screen audio player.
+  closePlayer: ["Close the player", "प्लेयर बंद करें"],
+  showLyrics: ["Read the lyrics", "भजन के बोल पढ़ें"],
+  favoriteShort: ["Favorite", "पसंदीदा"],
+  favoriteSaved: ["Saved", "पसंदीदा में है"],
+  repeat: ["Repeat", "दोहराएँ"],
+  repeatOn: ["Repeat on", "दोहराना चालू"],
+  repeatOnHint: [
+    "This bhajan will play again and again",
+    "यह भजन बार-बार चलेगा",
+  ],
+  repeatOffHint: [
+    "This bhajan will stop at the end",
+    "यह भजन अंत में रुक जाएगा",
+  ],
+  sleepTimer: ["Sleep timer", "नींद टाइमर"],
+  sleepTimerHint: ["When should the bhajan stop?", "भजन कब बंद हो?"],
+  sleepOff: ["Off", "बंद"],
+  sleep15: ["After 15 minutes", "15 मिनट बाद"],
+  sleep30: ["After 30 minutes", "30 मिनट बाद"],
+  sleep60: ["After 1 hour", "1 घंटे बाद"],
+  sleepEnd: ["At the end of this bhajan", "इस भजन के अंत में"],
+  sleepEndShort: ["Stops at the end", "अंत में रुकेगा"],
+  // {n} is the number of minutes.
+  sleepLeft: ["{n} min left", "{n} मिनट बाकी"],
+  sharePlayer: ["Share", "साझा करें"],
+  // {title} is the bhajan's name.
+  sharePlayerMessage: [
+    "Listen to “{title}” on Bhaktara.",
+    "भक्तारा पर “{title}” सुनिए।",
+  ],
+  dragToSeek: [
+    "Drag the circle to move through the bhajan",
+    "भजन आगे-पीछे करने के लिए गोला खिसकाएँ",
+  ],
   seekBack: ["Back 15 seconds", "15 सेकंड पीछे"],
   seekForward: ["Forward 15 seconds", "15 सेकंड आगे"],
   playbackPosition: ["Playback position", "चलने की स्थिति"],
