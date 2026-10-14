@@ -26,8 +26,8 @@ Split by ownership so that security rules stay simple.
 ### users/{uid} — [owner, limited fields]
 
 ```text
-displayName          // league/profile name, editable (D-042); default = first name + last initial
-photoUrl
+displayName          [server]   // league/profile name, editable via updateProfile (D-042); default = first name + last initial
+photoKey             [server]   // asset key users/{uid}/photo.{hex16}.{jpg|webp} (D-031), via updateProfile; null = no photo
 language             // "hi" | "en"
 mandirDeityId
 notificationPreferences { dailyReminder: bool, reminderTime: "HH:mm", newContent: bool,
@@ -36,10 +36,12 @@ createdAt            [server]
 lastActiveAt         [server]
 isAnonymous          [server]
 timezone             [server]   // IANA; set via setTimezone function, at most 1 change/24h
+profileLimits        [server]   // { day, nameChanges, photoUploads } per practice day (updateProfile, requestProfilePhotoUpload)
+mergedInto, mergedAt [server]   // on a guest profile merged into an account (doc 21 §4)
 ```
 
-- Owner-writable: `language`, `mandirDeityId`, `notificationPreferences`, `photoUrl`.
-- `displayName` is changed through `updateDisplayName`, which applies a profanity filter and length limits and updates league denormalizations.
+- Owner-writable: `language`, `mandirDeityId`, `notificationPreferences`.
+- `displayName` and `photoKey` change only through `updateProfile` (doc 08), which applies the profanity filter and length limits, accepts only a photo this user uploaded, and updates the league denormalizations. `photoKey` replaces the earlier `photoUrl` (media are keys, never URLs); the app builds the URL from the media CDN base.
 - There is no `isAdmin` field. Authorization uses custom claims only.
 
 ### userStats/{uid} — [server], owner can read
@@ -294,7 +296,7 @@ weekId, tier, size, status
 ### leagueMembers/{weekId}_{uid} — [server], [public-read to signed-in]
 
 ```text
-weekId, cohortId, uid, tier, displayName, photoUrl, level (denormalized)
+weekId, cohortId, uid, tier, displayName, photoKey, level (denormalized; name and photo follow updateProfile while the week runs)
 weeklyXp, xpReachedAt, result? (PROMOTED|STAYED|RELEGATED), finalRank?
 ```
 
@@ -328,8 +330,11 @@ minActionsBeforeShow, premiumDisabled, countryRules, excludedZones[]   // C-001
 ### accountMerges/{guestUid} — [server]
 
 ```text
-targetUid, status, summary, createdAt
+guestUid, targetUid, status (IN_PROGRESS|MERGED), progress, summary, createdAt, updatedAt,
+mergedAt, guestAuthDeleted, cleanupAfter, cleanedAt
 ```
+
+See the 2026-10-14 checkpoint below.
 
 ### auditLogs/{id} — [server/admin write-only], [admin read]
 
@@ -414,3 +419,11 @@ Differences from the sections above, as built:
 - `rewardTransactions` adds `requestedXp`; `type` is one of TASK, FULL_SADHANA, MALA, MEDITATION, CHALLENGE, BADGE, MANDIR. Not readable by clients.
 - `users/{uid}` adds `timezoneChangedAt` (server).
 - `challenges` and `badges` are readable by any session while `isActive` (≤ 50 per list). `appConfig/gamification` and `appConfig/sadhana` are readable; other `appConfig` documents are not.
+
+## Implementation checkpoint — 2026-10-14 (profile and guest merge)
+
+- `users/{uid}`: `photoUrl` is replaced by `photoKey` (an R2 asset key, D-031). `displayName` and `photoKey` are server fields written only by `updateProfile`; owners can no longer write `photoUrl`/`photoKey` directly. New server fields: `profileLimits { day, nameChanges, photoUploads }` (per practice day: 5 name changes, 10 photo upload slots) and, on a merged guest, `mergedInto` and `mergedAt`.
+- `leagueMembers`: rows of running weeks (no `result` yet) follow `displayName`/`photoKey` changes and the moderator name reset; finished weeks keep the name they were played under. The row field is `photoKey`.
+- `accountMerges/{guestUid}`: `status` IN_PROGRESS while the copy runs, then MERGED; `progress` holds what has been copied so far (`xpAdded`, `ledgerAdded`, `xpByDay`, `badgeIds`, `badgesAdded`, `favoritesAdded`, `daysAdded`, `challengesMerged`, counter deltas), written in the same transaction as each batch; `summary` is the stored `MergeSummary`; `cleanupAfter` (merge + 7 days) is removed by `cleanupMergedGuests`, which sets `cleanedAt`. Client access stays denied.
+- Merge markers: ledger entries copied from a guest carry `mergedFrom: guestUid` and `mergedAt` (lifetime XP only, never league-week XP); merged `days` and `userChallenges` and copied `badges` carry `mergedFrom` (an array for days and challenges), which is how a retried merge skips work already done.
+- Profile photos live in the media bucket at `users/{uid}/photo.{hex16}.{jpg|webp}`, served publicly through the CDN like other media, with `Cache-Control: public, max-age=31536000, immutable` (a new photo is a new key).
