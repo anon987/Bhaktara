@@ -7,6 +7,7 @@ import {
   checklistState as typedChecklistState,
 } from "../../src/domain/checklist";
 import { descriptionRequiredTypes } from "../../src/domain/cms";
+import { Lyrics, LYRICS_MAX_LENGTH } from "../../src/domain/lyrics";
 
 // Seed/import manifest (doc 18 §3, doc 09 §4). One row per content item.
 // List columns use "|" between values; optional checklist columns are
@@ -26,6 +27,8 @@ const columns = new Set([
   "title_en",
   "description_hi",
   "description_en",
+  "lyrics_hi",
+  "lyrics_en",
   "deityIds",
   "categoryIds",
   "tags",
@@ -144,6 +147,9 @@ export const rowSchema = z
       (value) => value ?? "",
       z.string().trim().max(600),
     ),
+    // Optional song lyrics (Hindi and Hinglish).
+    lyrics_hi: optional(LYRICS_MAX_LENGTH),
+    lyrics_en: optional(LYRICS_MAX_LENGTH),
     deityIds: z.preprocess(
       split,
       z.array(slug).min(1, "needs at least one deity"),
@@ -220,6 +226,7 @@ export const checklistState = (row: ManifestRow) =>
 export type DeityInfo = SearchDeity;
 export type ExistingContent = {
   status: string;
+  lyrics?: Lyrics;
   popularityScore?: number;
   publishedAt?: unknown;
 } | null;
@@ -250,6 +257,11 @@ export function buildDocuments(input: {
     status,
     title: { hi: row.title_hi, en: row.title_en },
     description: { hi: row.description_hi, en: row.description_en },
+    // Rows without lyrics keep the lyrics already stored (added in the CMS).
+    lyrics:
+      row.lyrics_hi || row.lyrics_en
+        ? { hi: row.lyrics_hi ?? "", en: row.lyrics_en ?? "" }
+        : existing?.lyrics,
     slug: row.importKey,
     audioLanguage: row.audioLanguage,
     deityIds: row.deityIds,

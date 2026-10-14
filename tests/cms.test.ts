@@ -260,7 +260,38 @@ describe("stored documents", () => {
       adEligible: true,
       expireAt: "2026-12-01T00:00:00.000Z",
       private: { aiTool: "T", checklist: { titleChecked: true } },
+      // Items saved before lyrics existed read as having none.
+      lyrics: { hi: "", en: "" },
     });
+  });
+
+  it("keep optional lyrics in both languages, never required for READY", () => {
+    expect(draft().lyrics).toEqual({ hi: "", en: "" });
+    expect(draft({ lyrics: { hi: " सखी री ", en: "" } }).lyrics).toEqual({
+      hi: "सखी री",
+      en: "",
+    });
+    expect(readinessProblems(draft())).toEqual([]);
+    const long = "क".repeat(20001);
+    expect(
+      contentDraftSchema.safeParse({
+        ...draft(),
+        lyrics: { hi: long, en: "" },
+      }).success,
+    ).toBe(false);
+    const stored = { hi: "सखी री", en: "Sakhi ri" };
+    expect(
+      contentDraftSchema.parse(
+        draftFromDocuments({ ...draft(), lyrics: stored }, undefined),
+      ).lyrics,
+    ).toEqual(stored);
+    // Bulk metadata updates never touch lyrics.
+    expect(
+      bulkContentSchema.safeParse({
+        ids: ["a"],
+        action: { kind: "update", patch: { lyrics: stored } },
+      }).success,
+    ).toBe(false);
   });
 
   it("index deity names, aliases and transliterated titles", () => {

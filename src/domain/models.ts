@@ -16,6 +16,8 @@ export const contentSchema = z.object({
   type: z.enum(contentTypes),
   title: localizedSchema,
   description: localizedSchema,
+  // Song lyrics (Hindi and Hinglish); absent on most items.
+  lyrics: localizedSchema.optional(),
   deityIds: z.array(z.string()),
   searchTokens: z.array(z.string()),
   media: mediaSchema,

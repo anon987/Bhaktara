@@ -7,6 +7,7 @@ import {
 } from "./media";
 import { checkItems } from "./checklist";
 import { homeLanguages, homeLayoutSectionsSchema } from "./home";
+import { LYRICS_MAX_LENGTH } from "./lyrics";
 
 // Admin CMS domain rules (doc 09), shared by the Cloud Functions that enforce
 // them and the admin web app that explains them. Pure: no Firebase imports.
@@ -121,6 +122,16 @@ const localized = (max: number) =>
       en: z.string().trim().max(max),
     })
     .strict();
+// Optional localized text: a missing object or language reads as "", so
+// documents saved before the field existed still parse.
+const optionalLocalized = (max: number) =>
+  z
+    .object({
+      hi: z.string().trim().max(max).default(""),
+      en: z.string().trim().max(max).default(""),
+    })
+    .strict()
+    .default({ hi: "", en: "" });
 const bothLanguages = (value: { hi: string; en: string }) =>
   value.hi !== "" && value.en !== "";
 const optionalText = (max: number) =>
@@ -162,6 +173,9 @@ export const contentDraftSchema = z
     type: z.enum(contentTypes),
     title: localized(120),
     description: localized(600),
+    // Song lyrics: Hindi (Devanagari) and Hinglish (Roman script). Never
+    // required for READY.
+    lyrics: optionalLocalized(LYRICS_MAX_LENGTH),
     audioLanguage: z.preprocess(
       (value) => (value === "" || value === null ? undefined : value),
       z
@@ -240,8 +254,8 @@ const bulkListPatch = <T extends z.ZodType<string>>(value: T) =>
         }),
     })
     .strict();
-// Metadata only: titles, descriptions, media and the private panel are never
-// changed in bulk.
+// Metadata only: titles, descriptions, lyrics, media and the private panel
+// are never changed in bulk.
 export const bulkPatchSchema = z
   .object({
     deityIds: bulkListPatch(slugSchema).optional(),
@@ -540,6 +554,10 @@ export function draftFromDocuments(
     type,
     title: (content.title as ContentDraft["title"]) ?? { hi: "", en: "" },
     description: (content.description as ContentDraft["description"]) ?? {
+      hi: "",
+      en: "",
+    },
+    lyrics: (content.lyrics as ContentDraft["lyrics"] | undefined) ?? {
       hi: "",
       en: "",
     },

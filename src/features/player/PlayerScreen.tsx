@@ -18,6 +18,7 @@ import { colors } from "../../theme/tokens";
 import { formatTime } from "../../domain/practice";
 import { isPlaceholderKey } from "../../domain/media";
 import { usePlayer } from "./PlayerProvider";
+import { LyricsSection } from "./LyricsSection";
 
 const SKIP_SECONDS = 15;
 
@@ -142,6 +143,7 @@ export function PlayerScreen({
           <Button secondary label={t("retry")} onPress={player.retry} />
         </>
       )}
+      <LyricsSection lyrics={item.lyrics} />
     </Page>
   );
 }
