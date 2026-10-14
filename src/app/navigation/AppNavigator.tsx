@@ -16,6 +16,8 @@ import { DeityContentScreen } from "../../features/explore/DeityContentScreen";
 import { MandirScreen } from "../../features/mandir/MandirScreen";
 import { SadhanaScreen } from "../../features/sadhana/SadhanaScreen";
 import { ProfileScreen } from "../../features/profile/ProfileScreen";
+import { MilestonesScreen } from "../../features/profile/MilestonesScreen";
+import { EditProfileScreen } from "../../features/profile/EditProfileScreen";
 import { ContentScreen } from "../../features/content/ContentScreen";
 import { PlayerScreen } from "../../features/player/PlayerScreen";
 import {
@@ -88,6 +90,8 @@ export function AppNavigator() {
         <Stack.Screen name="Player" component={PlayerScreen} />
         <Stack.Screen name="Jaap" component={JaapScreen} />
         <Stack.Screen name="Meditation" component={MeditationScreen} />
+        <Stack.Screen name="Milestones" component={MilestonesScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

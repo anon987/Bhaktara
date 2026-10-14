@@ -14,6 +14,7 @@ import { AppNavigator } from "./src/app/navigation/AppNavigator";
 import { PlayerProvider } from "./src/features/player/PlayerProvider";
 import { ProgressionProvider } from "./src/features/sadhana/ProgressionProvider";
 import { BlessingSheet } from "./src/features/sadhana/BlessingSheet";
+import { AccountProvider } from "./src/features/profile/AccountProvider";
 import { SettingsGuideOverlay } from "./src/features/content/SettingsGuideOverlay";
 import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { colors } from "./src/theme/tokens";
@@ -43,7 +44,10 @@ export function AppContent() {
   ) : local.onboarded ? (
     <PlayerProvider>
       <ProgressionProvider>
-        <AppNavigator />
+        {/* Profile, Google sign-in and the guest merge (doc 21). */}
+        <AccountProvider>
+          <AppNavigator />
+        </AccountProvider>
         {/* XP, streak and milestones after a recorded practice. */}
         <BlessingSheet />
       </ProgressionProvider>

@@ -23,6 +23,7 @@ import { Language, StringKey, translate } from "../../i18n/strings";
 import { analytics } from "../../services/analytics";
 import { remoteConfig } from "../../services/remoteConfig";
 import { GuestSession } from "../../services/auth/session";
+import type { AccountBackend } from "../../services/account/accountClient";
 import {
   createFavoritesSync,
   FavoritesSync,
@@ -61,12 +62,16 @@ type AppContextValue = {
   setCatalogMode: (mode: CatalogMode) => void;
   toggleFavorite: (id: string) => void;
   favoritesStatus: FavoritesStatus;
-  // Re-reads the account list into the cache (throttled unless forced).
-  refreshFavorites: (options?: { force?: boolean }) => Promise<void>;
   completeTask: (task: "jaap" | "meditation" | "prayer", at?: Date) => void;
   // Server practice (null in fixture mode or before the backend is ready).
   progression: ProgressionRepository | null;
   session: GuestSession | null;
+  // Profile, Google sign-in and merge (null in fixture mode or before the
+  // backend is ready).
+  account: AccountBackend | null;
+  // Re-reads the signed-in user after sign-in or sign-out (a new guest is
+  // created when there is none); favorites and progress follow the new UID.
+  refreshSession: () => Promise<GuestSession | null>;
 };
 const Context = createContext<AppContextValue | null>(null);
 export function AppProvider({
@@ -253,12 +258,19 @@ export function AppProvider({
       setSync(null);
     };
   }, [ready, accountFavorites, session, favoritesStore]);
-  const refreshFavorites = useCallback(
-    async (options?: { force?: boolean }) => {
-      await sync?.refresh(options);
-    },
-    [sync],
-  );
+  const refreshSession = useCallback(async () => {
+    if (!backend) return null;
+    const current = await backend.session.ensureSession();
+    setSession((previous) =>
+      previous &&
+      current &&
+      previous.uid === current.uid &&
+      previous.isAnonymous === current.isAnonymous
+        ? previous
+        : current,
+    );
+    return current;
+  }, [backend]);
   useEffect(() => {
     if (!ready) return;
     const listener = AppState.addEventListener("change", (state) => {
@@ -352,10 +364,11 @@ export function AppProvider({
         source: sync ? "account" : "device",
         ...pendingFavorites,
       },
-      refreshFavorites,
       completeTask,
       progression: (session && backend?.progression) || null,
       session,
+      account: (session && backend?.account) || null,
+      refreshSession,
     }),
     [
       local,
@@ -372,10 +385,10 @@ export function AppProvider({
       getMandirDecor,
       sync,
       pendingFavorites,
-      refreshFavorites,
       completeTask,
       backend,
       session,
+      refreshSession,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;

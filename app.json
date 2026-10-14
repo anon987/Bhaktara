@@ -51,7 +51,23 @@
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "भक्तारा आपकी फ़ोटो खोलेगा, ताकि आप अपनी प्रोफ़ाइल फ़ोटो चुन सकें। / Bhaktara opens your photos so you can choose your profile photo.",
+          "cameraPermission": "भक्तारा कैमरा खोलेगा, ताकि आप अपनी प्रोफ़ाइल फ़ोटो खींच सकें। / Bhaktara opens the camera so you can take your profile photo.",
+          "microphonePermission": false,
+          "colors": {
+            "cropToolbarColor": "#FF9933",
+            "cropToolbarIconColor": "#FFFFFF",
+            "cropToolbarActionTextColor": "#FFFFFF",
+            "cropBackButtonIconColor": "#FFFFFF",
+            "cropBackgroundColor": "#3A0F0C"
+          }
+        }
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "scheme": "bhaktara",
     "splash": {
