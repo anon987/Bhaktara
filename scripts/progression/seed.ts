@@ -287,6 +287,18 @@ export const devChallenges: [string, ChallengeDefinition][] = [
       en: "Complete all three practices on 5 days this week",
     },
   ),
+  challenge(
+    "dev-weekly-3-mandir",
+    "WEEKLY",
+    "MANDIR_VISITS",
+    3,
+    30,
+    { hi: "इस सप्ताह तीन मंदिर दर्शन", en: "3 Mandir visits this week" },
+    {
+      hi: "इस सप्ताह 3 दिन मंदिर में दीप जलाएँ",
+      en: "Light the diya in the Mandir on 3 days this week",
+    },
+  ),
 ];
 
 // Challenges run from the start of the current month for eight weeks.

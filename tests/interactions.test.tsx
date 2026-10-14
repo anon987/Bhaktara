@@ -316,6 +316,11 @@ function serverBackend(overrides: Partial<ProgressionRepository> = {}) {
     })),
     completeSession: jest.fn(async () => malaResult),
     completePrayer: jest.fn(async () => malaResult),
+    recordMandirVisit: jest.fn(async () => ({
+      ...malaResult,
+      alreadyCounted: false,
+      mandirVisited: true as const,
+    })),
     load: jest.fn(async () => snapshot()),
     ...overrides,
   };

@@ -16,13 +16,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { contentTypes } from "../../domain";
 import { badgeCriteria, challengeMetrics } from "../../../../src/domain/progression";
 import {
+  offerAtKinds,
   offeringKinds,
   offeringUnlocks,
+  offerPlaceLabels,
+  offerPlaces,
   templeStageSchema,
   type AssetPurpose,
   type CatalogKind,
   type OfferingKind,
   type OfferingUnlock,
+  type OfferPlace,
   type TempleStage,
 } from "../../../../src/domain/admin";
 import {
@@ -54,6 +58,7 @@ import {
 import { ContentPicker } from "./ContentPicker";
 import {
   MurtiPreview,
+  OfferPlacePreview,
   StageEditor,
   TemplePreview,
   useTempleOptions,
@@ -478,6 +483,15 @@ const placementOptions: { value: Placement; label: string }[] = [
   { value: "bottom", label: "Bottom (along the base)" },
   { value: "sides", label: "Sides (left and right)" },
 ];
+// Special offerings (garland, ornament, diya, bhog, other): where on the
+// murti or the altar the item is placed (offerAt).
+const offerPlaceOptions: { value: OfferPlace; label: string }[] = offerPlaces.map((place) => ({
+  value: place,
+  label: `${offerPlaceLabels[place].en} / ${offerPlaceLabels[place].hi}`,
+}));
+const takesOfferAt = (kind: OfferingKind) => (offerAtKinds as readonly OfferingKind[]).includes(kind);
+const asOfferPlace = (value: unknown): OfferPlace | "" =>
+  (offerPlaces as readonly string[]).includes(value as string) ? (value as OfferPlace) : "";
 // Which library the image comes from, by kind.
 const artPurpose = (kind: OfferingKind): AssetPurpose =>
   kind === "temple" ? "temple" : kind === "light" || kind === "bell" ? "decor" : "offering";
@@ -486,6 +500,7 @@ const artHints: Partial<Record<OfferingKind, string>> = {
   light: "Transparent PNG or WebP, drawn over the temple.",
   bell: "Transparent PNG or WebP of the bell.",
   flower: "Transparent PNG or WebP of a single flower.",
+  ...Object.fromEntries(offerAtKinds.map((kind) => [kind, "Transparent PNG or WebP of the item alone; it is drawn at its place on the murti or the altar."])),
 };
 const asKind = (value: unknown): OfferingKind => (offeringKinds as readonly string[]).includes(value as string) ? (value as OfferingKind) : "flower";
 const asUnlock = (value: unknown): OfferingUnlock => (offeringUnlocks as readonly string[]).includes(value as string) ? (value as OfferingUnlock) : "FREE";
@@ -511,6 +526,7 @@ export type OfferingForm = {
   sound: PickedSound | null;
   placement: Placement;
   stage: TempleStage | null;
+  offerAt: OfferPlace | "";
   deityIds: string[];
   unlock: OfferingUnlock;
   startAt: string;
@@ -566,6 +582,22 @@ function OfferingFormView({ value: f, onChange: set }: { value: OfferingForm; on
       {f.kind === "light" && (
         <SelectField id="offering-placement" label="Where it hangs" value={f.placement} options={placementOptions} onChange={(placement) => set({ ...f, placement })} />
       )}
+      {takesOfferAt(f.kind) && (
+        <div className="space-y-2">
+          <SelectField
+            id="offering-offer-at"
+            label="Where it is offered"
+            value={f.offerAt}
+            placeholder="Choose the place…"
+            options={offerPlaceOptions}
+            onChange={(offerAt) => set({ ...f, offerAt })}
+          />
+          <p className="text-xs text-muted-foreground">Where the devotee sees it in the Mandir: on the head (mukut), round the neck (garland, haar), above the deity (chhatra), at the feet, or on the altar in front (diya, bhog, thali).</p>
+          {f.offerAt && (
+            <OfferPlacePreview place={f.offerAt} itemKey={f.art?.mobile.key} itemLabel={f.name.en || "Offering"} deityIds={f.deityIds} />
+          )}
+        </div>
+      )}
       {f.kind === "flower" && (
         <div className="space-y-2">
           <SelectField
@@ -599,9 +631,9 @@ const mandirOffering: KindDef<OfferingForm> = {
   kind: "mandirOffering",
   title: "Mandir offerings",
   singular: "offering",
-  description: "Temples, lights, bells and flowers for the Prayer screen. Each is free or unlocked with a rewarded ad.",
+  description: "Temples, lights, bells, flowers and special offerings for the Mandir. Each is free or unlocked with a rewarded ad.",
   icon: Flower2,
-  empty: () => ({ name: emptyLocalized(), kind: "temple", art: null, flowerKind: "", sound: null, placement: "top", stage: null, deityIds: [], unlock: "FREE", startAt: "", endAt: "", sortOrder: 0, isActive: true }),
+  empty: () => ({ name: emptyLocalized(), kind: "temple", art: null, flowerKind: "", sound: null, placement: "top", stage: null, offerAt: "", deityIds: [], unlock: "FREE", startAt: "", endAt: "", sortOrder: 0, isActive: true }),
   fromDoc: (d) => ({
     name: localizedOf(d.name),
     kind: asKind(d.kind),
@@ -610,6 +642,7 @@ const mandirOffering: KindDef<OfferingForm> = {
     sound: soundOf(d.sound),
     placement: asPlacement(d.placement),
     stage: stageOf(d.stage),
+    offerAt: asOfferPlace(d.offerAt),
     deityIds: strings(d.deityIds),
     unlock: asUnlock(d.unlock),
     startAt: iso(d.startAt),
@@ -626,6 +659,7 @@ const mandirOffering: KindDef<OfferingForm> = {
     ...(f.kind === "bell" && f.sound ? { sound: f.sound } : {}),
     ...(f.kind === "light" ? { placement: f.placement } : {}),
     ...(f.kind === "flower" && f.flowerKind ? { flowerKind: f.flowerKind } : {}),
+    ...(takesOfferAt(f.kind) && f.offerAt ? { offerAt: f.offerAt } : {}),
     deityIds: f.deityIds,
     unlock: f.unlock,
     ...(f.startAt ? { startAt: f.startAt } : {}),
@@ -637,11 +671,13 @@ const mandirOffering: KindDef<OfferingForm> = {
     const kind = asKind(d.kind);
     const unlock = asUnlock(d.unlock);
     const flower = asFlower(d.flowerKind);
+    const place = takesOfferAt(kind) ? asOfferPlace(d.offerAt) : "";
     return {
       title: localizedOf(d.name).en || "Untitled",
       subtitle: [
         localizedOf(d.name).hi,
         flower ? flowerNames[flower].en : "",
+        place ? `${offerPlaceLabels[place].en} / ${offerPlaceLabels[place].hi}` : "",
         strings(d.deityIds).length ? strings(d.deityIds).join(", ") : "all deities",
       ].filter(Boolean).join(" · "),
       thumb: artOf(d.art)?.thumb?.key ?? artOf(d.art)?.mobile.key ?? null,

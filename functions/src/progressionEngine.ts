@@ -186,7 +186,9 @@ export function creditSession(
 export type Activity =
   | { kind: "JAAP"; sessionId: string; malas: number }
   | { kind: "MEDITATION"; sessionId: string; minutes: number }
-  | { kind: "PRAYER" };
+  | { kind: "PRAYER" }
+  // The daily Mandir visit: the diya lit in the Mandir tab (D-058).
+  | { kind: "MANDIR_VISIT" };
 
 export type ActiveChallenge = ChallengeDefinition & {
   id: string;
@@ -218,6 +220,9 @@ export const ledgerId = (
   uid: string,
   intent: Pick<RewardIntent, "type" | "sourceId">,
 ) => `${uid}_${intent.type}_${intent.sourceId}`;
+// One Mandir visit reward per practice day: the ledger document is
+// rewardTransactions/{uid}_MANDIR_VISIT_{bhaktiDay}.
+export const mandirVisitSourceId = (bhaktiDay: string) => `VISIT_${bhaktiDay}`;
 export const userChallengeId = (uid: string, challenge: ActiveChallenge) =>
   `${uid}_${challenge.id}_${challenge.periodKey}`;
 
@@ -261,7 +266,22 @@ export function applyActivity(input: ActivityInput): ActivityOutcome {
   // 1. Raw practice.
   let malasCredited = 0;
   let minutesCredited = 0;
-  if (activity.kind === "JAAP") {
+  let mandirVisits = 0;
+  if (activity.kind === "MANDIR_VISIT") {
+    // Once per practice day (doc 10 §2): 5 XP, the visit counter (Mandir
+    // badges) and MANDIR_VISITS challenges. Not a streak activity by itself
+    // (doc 10 §3); a daily challenge it completes still qualifies the day.
+    if (!day.mandirVisited) {
+      day.mandirVisited = true;
+      mandirVisits = 1;
+      counters.mandirVisits += 1;
+      intents.push({
+        type: "MANDIR",
+        sourceId: mandirVisitSourceId(bhaktiDay),
+        xp: config.xp.mandirVisit,
+      });
+    }
+  } else if (activity.kind === "JAAP") {
     malasCredited = activity.malas;
     day.malas += malasCredited;
     counters.malas += malasCredited;
@@ -355,6 +375,7 @@ export function applyActivity(input: ActivityInput): ActivityOutcome {
     FULL_SADHANA_DAYS: newFullSadhana ? 1 : 0,
     JAAP_MALAS: malasCredited,
     MEDITATION_MINUTES: minutesCredited,
+    MANDIR_VISITS: mandirVisits,
   };
   const challengesCompleted: ActiveChallenge[] = [];
   const progress = (metrics: ChallengeMetric[]) => {
@@ -401,6 +422,7 @@ export function applyActivity(input: ActivityInput): ActivityOutcome {
     "FULL_SADHANA_DAYS",
     "JAAP_MALAS",
     "MEDITATION_MINUTES",
+    "MANDIR_VISITS",
     "STREAK_DAYS",
   ]);
   // A completed daily challenge also qualifies the day (D-026).

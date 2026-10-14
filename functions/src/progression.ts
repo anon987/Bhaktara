@@ -27,6 +27,9 @@ import {
   GamificationConfig,
   gamificationConfigSchema,
   isValidTimeZone,
+  mandirVisitInputSchema,
+  MandirVisitResult,
+  PracticeDay,
   PracticeErrorReason,
   PracticeResult,
   prayerInputSchema,
@@ -351,6 +354,8 @@ type SettleContext = {
   timezone: string;
   stats: UserStatsDoc;
   activity: Activity;
+  // Extra fields stored on today's day document with the activity.
+  dayFields?: Record<string, unknown>;
 };
 
 const getAll = (tx: Transaction, list: DocumentReference[]) =>
@@ -435,7 +440,13 @@ async function settle(ctx: SettleContext): Promise<PracticeResult> {
 
   // Writes.
   tx.set(r.stats, statsDocument(stats, now));
-  tx.set(r.day(bhaktiDay), { ...day, day: bhaktiDay, updatedAt: now });
+  // Merged, so fields only one activity writes (mandirDeityId) survive the
+  // day's later practice; the engine's fields are always written in full.
+  tx.set(
+    r.day(bhaktiDay),
+    { ...ctx.dayFields, ...day, day: bhaktiDay, updatedAt: now },
+    { merge: true },
+  );
   for (const [id, doc] of outcome.userChallenges) {
     if (
       userChallenges.get(id)?.progress === doc.progress &&
@@ -482,6 +493,35 @@ async function settle(ctx: SettleContext): Promise<PracticeResult> {
       title: c.title,
     })),
     badgesUnlocked: badgesUnlocked.map((b) => ({ id: b.id, name: b.name })),
+  };
+}
+
+// What a repeated once-a-day activity returns: today's state, nothing paid.
+function alreadyDone(
+  bhaktiDay: string,
+  stats: UserStatsDoc,
+  day: PracticeDay,
+): PracticeResult {
+  return {
+    status: "ALREADY_DONE",
+    bhaktiDay,
+    xpGranted: 0,
+    capped: false,
+    rewards: [],
+    totalXp: stats.totalXp,
+    level: stats.level,
+    rank: stats.rank,
+    levelUp: false,
+    rankUp: false,
+    currentStreak: stats.currentStreak,
+    longestStreak: stats.longestStreak,
+    streakExtended: false,
+    tasks: day.tasks,
+    fullSadhana: day.fullSadhana,
+    malasCredited: 0,
+    minutesCredited: 0,
+    challengesCompleted: [],
+    badgesUnlocked: [],
   };
 }
 
@@ -605,31 +645,13 @@ export async function completePrayerChecklist(
         server: bhaktiDay,
       });
     const daySnap = await tx.get(r.day(bhaktiDay));
-    if (normalizeDay(daySnap.data()).tasks.prayer) {
-      const stats = normalizeStats(statsSnap.data(), catalog.config);
-      const day = normalizeDay(daySnap.data());
-      return {
-        status: "ALREADY_DONE",
+    const day = normalizeDay(daySnap.data());
+    if (day.tasks.prayer)
+      return alreadyDone(
         bhaktiDay,
-        xpGranted: 0,
-        capped: false,
-        rewards: [],
-        totalXp: stats.totalXp,
-        level: stats.level,
-        rank: stats.rank,
-        levelUp: false,
-        rankUp: false,
-        currentStreak: stats.currentStreak,
-        longestStreak: stats.longestStreak,
-        streakExtended: false,
-        tasks: day.tasks,
-        fullSadhana: day.fullSadhana,
-        malasCredited: 0,
-        minutesCredited: 0,
-        challengesCompleted: [],
-        badgesUnlocked: [],
-      } satisfies PracticeResult;
-    }
+        normalizeStats(statsSnap.data(), catalog.config),
+        day,
+      );
     const result = await settle({
       tx,
       player,
@@ -643,6 +665,62 @@ export async function completePrayerChecklist(
     if (!user.exists)
       tx.create(r.user, newProfile(player, timezone, "hi", now));
     return result;
+  });
+}
+
+// ---- recordMandirVisit (D-058, doc 10 §2) -------------------------------------------
+
+// Lighting the diya in the Mandir tab is the daily Mandir visit. The first
+// call of the practice day pays 5 XP (ledger rewardTransactions/
+// {uid}_MANDIR_VISIT_{day}, under the daily cap), counts the visit for the
+// Mandir badges, sets days/{day}.mandirVisited and advances MANDIR_VISITS
+// challenges; later calls that day change nothing (alreadyCounted). The
+// visit alone does not extend the streak (doc 10 §3).
+export async function recordMandirVisit(
+  player: Player,
+  data: unknown,
+): Promise<MandirVisitResult> {
+  const input = parse(mandirVisitInputSchema, data);
+  const catalog = await loadCatalog();
+  const now = Timestamp.now();
+  const r = refs(player.uid);
+  return db().runTransaction(async (tx) => {
+    const [user, statsSnap] = await tx.getAll(r.user, r.stats);
+    const timezone = storedTimezone(user);
+    const bhaktiDay = bhaktiDayAt(now.toDate(), timezone);
+    if (input.bhaktiDay && input.bhaktiDay !== bhaktiDay)
+      logger.info("Mandir visit day differs from the server day", {
+        uid: player.uid,
+        client: input.bhaktiDay,
+        server: bhaktiDay,
+      });
+    const daySnap = await tx.get(r.day(bhaktiDay));
+    const day = normalizeDay(daySnap.data());
+    if (day.mandirVisited)
+      return {
+        ...alreadyDone(
+          bhaktiDay,
+          normalizeStats(statsSnap.data(), catalog.config),
+          day,
+        ),
+        alreadyCounted: true,
+        mandirVisited: true,
+      };
+    const result = await settle({
+      tx,
+      player,
+      catalog,
+      now,
+      timezone,
+      stats: normalizeStats(statsSnap.data(), catalog.config),
+      activity: { kind: "MANDIR_VISIT" },
+      // The deity the first diya of the day was lit for.
+      dayFields: input.deityId ? { mandirDeityId: input.deityId } : undefined,
+    });
+    // After settle's reads: transactions read everything before writing.
+    if (!user.exists)
+      tx.create(r.user, newProfile(player, timezone, "hi", now));
+    return { ...result, alreadyCounted: false, mandirVisited: true };
   });
 }
 

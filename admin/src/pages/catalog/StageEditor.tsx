@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import { ImageIcon, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { TempleStage } from "../../../../src/domain/admin";
+import { offerPlaceBoxes, offerPlaceLabels, type OfferPlace, type TempleStage } from "../../../../src/domain/admin";
 import { defaultStage } from "../../../../src/domain/mandirDecor";
 import { useAdmin } from "../../app/context";
 import { NumberField, SelectField } from "../../components/panel/inputs";
@@ -10,7 +10,8 @@ import { mediaUrl } from "../../components/panel/media";
 import { clampStage, dragStage, stageStyle, type StageHandle } from "./stage";
 
 // Shared previews for Mandir decor: a transparent murti on a checkerboard,
-// and a murti stood in a temple's stage. Images need VITE_MEDIA_BASE_URL;
+// a murti stood in a temple's stage, and a special offering at its place on
+// the murti. Images need VITE_MEDIA_BASE_URL;
 // without it the boxes still show (and can still be edited).
 
 const checkerboard: CSSProperties = {
@@ -257,6 +258,64 @@ export function StageEditor({
         </Button>
       </div>
       {!value && <p className="text-xs text-muted-foreground">Not set: the app uses the centred default shown here.</p>}
+    </div>
+  );
+}
+
+// Where the murti stands in the offering preview: room above for a chhatra
+// and below for the altar.
+const previewMurtiBox: TempleStage = { x: 0.22, y: 0.3, width: 0.56, height: 0.48 };
+
+// A special offering drawn at its place on a deity's murti (offerAt): the
+// mukut on the head, a garland round the neck, the chhatra above, at the
+// feet, or a diya or bhog on the altar in front. The offering's own deities
+// are previewed first; another can be chosen.
+export function OfferPlacePreview({
+  place,
+  itemKey,
+  itemLabel,
+  deityIds,
+}: {
+  place: OfferPlace;
+  itemKey?: string;
+  itemLabel: string;
+  deityIds: string[];
+}) {
+  const murtis = useMurtiOptions();
+  const [murtiId, setMurtiId] = useState("");
+  const murti =
+    murtis.find((option) => option.value === murtiId) ??
+    murtis.find((option) => deityIds.includes(option.value)) ??
+    murtis[0];
+  const label = offerPlaceLabels[place];
+  return (
+    <div className="space-y-2">
+      <div
+        style={checkerboard}
+        className="relative mx-auto aspect-[3/4] w-full max-w-56 overflow-hidden rounded-xl border"
+        data-testid="offer-place-preview"
+      >
+        <div className="absolute" style={stageStyle(previewMurtiBox)}>
+          <Murti mediaKey={murti?.key} alt={murti ? `${murti.label} murti` : ""} />
+          <div
+            className="absolute"
+            style={stageStyle(offerPlaceBoxes[place])}
+            data-testid="offer-place-item"
+            data-place={place}
+          >
+            {mediaUrl(itemKey) ? (
+              <Picture mediaKey={itemKey} alt={itemLabel} className="pointer-events-none size-full object-contain" />
+            ) : (
+              <span className="grid size-full place-items-center rounded-md border-2 border-dashed border-primary bg-primary/10 text-center text-[10px] font-medium leading-tight text-primary">
+                {label.en} · {label.hi}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      {murtis.length > 1 && (
+        <SelectField id="offer-place-murti" label="Preview with" value={murti?.value ?? ""} options={murtis} onChange={setMurtiId} />
+      )}
     </div>
   );
 }
