@@ -2,16 +2,19 @@ import type { ImageSourcePropType } from "react-native";
 import type { AudioSource } from "expo-audio";
 import { DecorItem, decorFor } from "../../../domain/mandirDecor";
 import { forbiddenFlowers, offeringsFor } from "../../../domain/puja";
+import type { OfferPlace, OfferingKind } from "../../../domain/admin";
 import {
   decideSaveGate,
+  RewardedUnlockType,
   SaveGate,
+  SaveVia,
   unlockFromOutcome,
 } from "../../../domain/saveGate";
 import type { RewardedAdPresenter } from "../../../services/ads/rewardedGate";
 import { requiresRewardedAd } from "../../../services/integrations";
 import type { RemoteConfigService } from "../../../services/remoteConfig/defaults";
 
-// Mandir decor as the Prayer screen draws it: a published mandirOfferings
+// Mandir decor as the Mandir draws it: a published mandirOfferings
 // item (or a bundled one) with its image and sound ready to load.
 export type MandirDecor = Omit<DecorItem, "imageKey" | "soundKey"> & {
   image: ImageSourcePropType;
@@ -63,6 +66,7 @@ export function mergeDecor(
       stage: fields.stage ?? base?.stage,
       placement: fields.placement ?? base?.placement,
       flowerKind: fields.flowerKind ?? base?.flowerKind,
+      offerAt: fields.offerAt ?? base?.offerAt,
     });
   }
   return [...byId.values()];
@@ -111,6 +115,82 @@ export function flowersFor(
   return list;
 }
 
+// ---- Special offerings (D-040) ---------------------------------------------
+
+// The kinds offered from the "special offerings" drawer, one rewarded ad per
+// use; each is placed in the scene at its offerAt.
+export const specialKinds: readonly OfferingKind[] = [
+  "garland",
+  "ornament",
+  "diya",
+  "bhog",
+  "other",
+];
+const defaultPlace: Partial<Record<OfferingKind, OfferPlace>> = {
+  garland: "neck",
+  ornament: "head",
+};
+export function offerPlaceOf(
+  item: Pick<MandirDecor, "kind" | "offerAt">,
+): OfferPlace {
+  return item.offerAt ?? defaultPlace[item.kind] ?? "altar";
+}
+
+// The special offerings for a deity (every deity's and its own), in order.
+export function specialsFor(
+  items: MandirDecor[],
+  deityId: string | null | undefined,
+): MandirDecor[] {
+  const id = deityId ?? undefined;
+  return specialKinds
+    .flatMap((kind) => decorFor(items, kind, id))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+}
+
+// A special offering in the scene for this visit.
+export type PlacedSpecial = {
+  key: number;
+  id: string;
+  image: ImageSourcePropType;
+  aspect?: number;
+  place: OfferPlace;
+  // Altar position (0 nearest the lamp).
+  slot: number;
+};
+// At most this many offerings stand on the altar; one each on the head,
+// round the neck, above the deity and at the feet. A new one takes the
+// place of the oldest there.
+export const ALTAR_SLOTS = 4;
+export function placeSpecial(
+  placed: PlacedSpecial[],
+  item: MandirDecor,
+  key: number,
+): PlacedSpecial[] {
+  const place = offerPlaceOf(item);
+  const here = placed.filter((entry) => entry.place === place);
+  const others = placed.filter((entry) => entry.place !== place);
+  const kept =
+    place === "altar"
+      ? here.filter((entry) => entry.id !== item.id).slice(-(ALTAR_SLOTS - 1))
+      : [];
+  const used = new Set(kept.map((entry) => entry.slot));
+  const slot = Array.from({ length: ALTAR_SLOTS }, (_, i) => i).find(
+    (i) => !used.has(i),
+  );
+  return [
+    ...others,
+    ...kept,
+    {
+      key,
+      id: item.id,
+      image: item.image,
+      ...(item.aspect !== undefined ? { aspect: item.aspect } : {}),
+      place,
+      slot: slot ?? 0,
+    },
+  ];
+}
+
 // ---- Unlocking with a rewarded ad (doc 11 §4) ----------------------------
 
 type GateConfig = Pick<RemoteConfigService, "getBoolean">;
@@ -152,16 +232,23 @@ export function isLocked(
 }
 
 // Plays one rewarded ad. No fill (no ad within the timeout) and ad errors
-// still unlock: the devotee is never blocked by ads (doc 11 §4).
+// still unlock: the devotee is never blocked by ads (doc 11 §4). Resolves
+// how it was unlocked (doc 13 `via`), or null when the ad was closed early.
+export async function watchAdFor(
+  presenter: RewardedAdPresenter,
+  unlockType: RewardedUnlockType = "unlock_mandir_decor",
+): Promise<SaveVia | null> {
+  try {
+    const result = unlockFromOutcome(await presenter.show(unlockType));
+    return result.unlocked ? result.via : null;
+  } catch {
+    return "fallback";
+  }
+}
 export async function watchAdToUnlock(
   presenter: RewardedAdPresenter,
 ): Promise<boolean> {
-  try {
-    return unlockFromOutcome(await presenter.show("unlock_mandir_decor"))
-      .unlocked;
-  } catch {
-    return true;
-  }
+  return (await watchAdFor(presenter)) !== null;
 }
 
 // The unlocked ids to store after an ad: REWARDED items are kept for good;

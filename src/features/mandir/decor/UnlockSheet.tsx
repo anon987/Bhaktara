@@ -11,7 +11,7 @@ import { Play } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Txt } from "../../../components/ui";
 import { colors, shrine } from "../../../theme/tokens";
-import { SerifText } from "../shrine/Ornaments";
+import { SerifText } from "../../sadhana/shrine/Ornaments";
 import { MandirDecor } from "./decor";
 
 // A large, plain sheet for a locked temple, light, bell or flower: its

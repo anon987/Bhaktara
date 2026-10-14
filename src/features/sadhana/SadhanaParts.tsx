@@ -124,18 +124,19 @@ export function StreakHero() {
 const lamps: {
   task: SadhanaTask;
   label: StringKey;
-  route: "Jaap" | "Meditation" | "Prayer";
+  route: "Jaap" | "Meditation" | "Mandir";
 }[] = [
   { task: "jaap", label: "jaapShort", route: "Jaap" },
   { task: "meditation", label: "dhyanShort", route: "Meditation" },
-  { task: "prayer", label: "prarthanaShort", route: "Prayer" },
+  // The puja is performed in the Mandir tab.
+  { task: "prayer", label: "pujaInMandir", route: "Mandir" },
 ];
 
 // Today's three practices as three lamps on a brass tray.
 export function TodayLamps({
   onOpen,
 }: {
-  onOpen: (route: "Jaap" | "Meditation" | "Prayer") => void;
+  onOpen: (route: "Jaap" | "Meditation" | "Mandir") => void;
 }) {
   const { t, local } = useApp();
   const { snapshot, status, today } = useProgression();
@@ -165,7 +166,13 @@ export function TodayLamps({
               ]}
             >
               <Diya size={78} lit={done} glow={0.4} />
-              <Txt bold size={19}>
+              {/* "मंदिर में पूजा" may take two lines; the pills stay level. */}
+              <Txt
+                bold
+                size={19}
+                textBreakStrategy="simple"
+                style={{ flexGrow: 1, width: "100%", textAlign: "center" }}
+              >
                 {t(label)}
               </Txt>
               <View style={[styles.pill, done && styles.pillDone]}>

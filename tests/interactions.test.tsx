@@ -7,8 +7,8 @@ import { OnboardingScreen } from "../src/features/onboarding/OnboardingScreen";
 import {
   JaapScreen,
   MeditationScreen,
-  PrayerScreen,
 } from "../src/features/sadhana/PracticeScreens";
+import { MandirScreen } from "../src/features/mandir/MandirScreen";
 import { localStore, initialState } from "../src/services/storage/localStore";
 import { Txt } from "../src/components/ui";
 import { localPracticeDay } from "../src/domain/practice";
@@ -145,11 +145,8 @@ function circleRound(
   fireEvent(hand, "responderRelease", at(0));
 }
 
-test("the puja is performed from the tray of offerings (D-054)", async () => {
-  const screen = render(
-    <PrayerScreen navigation={navigation as never} route={{} as never} />,
-    { wrapper: Wrapper },
-  );
+test("the puja is performed in the Mandir from the tray of offerings (D-054)", async () => {
+  const screen = render(<MandirScreen />, { wrapper: Wrapper });
   await waitFor(() => expect(screen.getByTestId("puja-stage")).toBeTruthy());
   fireEvent(screen.getByTestId("puja-stage"), "layout", {
     nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 360 } },
@@ -199,10 +196,7 @@ test("the puja is never locked once today's prayer is recorded", async () => {
       [localPracticeDay()]: { jaap: false, meditation: false, prayer: true },
     },
   });
-  const screen = render(
-    <PrayerScreen navigation={navigation as never} route={{} as never} />,
-    { wrapper: Wrapper },
-  );
+  const screen = render(<MandirScreen />, { wrapper: Wrapper });
   await waitFor(() =>
     expect(screen.getByLabelText("Ring the bell")).toBeTruthy(),
   );
@@ -225,11 +219,15 @@ test("elapsed meditation restored from storage completes locally", async () => {
     <MeditationScreen navigation={navigation as never} route={{} as never} />,
     { wrapper: Wrapper },
   );
-  await waitFor(() =>
-    expect(screen.getByText("Meditation complete. Om shanti.")).toBeTruthy(),
+  // The timer is checked every half second; a busy machine needs longer.
+  await waitFor(
+    () =>
+      expect(screen.getByText("Meditation complete. Om shanti.")).toBeTruthy(),
+    { timeout: 5000 },
   );
-  await waitFor(() =>
-    expect(state(screen).days[localPracticeDay()]?.meditation).toBe(true),
+  await waitFor(
+    () => expect(state(screen).days[localPracticeDay()]?.meditation).toBe(true),
+    { timeout: 5000 },
   );
 });
 
@@ -316,6 +314,7 @@ function serverBackend(overrides: Partial<ProgressionRepository> = {}) {
     })),
     completeSession: jest.fn(async () => malaResult),
     completePrayer: jest.fn(async () => malaResult),
+    recordMandirVisit: jest.fn(async () => malaResult),
     load: jest.fn(async () => snapshot()),
     ...overrides,
   };

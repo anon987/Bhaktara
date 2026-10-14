@@ -568,9 +568,6 @@ export function MeditationScreen({
   );
 }
 
-// Prarthana is a short puja before the chosen deity (PujaScreen.tsx).
-export { PrayerScreen } from "./PujaScreen";
-
 const styles = StyleSheet.create({
   jaapBody: { gap: 8, paddingBottom: 24, alignItems: "stretch" },
   chips: {

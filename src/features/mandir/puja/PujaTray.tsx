@@ -32,7 +32,7 @@ import {
 import { noVisuals, Visuals } from "../../../domain/visuals";
 import { colors, shrine } from "../../../theme/tokens";
 import type { MandirDecor } from "../decor/decor";
-import { SlotImage } from "../shrine/Ornaments";
+import { SlotImage } from "../../sadhana/shrine/Ornaments";
 import { Bhog, Garland } from "./OfferingArt";
 import { TrayIcon } from "./TrayIcons";
 

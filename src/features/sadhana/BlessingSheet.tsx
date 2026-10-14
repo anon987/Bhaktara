@@ -33,13 +33,15 @@ export function BlessingSheet() {
   const { result, kind } = blessing;
   const language = local.language;
   const title =
-    result.fullSadhana && kind !== "mala"
-      ? t("blessFull")
-      : kind === "mala"
-        ? t("blessMala")
-        : kind === "meditation"
-          ? t("blessDhyan")
-          : t("blessPrayer");
+    kind === "mandir"
+      ? t("darshanDone")
+      : result.fullSadhana && kind !== "mala"
+        ? t("blessFull")
+        : kind === "mala"
+          ? t("blessMala")
+          : kind === "meditation"
+            ? t("blessDhyan")
+            : t("blessPrayer");
   return (
     <Modal
       transparent

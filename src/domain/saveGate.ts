@@ -9,8 +9,10 @@ export type RewardedUnlockType =
   | "save_wallpaper"
   | "save_ringtone"
   | "save_status"
-  // A temple, light, bell or flower on the Prayer screen (mandirOfferings).
-  | "unlock_mandir_decor";
+  // A temple, light, bell or flower in the Mandir (mandirOfferings).
+  | "unlock_mandir_decor"
+  // One use of a Mandir special offering (D-040).
+  | "mandir_special_offering";
 
 export function decideSaveGate(input: {
   // requiresRewardedAd(action) from the integrations layer.

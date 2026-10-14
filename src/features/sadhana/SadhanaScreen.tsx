@@ -28,7 +28,7 @@ import {
   StreakHero,
   TodayLamps,
 } from "./SadhanaParts";
-import { usePrefetchMandirDecor } from "./decor/useMandirDecor";
+import { usePrefetchMandirDecor } from "../mandir/decor/useMandirDecor";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParams, "Sadhana">,
@@ -39,8 +39,8 @@ const sections: SectionKey[] = ["today", "challenges", "league", "history"];
 
 export function SadhanaScreen({ navigation }: Props) {
   const { t, catalog, local } = useApp();
-  // Download the mandir's temples and murti ahead, so the Prayer screen opens
-  // on them instead of waiting.
+  // Download the mandir's temples and murti ahead, so the Mandir opens on
+  // them instead of waiting.
   const deities = catalog?.deities ?? [];
   usePrefetchMandirDecor(
     deities.find((item) => item.id === local.deityId) ?? deities[0],
@@ -111,6 +111,7 @@ export function SadhanaScreen({ navigation }: Props) {
         {section === "today" && (
           <>
             <StreakHero />
+            {/* The day's puja opens the Mandir tab. */}
             <TodayLamps onOpen={(route) => navigation.navigate(route)} />
           </>
         )}
