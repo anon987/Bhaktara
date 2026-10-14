@@ -210,11 +210,14 @@ export function Page({
   subtitle,
   onBack,
   scroll = true,
+  bare = false,
 }: React.PropsWithChildren<{
   title: string;
   subtitle?: string;
   onBack?: () => void;
   scroll?: boolean;
+  // No title row: the screen draws its own heading inside the scroll (Home).
+  bare?: boolean;
 }>) {
   const { storageError, t, connection } = useApp();
   const body = (
@@ -230,7 +233,10 @@ export function Page({
   );
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.page}>
-      <Row style={styles.header}>
+      <Row
+        style={[styles.header, bare && { display: "none" }]}
+        accessibilityElementsHidden={bare}
+      >
         {onBack && (
           <IconButton icon={ChevronLeft} label={t("close")} onPress={onBack} />
         )}
