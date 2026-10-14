@@ -285,6 +285,79 @@ describe("catalogue", () => {
     );
   });
 
+  test("mandir decor: kind fields, forbidden flowers, images and audit", async () => {
+    const temple = {
+      name: { hi: "संगमरमर का मंदिर", en: "Marble temple" },
+      kind: "temple",
+      art: { mobile: { key: "deity/temple-a/mobile.0123abcd.webp" } },
+      stage: { x: 0.36, y: 0.47, width: 0.28, height: 0.27 },
+      deityIds: [],
+      unlock: "REWARDED",
+      sortOrder: 10,
+      isActive: true,
+    };
+    await staff.CONTENT_ADMIN.call("saveCatalogItem", {
+      kind: "mandirOffering",
+      id: "test-temple-marble",
+      create: true,
+      data: temple,
+    });
+    const stored = (await db.doc("mandirOfferings/test-temple-marble").get()).data()!;
+    assert.deepEqual(stored.stage, temple.stage);
+    assert.equal(stored.unlock, "REWARDED");
+    // A stage that spills out of the image, or on a light, is refused.
+    await rejects(
+      staff.CONTENT_ADMIN.call("saveCatalogItem", {
+        kind: "mandirOffering",
+        create: true,
+        data: { ...temple, stage: { x: 0.8, y: 0.2, width: 0.4, height: 0.4 } },
+      }),
+      "invalid-argument",
+    );
+    await rejects(
+      staff.CONTENT_ADMIN.call("saveCatalogItem", {
+        kind: "mandirOffering",
+        create: true,
+        data: { ...temple, kind: "light" },
+      }),
+      "invalid-argument",
+      "FIELD_NOT_FOR_KIND",
+    );
+    // The callable SDK sends undefined as null, so leave fields out instead.
+    const { stage: _stage, ...withoutStage } = temple;
+    const { art: _art, ...withoutArt } = withoutStage;
+    await rejects(
+      staff.CONTENT_ADMIN.call("saveCatalogItem", {
+        kind: "mandirOffering",
+        create: true,
+        data: { ...withoutArt, kind: "bell" },
+      }),
+      "failed-precondition",
+      "ART_REQUIRED",
+    );
+    await rejects(
+      staff.CONTENT_ADMIN.call("saveCatalogItem", {
+        kind: "mandirOffering",
+        create: true,
+        data: { ...withoutStage, kind: "flower", flowerKind: "tulsi", deityIds: ["shiva"] },
+      }),
+      "invalid-argument",
+      "FORBIDDEN_OFFERING",
+    );
+    await staff.CONTENT_ADMIN.call("saveCatalogItem", {
+      kind: "mandirOffering",
+      id: "test-temple-marble",
+      create: false,
+      data: { ...temple, isActive: false },
+    });
+    await staff.CONTENT_ADMIN.call("deleteCatalogItem", { kind: "mandirOffering", id: "test-temple-marble" });
+    assert.deepEqual(await auditActions("test-temple-marble"), [
+      "mandirOffering.create",
+      "mandirOffering.update",
+      "mandirOffering.delete",
+    ]);
+  });
+
   test("challenge dates are stored as timestamps", async () => {
     const { id } = await staff.CONTENT_ADMIN.call<{ id: string }>("saveCatalogItem", {
       kind: "challenge",
@@ -463,5 +536,14 @@ describe("staff and assets", () => {
     // The emulator has no R2 credentials, so no URL is ever issued here.
     await rejects(staff.EDITOR.call("requestAssetUpload", request), "failed-precondition");
     await rejects(staff.EDITOR.call("deleteAsset", { assetId: "banner-00000000" }), "not-found");
+    // Sounds: M4A or MP3 up to 1 MB, and only for the "sound" purpose.
+    const sound = { purpose: "sound", label: "Bell", contentType: "audio/mp4", bytes: 40_000 };
+    await rejects(staff.EDITOR.call("requestAssetUpload", { ...sound, bytes: 2_000_000 }), "invalid-argument");
+    await rejects(staff.EDITOR.call("requestAssetUpload", { ...sound, purpose: "decor" }), "invalid-argument");
+    await rejects(staff.EDITOR.call("requestAssetUpload", sound), "failed-precondition");
+    await rejects(
+      staff.EDITOR.call("processAsset", { assetId: "sound-00000000", audio: "staging/sound-00000000/x.m4a" }),
+      "failed-precondition",
+    );
   });
 });

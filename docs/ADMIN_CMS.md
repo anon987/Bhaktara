@@ -20,10 +20,10 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 | Library: Wallpapers, Status videos | Tall preview tiles; a wallpaper opens a full-size viewer with its sizes (full, mobile, thumb), a status video plays in a 9:16 player | SA, CA, EDITOR | Firestore reads |
 | All content | Every type in one table with a thumbnail and a preview per row; status tabs, type filter, search, paging | SA, CA, EDITOR | Firestore reads |
 | Content editor | The D-036 editor: fields, checklist, a **Preview** panel (player or viewer for the saved media), status moves, media upload (originals → `processMedia` renders every variant) | SA, CA, EDITOR | `createContent`, `updateContent`, `transitionContentStatus`, `requestUploadUrl`, `processMedia` |
-| Media library | Images for banners, deities, festivals, offerings and covers; upload, preview, copy keys, remove. Editors pick from it with the asset picker | SA, CA, EDITOR | `requestAssetUpload`, `processAsset`, `deleteAsset`; `mediaAssets` reads |
+| Media library | Images for banners, deities, festivals, offerings, temples, decor and covers, and bell sounds; upload, preview (sounds play), copy keys, remove. Editors pick from it with the asset picker (sounds with the sound picker on a bell) | SA, CA, EDITOR | `requestAssetUpload`, `processAsset`, `deleteAsset`; `mediaAssets` reads |
 | Home manager | Sections per language: reorder, show/hide, edit rails, quotes and shortcuts, phone preview, rebuild feeds | SA, CA | `getHomeLayout`, `updateHomeLayout`, `rebuildHomeFeed` |
 | Banners | Banner manager with the image picker; internal targets only (D-015) | SA, CA | `createBanner`, `updateBanner`, `deleteBanner` |
-| Collections, Deities, Categories, Challenges, Badges, Festivals, Mandir offerings | Card grid, search, live/off filter, side-sheet editor; challenges show an 8-week coverage strip | read: SA, CA, EDITOR, ANALYST; write: SA, CA | `saveCatalogItem`, `deleteCatalogItem` |
+| Collections, Deities, Categories, Challenges, Badges, Festivals, Mandir offerings | Card grid, search, live/off filter, side-sheet editor; challenges show an 8-week coverage strip; Mandir offerings are grouped and filtered by kind (see [Mandir decor](#mandir-decor)) | read: SA, CA, EDITOR, ANALYST; write: SA, CA | `saveCatalogItem`, `deleteCatalogItem` |
 | Puja offerings, Sadhana plan, XP & levels | Versioned `appConfig/puja`, `appConfig/sadhana`, `appConfig/gamification` with history and restore | read: SA, CA, ANALYST; write: SA | `saveConfig`, `rollbackConfig` |
 | Practice visuals | Versioned `appConfig/visuals` (D-057): Prayer, Jaap and Meditation backgrounds, the meditation lamp, toran, divider and images for the tray, flowers, garlands and bhog; the app reads it. Temples (`shrineArt`) and jaap emblems (`jaapEmblem`) are set on each deity | read: SA, CA, ANALYST; write: SA | `saveConfig`, `rollbackConfig` |
 | Users | Search by user ID, email or display-name prefix; filters (signed in, guests, flagged, disabled); detail with account facts, practice, 42-day grid, badges and notes | read and moderate: SA, MODERATOR; disable/delete: SA | `searchUsers`, `getUserDetail`, `moderateUser`, `setUserDisabled`, `deleteUserAccount` |
@@ -50,8 +50,41 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 Rules the server enforces:
 
 - **Catalogue**: deities and categories are deactivated, never deleted (`DEACTIVATE_INSTEAD`); a deity cannot be active without Mandir art (`ART_REQUIRED`); challenge and offering dates are stored as Timestamps.
+- **Mandir offerings**: `stage` only on a temple, `sound` only on a bell, `placement` only on lights, `flowerKind` only on a flower (`FIELD_NOT_FOR_KIND`); an active temple, light or bell needs its image (`ART_REQUIRED`); a flower that is forbidden for one of its listed deities (`forbiddenFlowers` in `src/domain/puja.ts`, e.g. tulsi to Shiva or Ganesha, durva to Durga, Lakshmi or Saraswati) is refused (`FORBIDDEN_OFFERING`). With no deities listed it is for every deity, and the app leaves it out where it is forbidden.
+- **Sounds**: `requestAssetUpload` with purpose `sound` takes only `audio/mp4` (M4A) or `audio/mpeg` (MP3) up to 1 MB; other purposes only images. `processAsset({ assetId, audio })` checks the staged file (size, and its first bytes really are M4A/MP3) and copies it unchanged to `sound/{assetId}/file.{md5}.{ext}`; the media processor is not involved, so the function itself needs the R2 keys.
 - **Config**: a save must name the version it started from, or it is refused (`STALE`). Every save and restore writes `appConfig/{id}/versions/{n}`. The daily XP cap cannot be below the largest award (`CAP_TOO_LOW`), at least one puja offering must be required (`NO_REQUIRED_OFFERING`), and forbidden flowers are refused per deity (`FORBIDDEN_OFFERING`).
 - **Users**: nobody acts on their own account or on another staff account (`ADMIN_ACCOUNT`). Disabling also revokes refresh tokens. Deleting needs the user ID typed again; it removes the profile and its subcollections, `userStats`, `userAdmin`, `userChallenges` and the sign-in account, and keeps `rewardTransactions` with `uid: "deleted-user"`. Credentials and tokens are never returned.
+
+## Mandir decor
+
+The Prayer screen's temples, lights, bells and flowers are `mandirOfferings` documents (catalogue kind `mandirOffering`); each deity's murti is `deities/{id}.murtiArt`. Signed-in and guest app users may read active offerings (`isActive == true`, lists of at most 200); the app applies the start/end window.
+
+**Mandir offerings** page (Mandir & festivals → Mandir offerings): the list is grouped by kind (Temple, Lights, Bell, Flower, then the older kinds), with a kind filter; each card shows the image, Free / Ad · kept / Ad · each use, the order and whether it is live. The editor changes with the kind:
+
+- **Temple**: image from the *Temples* library, then **Where the deity stands**: drag the dashed box over the sanctum, drag a corner to resize, use the arrow keys to nudge (Shift: 5 %) or type left/top/width/height in %. A murti is previewed inside the box, feet on its bottom edge (**Preview with** picks the deity). **Centre default** clears it; the app then uses a centred box.
+- **Lights**: image from *Decor & emblems*, and **Where it hangs** (top, bottom or sides).
+- **Bell**: image from *Decor & emblems*, and **Bell sound**: pick from the library or upload an M4A/MP3 (at most 1 MB, a short ring); it plays in the editor.
+- **Flower**: image from *Offerings*, and **Which flower** (the traditional kind the deity rules use). Choosing a deity the flower must not be offered to shows a warning; the server refuses it.
+- **How devotees get it**: *Free*; *Unlock with one ad (kept)* (`REWARDED`: one rewarded ad unlocks it for good on that phone); *One ad per use* (`REWARDED_SINGLE_USE`).
+
+**Deities**: **Murti** takes the deity alone on a transparent background (PNG or WebP from the *Deities* library; the transparency is kept). The editor shows it on a checkerboard and stood in a temple (one of the temple offerings, using its stage).
+
+### Seed the Gemini-made defaults
+
+`scripts/seed-mandir-decor.ts` reads `assets/mandir/manifest.json` and writes the 28 offerings (IDs from the manifest, active, for every deity, no dates), each deity's `murtiArt` (creating `vishnu`, `lakshmi`, `ram` and `saraswati` when missing: active, in the Mandir, the murti doubling as Mandir art) and a library entry per file (`mediaAssets/seed-*`), plus one audit entry. Files are uploaded unchanged under content-addressed keys (`mandir/{id}/mobile.{hash}.webp`, `mandir/{id}/file.{hash}.m4a`, `mandir/murti-{deity}/…`) through the same R2 helper as `media:publish`. Re-running is safe: unchanged documents are left alone, changed ones updated, nothing duplicated.
+
+```sh
+# Local emulator (default). With .env.r2 the files go to the dev bucket;
+# without it only the keys are stored. --local-media <dir> writes them to disk.
+npm run emulators:cms                                   # or: npm run emulators
+npx tsx --env-file-if-exists=.env.r2 scripts/seed-mandir-decor.ts
+
+# bhaktara-dev: needs .env.r2 (R2_* for bhaktara-media-dev), Application
+# Default Credentials, and an explicit --yes. No other project is accepted.
+npx tsx --env-file-if-exists=.env.r2 scripts/seed-mandir-decor.ts --project bhaktara-dev --yes
+```
+
+A full re-run overwrites operator edits to the seeded offerings (for example a changed unlock); add `--only-missing` to create what is missing and leave existing offerings and murti alone.
 
 ## Run it locally
 

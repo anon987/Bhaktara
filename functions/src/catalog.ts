@@ -47,6 +47,55 @@ function toDocument(kind: CatalogKind, value: Record<string, unknown>) {
   return stripUndefined(out);
 }
 
+// Mandir decor fields that belong to one kind only.
+const decorFields = [
+  { field: "stage", kind: "temple", label: "Where the deity stands" },
+  { field: "sound", kind: "bell", label: "A sound" },
+  { field: "placement", kind: "light", label: "Where it hangs" },
+  { field: "flowerKind", kind: "flower", label: "The flower kind" },
+] as const;
+// Temples, lights and bells are nothing but their picture.
+const decorNeedsArt = ["temple", "light", "bell"];
+
+export function checkMandirOffering(value: Record<string, unknown>) {
+  const kind = value.kind as string;
+  const wrong = decorFields.filter(
+    (rule) => value[rule.field] !== undefined && rule.kind !== kind,
+  );
+  if (wrong.length)
+    throw new HttpsError(
+      "invalid-argument",
+      wrong.map((rule) => `${rule.label} is only for a ${rule.kind}.`).join(" "),
+      {
+        reason: "FIELD_NOT_FOR_KIND",
+        issues: wrong.map((rule) => ({
+          path: rule.field,
+          message: `only for kind ${rule.kind}`,
+        })),
+      },
+    );
+  if (value.isActive === true && decorNeedsArt.includes(kind) && !value.art)
+    throw new HttpsError(
+      "failed-precondition",
+      `Add the image before showing this ${kind}.`,
+      { reason: "ART_REQUIRED" },
+    );
+  // Never offer a flower to a deity who must not receive it (tulsi to Shiva…).
+  const flower = value.flowerKind as string | undefined;
+  if (flower) {
+    const deityIds = (value.deityIds as string[] | undefined) ?? [];
+    const refused = deityIds.filter((deityId) =>
+      (forbiddenFlowers[deityId] ?? []).includes(flower as never),
+    );
+    if (refused.length)
+      throw new HttpsError(
+        "invalid-argument",
+        `${flower} must not be offered to ${refused.join(", ")}.`,
+        { reason: "FORBIDDEN_OFFERING", deityIds: refused },
+      );
+  }
+}
+
 function checkPublishable(kind: CatalogKind, value: Record<string, unknown>) {
   // The app drops active deities it cannot draw; refuse them here instead.
   if (kind === "deity" && value.isActive === true && !value.mandirArt)
@@ -55,6 +104,7 @@ function checkPublishable(kind: CatalogKind, value: Record<string, unknown>) {
       "Add the Mandir art before activating this deity.",
       { reason: "ART_REQUIRED" },
     );
+  if (kind === "mandirOffering") checkMandirOffering(value);
 }
 
 const summary = (data: DocumentData | undefined) =>
@@ -64,6 +114,9 @@ const summary = (data: DocumentData | undefined) =>
         isActive: data.isActive,
         isPublished: data.isPublished,
         date: data.date,
+        // Mandir offerings: what it is and how it unlocks.
+        kind: data.kind,
+        unlock: data.unlock,
       })
     : null;
 

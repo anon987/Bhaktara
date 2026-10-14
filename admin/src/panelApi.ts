@@ -13,7 +13,12 @@ import type { FirebaseServices } from "./firebase";
 import { toIso } from "./api";
 import { withoutUndefined } from "./callable";
 import type { AdminRole } from "./domain";
-import { catalogKinds, type AssetPurpose, type CatalogKind } from "../../src/domain/admin";
+import {
+  catalogKinds,
+  type AssetContentType,
+  type AssetPurpose,
+  type CatalogKind,
+} from "../../src/domain/admin";
 import type { HomeLayoutSectionInput } from "../../src/domain/home";
 import type { MediaVariant } from "../../src/domain/media";
 
@@ -154,8 +159,9 @@ export interface PanelApi {
   listAdmins(): Promise<StaffRow[]>;
   setAdminRole(input: { email: string; role: AdminRole | null }): Promise<unknown>;
   listAssets(purpose?: AssetPurpose): Promise<AssetRow[]>;
-  requestAssetUpload(input: { purpose: AssetPurpose; label: string; contentType: "image/jpeg" | "image/png" | "image/webp"; bytes: number }): Promise<UploadSlot & { assetId: string }>;
-  processAsset(input: { assetId: string; image: string }): Promise<{ assetId: string; media: Record<string, MediaVariant>; warnings: string[] }>;
+  requestAssetUpload(input: { purpose: AssetPurpose; label: string; contentType: AssetContentType; bytes: number }): Promise<UploadSlot & { assetId: string }>;
+  // `image` for pictures (rendered), `audio` for sounds (stored as uploaded).
+  processAsset(input: { assetId: string; image?: string; audio?: string }): Promise<{ assetId: string; media: Record<string, MediaVariant>; warnings: string[] }>;
   deleteAsset(assetId: string): Promise<unknown>;
   processMedia(input: { contentId: string; inputs: { audio?: string; image?: string; video?: string } }): Promise<{ media: Record<string, MediaVariant>; warnings: string[]; durationSeconds: number | null }>;
   getHomeLayout(language: HomeLanguage): Promise<HomeLayoutState>;
