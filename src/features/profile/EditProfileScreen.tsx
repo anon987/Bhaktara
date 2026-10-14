@@ -31,6 +31,11 @@ export function nameProblem(name: string): StringKey | null {
   return "nameLetters";
 }
 
+const codeOf = (error: unknown) =>
+  typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code: unknown }).code).replace(/^functions\//, "")
+    : "";
+
 // updateProfile / requestProfilePhotoUpload errors (details.reason from the
 // server) in plain words.
 export function profileProblem(
@@ -38,7 +43,16 @@ export function profileProblem(
   what: "name" | "photo",
 ): StringKey {
   if (error instanceof PhotoUploadError)
-    return error.step === "tooLarge" ? "photoTooLarge" : "photoFailed";
+    // The storage refused the bytes (not the internet): pick it again.
+    return error.step === "tooLarge" ? "photoTooLarge" : "photoRetry";
+  // Only a real connection problem talks about the internet; a function that
+  // is not there (not yet deployed) or a server fault says "not right now".
+  const code = codeOf(error);
+  if (code === "not-found")
+    return what === "photo" ? "photoUnavailable" : "nameFailed";
+  const network =
+    ["unavailable", "deadline-exceeded"].includes(code) ||
+    (error instanceof TypeError && /network/i.test(error.message));
   const failure = practiceFailure(error);
   if (failure.kind === "rejected")
     switch (failure.reason) {
@@ -55,8 +69,8 @@ export function profileProblem(
       case "UPLOADS_NOT_CONFIGURED":
         return "photoUnavailable";
     }
-  if (what === "photo") return "photoFailed";
-  return failure.kind === "offline" ? "nameOffline" : "nameFailed";
+  if (what === "photo") return network ? "photoFailed" : "photoUnavailable";
+  return network ? "nameOffline" : "nameFailed";
 }
 
 type PhotoState =

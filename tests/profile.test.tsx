@@ -409,6 +409,13 @@ describe("Edit profile", () => {
     ).toBe("photoUnavailable");
     expect(profileProblem(offline, "name")).toBe("nameOffline");
     expect(profileProblem(offline, "photo")).toBe("photoFailed");
+    // A function that is not deployed is not an internet problem.
+    const missing = codedError("functions/not-found", "not found");
+    expect(profileProblem(missing, "photo")).toBe("photoUnavailable");
+    expect(profileProblem(missing, "name")).toBe("nameFailed");
+    expect(
+      profileProblem(codedError("functions/internal", "boom"), "photo"),
+    ).toBe("photoUnavailable");
   });
 
   test("the name is validated, saved, and kept on the device when offline", async () => {
@@ -544,7 +551,7 @@ describe("Edit profile", () => {
       expect(pickPhoto).toHaveBeenCalledWith("camera");
       expect(
         await screen.findByText(
-          "The photo could not be saved. Please check the internet and try again.",
+          "The photo could not be saved. Please choose it again.",
         ),
       ).toBeTruthy();
       expect(account.callables.updateProfile).not.toHaveBeenCalled();
