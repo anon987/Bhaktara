@@ -15,6 +15,7 @@ import {
   creditSession,
   grantRewards,
   ledgerId,
+  mandirVisitSourceId,
   newlyEarnedBadges,
   normalizeStats,
   UserChallengeDoc,
@@ -377,4 +378,184 @@ test("too many malas in an hour flags the user without removing XP", () => {
   }
   assert.equal(stats.flags.suspicious, true);
   assert.equal(stats.counters.malas, 24);
+});
+
+// ---- Mandir visit (D-058, doc 10 §2) ------------------------------------------
+
+test("the first Mandir visit of the day pays 5 XP once; the second changes nothing", () => {
+  const first = run({ kind: "MANDIR_VISIT" });
+  assert.equal(first.day.mandirVisited, true);
+  assert.equal(first.stats.counters.mandirVisits, 1);
+  assert.deepEqual(
+    first.intents.map((i) => [i.type, i.sourceId, i.xp]),
+    [["MANDIR", "VISIT_2026-10-05", 5]],
+  );
+  // The ledger document: rewardTransactions/{uid}_MANDIR_VISIT_{day}.
+  assert.equal(
+    ledgerId(uid, first.intents[0]),
+    "user1_MANDIR_VISIT_2026-10-05",
+  );
+  // Doc 10 §3: a Mandir visit is not a qualifying streak activity, and it is
+  // not the prayer task (the puja still completes that).
+  assert.equal(first.day.qualifying, false);
+  assert.equal(first.stats.currentStreak, 0);
+  assert.equal(first.streakExtended, false);
+  assert.deepEqual(first.day.tasks, {
+    jaap: false,
+    meditation: false,
+    prayer: false,
+  });
+  const second = run(
+    { kind: "MANDIR_VISIT" },
+    { day: first.day, stats: first.stats },
+  );
+  assert.deepEqual(second.intents, []);
+  assert.equal(second.stats.counters.mandirVisits, 1);
+  assert.deepEqual(second.day, first.day);
+  // The next practice day (04:00 IST) counts again.
+  const tomorrow = run(
+    { kind: "MANDIR_VISIT" },
+    { now: new Date("2026-10-05T22:30:00Z"), stats: second.stats },
+  );
+  assert.equal(tomorrow.bhaktiDay, "2026-10-06");
+  assert.equal(tomorrow.stats.counters.mandirVisits, 2);
+  assert.equal(tomorrow.intents[0].sourceId, mandirVisitSourceId("2026-10-06"));
+});
+
+test("a Mandir visit keeps the streak of a day that already qualified", () => {
+  const prayer = run({ kind: "PRAYER" });
+  const visit = run(
+    { kind: "MANDIR_VISIT" },
+    { day: prayer.day, stats: prayer.stats },
+  );
+  assert.equal(visit.day.qualifying, true);
+  assert.equal(visit.stats.currentStreak, 1);
+  assert.equal(visit.day.tasks.prayer, true);
+  assert.deepEqual(
+    visit.intents.map((i) => i.type),
+    ["MANDIR"],
+  );
+});
+
+test("the Mandir visit XP respects the daily cap", () => {
+  const outcome = run({ kind: "MANDIR_VISIT" });
+  const stats = normalizeStats(
+    { totalXp: 500, dailyXp: { day: "2026-10-05", xp: 298 } },
+    config,
+  );
+  const lines = grantRewards(
+    outcome.intents,
+    new Set(),
+    uid,
+    stats,
+    outcome.day,
+    "2026-10-05",
+    config,
+  );
+  assert.deepEqual(
+    lines.map((l) => [l.type, l.xp, l.requestedXp, l.status]),
+    [["MANDIR", 2, 5, "CAPPED"]],
+  );
+  assert.equal(stats.dailyXp.xp, 300);
+  // An existing ledger entry (a retried visit) pays nothing.
+  const retry = grantRewards(
+    outcome.intents,
+    new Set([ledgerId(uid, outcome.intents[0])]),
+    uid,
+    normalizeStats(undefined, config),
+    emptyPracticeDay(),
+    "2026-10-05",
+    config,
+  );
+  assert.deepEqual(retry, []);
+});
+
+test("Mandir visits advance MANDIR_VISITS challenges and a daily one qualifies the day", () => {
+  const daily = challenge({
+    id: "mandir-1",
+    metric: "MANDIR_VISITS",
+    targetValue: 1,
+    xpReward: 10,
+  });
+  const weekly = challenge({
+    id: "mandir-5",
+    period: "WEEKLY",
+    metric: "MANDIR_VISITS",
+    targetValue: 5,
+    periodKey: "week-2026-10-05",
+  });
+  const jaap = challenge();
+  const outcome = run(
+    { kind: "MANDIR_VISIT" },
+    { challenges: [daily, weekly, jaap] },
+  );
+  assert.equal(
+    outcome.userChallenges.get("user1_mandir-1_day-2026-10-05")?.status,
+    "COMPLETED",
+  );
+  assert.equal(
+    outcome.userChallenges.get("user1_mandir-5_week-2026-10-05")?.progress,
+    1,
+  );
+  assert.equal(
+    outcome.userChallenges.has("user1_malas-3_day-2026-10-05"),
+    false,
+  );
+  assert.ok(
+    outcome.intents.some(
+      (i) => i.sourceId === "challenge:mandir-1:day-2026-10-05",
+    ),
+  );
+  // D-026: a completed daily challenge qualifies the day.
+  assert.equal(outcome.day.qualifying, true);
+  assert.equal(outcome.stats.currentStreak, 1);
+  // A repeat visit the same day adds no progress.
+  const again = run(
+    { kind: "MANDIR_VISIT" },
+    {
+      challenges: [daily, weekly],
+      day: outcome.day,
+      stats: outcome.stats,
+      userChallenges: outcome.userChallenges,
+    },
+  );
+  assert.equal(
+    again.userChallenges.get("user1_mandir-5_week-2026-10-05")?.progress,
+    1,
+  );
+  assert.deepEqual(again.intents, []);
+});
+
+test("the 7th and 30th Mandir visits unlock the Mandir badges", () => {
+  const mandirBadge = (id: string, criteriaValue: number) => ({
+    id,
+    name: { hi: "", en: id },
+    description: { hi: "", en: "" },
+    iconKey: "temple",
+    criteriaType: "MANDIR_VISITS" as const,
+    criteriaValue,
+    xpReward: 25,
+    isActive: true,
+  });
+  const badges = [mandirBadge("mandir-7", 7), mandirBadge("mandir-30", 30)];
+  const sixth = normalizeStats({ counters: { mandirVisits: 6 } }, config);
+  assert.deepEqual(newlyEarnedBadges(sixth, badges), []);
+  const seventh = run({ kind: "MANDIR_VISIT" }, { stats: sixth });
+  assert.deepEqual(
+    newlyEarnedBadges(seventh.stats, badges).map((b) => b.id),
+    ["mandir-7"],
+  );
+  const thirtieth = run(
+    { kind: "MANDIR_VISIT" },
+    {
+      stats: normalizeStats(
+        { counters: { mandirVisits: 29 }, badgeIds: ["mandir-7"] },
+        config,
+      ),
+    },
+  );
+  assert.deepEqual(
+    newlyEarnedBadges(thirtieth.stats, badges).map((b) => b.id),
+    ["mandir-30"],
+  );
 });

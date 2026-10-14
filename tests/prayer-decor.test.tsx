@@ -11,7 +11,7 @@ import { PlayerProvider } from "../src/features/player/PlayerProvider";
 import {
   bundledDecor,
   bundledMurti,
-} from "../src/features/sadhana/decor/bundled";
+} from "../src/features/mandir/decor/bundled";
 import {
   chosen,
   flowersFor,
@@ -19,13 +19,21 @@ import {
   MandirDecor,
   mergeDecor,
   murtiFor,
+  offerPlaceOf,
+  placeSpecial,
   rewardedAdsOn,
+  specialsFor,
   storeUnlock,
   templeAfterSwipe,
+  watchAdFor,
   watchAdToUnlock,
-} from "../src/features/sadhana/decor/decor";
-import { murtiBox, templeView } from "../src/features/sadhana/decor/geometry";
-import { PrayerScreen } from "../src/features/sadhana/PujaScreen";
+} from "../src/features/mandir/decor/decor";
+import {
+  murtiBox,
+  offerBox,
+  templeView,
+} from "../src/features/mandir/decor/geometry";
+import { MandirScreen } from "../src/features/mandir/MandirScreen";
 import { ProgressionProvider } from "../src/features/sadhana/ProgressionProvider";
 import { mockContentRepository } from "../src/repositories/mockRepository";
 import { remoteConfig } from "../src/services/remoteConfig";
@@ -254,6 +262,120 @@ describe("unlocking decor with a rewarded ad", () => {
   });
 });
 
+describe("special offerings (D-040)", () => {
+  const ids = (items: MandirDecor[]) => items.map((item) => item.id);
+
+  it("lists every deity's specials and the deity's own, in order", () => {
+    const shiva = specialsFor(bundledDecor, "shiva");
+    expect(ids(shiva)).toContain("special-garland-rudraksha");
+    expect(ids(shiva)).toContain("special-mukut");
+    expect(ids(shiva)).not.toContain("special-morpankh");
+    expect(ids(shiva)).not.toContain("special-modak");
+    expect(ids(specialsFor(bundledDecor, "krishna"))).toEqual(
+      expect.arrayContaining(["special-morpankh", "special-makhan"]),
+    );
+    expect(shiva.map((item) => item.sortOrder)).toEqual(
+      [...shiva.map((item) => item.sortOrder)].sort((a, b) => a - b),
+    );
+    // Temples, lights, bells and flowers are not special offerings.
+    for (const item of shiva)
+      expect(["garland", "ornament", "diya", "bhog", "other"]).toContain(
+        item.kind,
+      );
+    for (const item of shiva) expect(item.unlock).toBe("REWARDED_SINGLE_USE");
+  });
+
+  it("knows where each is offered; a published one keeps the bundled place", () => {
+    const mukut = byId(bundledDecor, "special-mukut")!;
+    expect(offerPlaceOf(mukut)).toBe("head");
+    expect(offerPlaceOf(byId(bundledDecor, "special-chhatra")!)).toBe("above");
+    expect(offerPlaceOf({ kind: "garland" })).toBe("neck");
+    expect(offerPlaceOf({ kind: "bhog" })).toBe("altar");
+    const merged = mergeDecor(
+      bundledDecor,
+      [
+        remote({
+          id: "special-mukut",
+          kind: "ornament",
+          imageKey: "mandir/mukut-2.webp",
+          unlock: "REWARDED_SINGLE_USE",
+        }),
+      ],
+      (key) => `https://cdn.test/${key}`,
+    );
+    expect(byId(merged, "special-mukut")!.offerAt).toBe("head");
+  });
+
+  it("keeps one offering per place on the murti and a few on the altar", () => {
+    const item = (id: string) => byId(bundledDecor, id)!;
+    let placed = placeSpecial([], item("special-mukut"), 1);
+    placed = placeSpecial(placed, item("special-haar"), 2);
+    placed = placeSpecial(placed, item("special-garland-rose"), 3);
+    expect(placed.map((entry) => [entry.id, entry.place])).toEqual([
+      ["special-mukut", "head"],
+      ["special-garland-rose", "neck"],
+    ]);
+    for (const [key, id] of [
+      "special-panch-diya",
+      "special-akhand",
+      "special-shriphal",
+      "special-diwali-thali",
+      "special-modak",
+    ].entries())
+      placed = placeSpecial(placed, item(id), 10 + key);
+    const altar = placed.filter((entry) => entry.place === "altar");
+    expect(altar.map((entry) => entry.id)).toEqual([
+      "special-akhand",
+      "special-shriphal",
+      "special-diwali-thali",
+      "special-modak",
+    ]);
+    expect(new Set(altar.map((entry) => entry.slot)).size).toBe(4);
+  });
+
+  it("places offerings round the murti: head, neck, above, feet, altar", () => {
+    const scene = { width: 390, height: 380 };
+    const murti = { x: 154, y: 114, width: 82, height: 190 };
+    const feet = murti.y + murti.height;
+    const cx = murti.x + murti.width / 2;
+    const head = offerBox("head", murti, scene, 1);
+    expect(head.y + head.height).toBeGreaterThan(murti.y);
+    expect(head.y + head.height).toBeLessThan(murti.y + murti.height * 0.15);
+    const above = offerBox("above", murti, scene, 0.88);
+    expect(above.y + above.height).toBeLessThanOrEqual(
+      murti.y + murti.height * 0.05,
+    );
+    expect(above.y).toBeGreaterThanOrEqual(0);
+    const neck = offerBox("neck", murti, scene, 0.6);
+    expect(neck.y).toBeGreaterThan(murti.y + murti.height * 0.1);
+    expect(neck.y + neck.height).toBeLessThan(feet);
+    const atFeet = offerBox("feet", murti, scene, 1);
+    expect(atFeet.y).toBeLessThan(feet);
+    expect(atFeet.y + atFeet.height).toBeGreaterThan(feet);
+    for (const box of [head, above, neck, atFeet])
+      expect(box.x + box.width / 2).toBeCloseTo(cx);
+    const right = offerBox("altar", murti, scene, 1.5, 0);
+    const left = offerBox("altar", murti, scene, 1.5, 1);
+    expect(right.y).toBeGreaterThan(feet - right.height);
+    expect(right.y + right.height).toBeLessThanOrEqual(scene.height);
+    expect(right.x).toBeGreaterThan(cx);
+    expect(left.x + left.width).toBeLessThan(cx);
+    expect(right.width / right.height).toBeCloseTo(1.5);
+  });
+
+  it("reports how an offering was unlocked (doc 13 via)", async () => {
+    const show = (outcome: "rewarded" | "no-fill" | "dismissed") => ({
+      show: jest.fn(async () => outcome),
+    });
+    expect(await watchAdFor(show("rewarded"))).toBe("rewarded");
+    expect(await watchAdFor(show("no-fill"))).toBe("fallback");
+    expect(await watchAdFor(show("dismissed"))).toBeNull();
+    const presenter = show("rewarded");
+    await watchAdFor(presenter, "mandir_special_offering");
+    expect(presenter.show).toHaveBeenCalledWith("mandir_special_offering");
+  });
+});
+
 describe("temple carousel", () => {
   const temples = [
     { id: "a", unlock: "FREE" },
@@ -300,7 +422,7 @@ describe("temple carousel", () => {
   });
 });
 
-// ---- The Prayer screen with the decor ----
+// ---- The Mandir with the decor ----
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -326,16 +448,12 @@ function Wrapper({ children }: React.PropsWithChildren) {
     </SafeAreaProvider>
   );
 }
-const navigation = { goBack: jest.fn() };
 const state = (screen: {
   getByTestId(id: string): { props: { children: string } };
 }) => JSON.parse(screen.getByTestId("state").props.children);
 
 async function openPrayer() {
-  const screen = render(
-    <PrayerScreen navigation={navigation as never} route={{} as never} />,
-    { wrapper: Wrapper },
-  );
+  const screen = render(<MandirScreen />, { wrapper: Wrapper });
   await waitFor(() => expect(screen.getByTestId("puja-stage")).toBeTruthy());
   fireEvent(screen.getByTestId("puja-stage"), "layout", {
     nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 380 } },
@@ -348,7 +466,7 @@ async function openPrayer() {
 
 // Each test mounts the whole screen (slow on a cold cache).
 jest.setTimeout(40000);
-describe("Prayer screen decor", () => {
+describe("Mandir decor", () => {
   beforeEach(() => {
     jest
       .spyOn(localStore, "read")

@@ -46,6 +46,19 @@ test("decor fields belong to their kind only", () => {
   );
 });
 
+test("only special offerings say where they are offered", () => {
+  for (const kind of ["garland", "ornament", "diya", "bhog", "other"])
+    checkMandirOffering({ ...base, kind, offerAt: "neck" });
+  for (const kind of ["temple", "light", "bell", "flower"])
+    refused(() => checkMandirOffering({ ...base, kind, offerAt: "feet" }), "FIELD_NOT_FOR_KIND");
+  assert.throws(
+    () => checkMandirOffering({ ...base, kind: "flower", offerAt: "feet" }),
+    /Where it is offered is only for a garland, ornament, diya, bhog or other\./,
+  );
+  // Still optional for those kinds.
+  checkMandirOffering({ ...base, kind: "bhog" });
+});
+
 test("active temples, lights and bells need their image", () => {
   for (const kind of ["temple", "light", "bell"]) {
     refused(() => checkMandirOffering({ ...base, kind, art: undefined }), "ART_REQUIRED");

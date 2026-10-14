@@ -83,6 +83,9 @@ export interface ProgressionRepository {
     bhaktiDay?: string;
     itemIds: string[];
   }): Promise<PracticeResult>;
+  // The daily Mandir visit (the diya lit): once per practice day, 5 XP
+  // (doc 08, doc 10).
+  recordMandirVisit(input: { deityId: string }): Promise<PracticeResult>;
   load(timezone: string): Promise<ProgressSnapshot>;
 }
 
@@ -166,6 +169,7 @@ export function createProgressionRepository(
     startSession: (input) => call("startSession", input),
     completeSession: (input) => call("completeSession", input),
     completePrayer: (input) => call("completePrayerChecklist", input),
+    recordMandirVisit: (input) => call("recordMandirVisit", input),
     async load(timezone) {
       const id = await uid();
       const now = new Date();

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { slugSchema } from "./cms";
 import { localizedSchema } from "./models";
 
 // Habit layer rules shared by the app and Cloud Functions (doc 10, doc 08).
@@ -517,6 +518,15 @@ export const prayerInputSchema = z.object({
 });
 export type PrayerInput = z.infer<typeof prayerInputSchema>;
 
+// The daily Mandir visit (D-058): lighting the diya in the Mandir tab. The
+// deity is the one the diya was lit for; the day, as for the prayer, is only
+// a consistency check (the server's practice day counts).
+export const mandirVisitInputSchema = z.object({
+  deityId: slugSchema.optional(),
+  bhaktiDay: bhaktiDaySchema.optional(),
+});
+export type MandirVisitInput = z.infer<typeof mandirVisitInputSchema>;
+
 export const profileInputSchema = z.object({
   timezone: z.string().min(1).max(64),
   language: z.enum(["hi", "en"]).optional(),
@@ -589,6 +599,13 @@ export type PracticeResult = {
   minutesCredited: number;
   challengesCompleted: { id: string; title: { hi: string; en: string } }[];
   badgesUnlocked: { id: string; name: { hi: string; en: string } }[];
+};
+
+// recordMandirVisit: the practice result, and whether today's visit had
+// already been counted (then nothing changed: status ALREADY_DONE, 0 XP).
+export type MandirVisitResult = PracticeResult & {
+  alreadyCounted: boolean;
+  mandirVisited: true;
 };
 
 // Stable error reasons in HttpsError details (doc 08 §6).

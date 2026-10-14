@@ -12,7 +12,7 @@ import Svg, {
 } from "react-native-svg";
 import { TrayItem } from "../../../domain/puja";
 import { sanctum } from "../../../theme/tokens";
-import { MarigoldShape } from "../art/Marigold";
+import { MarigoldShape } from "../../sadhana/art/Marigold";
 
 // The puja tray's items, drawn in a 64 × 64 box. Decorative: the tray
 // button around each icon carries its name for screen readers.

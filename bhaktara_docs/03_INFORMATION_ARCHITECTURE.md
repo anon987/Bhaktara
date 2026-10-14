@@ -1,6 +1,6 @@
 # Information Architecture and Navigation
 
-> Decisions: D-004, D-005, D-007, D-011, D-013, D-015, D-019, D-021, D-025, D-028, D-029, D-030.
+> Decisions: D-004, D-005, D-007, D-011, D-013, D-015, D-019, D-021, D-025, D-028, D-029, D-030, D-058.
 > Tags: **[Decided]** · **[Rec default — adjustable]**
 
 ## 1. Bottom navigation [Decided: D-028]
@@ -88,16 +88,19 @@ That is the whole onboarding. There is no sign-in wall and no deity or interest 
 - No lyrics or text in V1 (D-011).
 - There is no "report issue" control in V1 (D-014).
 
-## 6. Mandir tab [Decided: D-007]
+## 6. Mandir tab [Decided: D-007, D-058]
+
+The Mandir tab is the app's one temple screen (D-058): the daily puja of the Sadhana prayer task (D-053/D-054/D-057) is performed here, no longer on a separate Prayer screen under Sadhana.
 
 1. **First visit:** choose a deity from the active Mandir deities, managed in the CMS. This choice is stored as the user's Mandir deity and can be changed anytime.
-2. **Mandir scene:**
+2. **Mandir scene:** the deity's murti standing in the chosen temple (temples, lights and bells from the CMS).
    - Light diya (free)
    - Offer flowers (free)
    - Ring bell (tap to ring, with sound; free)
    - Play aarti (uses the global audio player)
-   - **Special offerings tray (D-040):** ornaments, special flowers, festival items. Tapping one offers "Ad dekhkar arpit karein". One ad unlocks one use.
-3. **Daily visit:** lighting the diya counts as the daily visit (5 XP once per day, doc 10).
+   - **Puja tray (D-054/D-057):** the offerings in traditional order. Completing the puja records the day's prayer task (`completePrayerChecklist`, once per practice day); repeating it later that day is always allowed and earns nothing more.
+   - **Special offerings tray (D-040):** garlands, mukut, haar, chhatra, mor pankh, special diyas, bhog, festival thali; some only for one deity. Tapping one offers "Ad dekhkar arpit karein". One ad unlocks one use (`REWARDED_SINGLE_USE`). Each appears at its place (`offerAt`): on the head, round the neck, above the deity, at the feet or on the altar in front.
+3. **Daily visit:** lighting the diya counts as the daily Mandir visit (`recordMandirVisit`): 5 XP once per practice day, the visit counter for the Mandir badges (7 and 30 visits) and `MANDIR_VISITS` challenges (doc 10). It is called on every lighting; only the first of the day counts. A visit alone does not extend the streak (doc 10 §3).
 4. **Change deity:** switcher in the top bar.
 
 Design note: calm, restrained motion. Only a bottom-edge banner is allowed, outside the offering tray (D-037, C-001).
@@ -107,7 +110,8 @@ Design note: calm, restrained motion. Only a bottom-edge banner is allowed, outs
 **Top segments:** Aaj · Challenges · League · History
 
 **Aaj**
-- Today's plan with three task types: jaap, meditation, prayer checklist.
+- Today's plan with three task types: jaap, meditation, prayer (the puja).
+- The prayer task opens the Mandir tab (§6, D-058); the puja performed there completes it. There is no separate Prayer screen in Sadhana.
 - Each task shows its completion state.
 - "Full Sadhana" bonus progress.
 

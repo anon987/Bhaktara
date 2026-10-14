@@ -23,7 +23,6 @@ export type RootParams = {
   DeityContent: { deityId: string; type: ContentType; source?: PlaySource };
   Jaap: undefined;
   Meditation: undefined;
-  Prayer: undefined;
 };
 const bannerTargetSchema = z.discriminatedUnion("route", [
   z.object({ route: z.literal("mandir") }).strict(),

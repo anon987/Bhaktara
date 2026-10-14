@@ -21,7 +21,6 @@ import { PlayerScreen } from "../../features/player/PlayerScreen";
 import {
   JaapScreen,
   MeditationScreen,
-  PrayerScreen,
 } from "../../features/sadhana/PracticeScreens";
 const Tabs = createBottomTabNavigator<TabParams>();
 const Stack = createNativeStackNavigator<RootParams>();
@@ -89,7 +88,6 @@ export function AppNavigator() {
         <Stack.Screen name="Player" component={PlayerScreen} />
         <Stack.Screen name="Jaap" component={JaapScreen} />
         <Stack.Screen name="Meditation" component={MeditationScreen} />
-        <Stack.Screen name="Prayer" component={PrayerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

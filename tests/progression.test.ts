@@ -8,6 +8,7 @@ import {
   isValidTimeZone,
   levelForXp,
   levelProgress,
+  mandirVisitInputSchema,
   rankForLevel,
   sadhanaConfigSchema,
   defaultSadhanaConfig,
@@ -106,5 +107,23 @@ describe("streak (D-026)", () => {
     expect(visibleStreak(state, "2026-10-05")).toBe(4);
     expect(visibleStreak(state, "2026-10-06")).toBe(4);
     expect(visibleStreak(state, "2026-10-07")).toBe(0);
+  });
+});
+
+describe("Mandir visit input (D-058)", () => {
+  it("takes an optional deity and practice day", () => {
+    expect(mandirVisitInputSchema.safeParse({}).success).toBe(true);
+    expect(
+      mandirVisitInputSchema.safeParse({
+        deityId: "shiva",
+        bhaktiDay: "2026-10-14",
+      }).success,
+    ).toBe(true);
+    expect(
+      mandirVisitInputSchema.safeParse({ deityId: "../users" }).success,
+    ).toBe(false);
+    expect(
+      mandirVisitInputSchema.safeParse({ bhaktiDay: "14-10-2026" }).success,
+    ).toBe(false);
   });
 });

@@ -344,6 +344,33 @@ describe("catalogue", () => {
       "invalid-argument",
       "FORBIDDEN_OFFERING",
     );
+    // Special offerings say where they are offered; a temple may not.
+    const garland = {
+      ...withoutStage,
+      name: { hi: "रुद्राक्ष माला", en: "Rudraksha mala" },
+      kind: "garland",
+      offerAt: "neck",
+      deityIds: ["shiva"],
+      unlock: "REWARDED_SINGLE_USE",
+    };
+    await staff.CONTENT_ADMIN.call("saveCatalogItem", {
+      kind: "mandirOffering",
+      id: "test-garland-rudraksha",
+      create: true,
+      data: garland,
+    });
+    const placed = (await db.doc("mandirOfferings/test-garland-rudraksha").get()).data()!;
+    assert.deepEqual([placed.offerAt, placed.deityIds], ["neck", ["shiva"]]);
+    await rejects(
+      staff.CONTENT_ADMIN.call("saveCatalogItem", {
+        kind: "mandirOffering",
+        create: true,
+        data: { ...temple, offerAt: "head" },
+      }),
+      "invalid-argument",
+      "FIELD_NOT_FOR_KIND",
+    );
+    await staff.CONTENT_ADMIN.call("deleteCatalogItem", { kind: "mandirOffering", id: "test-garland-rudraksha" });
     await staff.CONTENT_ADMIN.call("saveCatalogItem", {
       kind: "mandirOffering",
       id: "test-temple-marble",

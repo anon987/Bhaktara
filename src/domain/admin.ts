@@ -120,6 +120,42 @@ export const offeringUnlocks = [
   "REWARDED_SINGLE_USE",
 ] as const;
 export type OfferingUnlock = (typeof offeringUnlocks)[number];
+// Where a Mandir offering appears: on the head (mukut), round the neck
+// (garland, haar), above the deity (chhatra), at the feet (flowers) or on the
+// altar in front (lamps, bhog, festival items).
+export const offerPlaces = ["head", "neck", "above", "feet", "altar"] as const;
+export type OfferPlace = (typeof offerPlaces)[number];
+// Only special offerings carry offerAt; temples, lights, bells and flowers
+// have their own places (stage, placement, the flower shower).
+export const offerAtKinds = [
+  "garland",
+  "ornament",
+  "diya",
+  "bhog",
+  "other",
+] as const satisfies readonly OfferingKind[];
+export const offerPlaceLabels: Record<OfferPlace, { en: string; hi: string }> =
+  {
+    head: { en: "Head", hi: "मस्तक" },
+    neck: { en: "Neck", hi: "कंठ" },
+    above: { en: "Above", hi: "ऊपर" },
+    feet: { en: "Feet", hi: "चरण" },
+    altar: { en: "Altar", hi: "वेदी" },
+  };
+// Where an item at each place is drawn, as fractions of the murti's box
+// (the temple stage: feet on its bottom edge). Boxes may leave the murti box:
+// a chhatra floats above the head, the altar lies in front of the feet.
+// The default for previews and the app's scene; art is fitted inside.
+export const offerPlaceBoxes: Record<
+  OfferPlace,
+  { x: number; y: number; width: number; height: number }
+> = {
+  head: { x: 0.3, y: -0.06, width: 0.4, height: 0.22 },
+  neck: { x: 0.24, y: 0.16, width: 0.52, height: 0.4 },
+  above: { x: 0.15, y: -0.34, width: 0.7, height: 0.32 },
+  feet: { x: 0.22, y: 0.82, width: 0.56, height: 0.2 },
+  altar: { x: 0.28, y: 0.9, width: 0.44, height: 0.26 },
+};
 const unit = z.number().min(0).max(1);
 // Where the deity stands in a temple image, as fractions of its width and
 // height: the box the murti is fitted into, feet on its bottom edge.
@@ -140,6 +176,9 @@ export const mandirOfferingInputSchema = z
     flowerKind: z.enum(flowerKinds).optional(),
     // Bells: the sound when rung (an audio asset).
     sound: z.object({ audio: mediaVariantSchema }).optional(),
+    // Mandir special offerings (garland, ornament, diya, bhog, other): where
+    // it is placed in the Mandir scene, relative to the murti.
+    offerAt: z.enum(offerPlaces).optional(),
     // Lights: where it hangs over the temple.
     placement: z.enum(["top", "bottom", "sides"]).optional(),
     // Temples: where the deity stands in the image.

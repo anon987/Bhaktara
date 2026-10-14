@@ -5,7 +5,8 @@ import { mandirOfferingInputSchema } from "../../../domain/admin";
 import type { MandirDecor, Murti } from "./decor";
 
 // The mandir decor bundled with the app (assets/mandir, made with Gemini):
-// the default temples, lights, bells and flowers, and a murti per deity.
+// the default temples, lights, bells and flowers, the special offerings
+// (D-040) and a murti per deity.
 // manifest.json describes them; Metro needs a static require() per file, so
 // each manifest path is mapped here. Aspect ratios (width / height) are the
 // files' pixel sizes, so the screen can lay them out before they load.
@@ -124,6 +125,62 @@ const images: Record<string, { source: ImageSourcePropType; aspect: number }> =
       source: require("../../../../assets/mandir/flowers/kaner.webp"),
       aspect: 1,
     },
+    "special/akhand.webp": {
+      source: require("../../../../assets/mandir/special/akhand.webp"),
+      aspect: 250 / 512,
+    },
+    "special/chhatra.webp": {
+      source: require("../../../../assets/mandir/special/chhatra.webp"),
+      aspect: 453 / 512,
+    },
+    "special/diwali-thali.webp": {
+      source: require("../../../../assets/mandir/special/diwali-thali.webp"),
+      aspect: 512 / 325,
+    },
+    "special/garland-genda.webp": {
+      source: require("../../../../assets/mandir/special/garland-genda.webp"),
+      aspect: 306 / 512,
+    },
+    "special/garland-jasmine.webp": {
+      source: require("../../../../assets/mandir/special/garland-jasmine.webp"),
+      aspect: 266 / 512,
+    },
+    "special/garland-rose.webp": {
+      source: require("../../../../assets/mandir/special/garland-rose.webp"),
+      aspect: 427 / 512,
+    },
+    "special/garland-rudraksha.webp": {
+      source: require("../../../../assets/mandir/special/garland-rudraksha.webp"),
+      aspect: 218 / 512,
+    },
+    "special/haar.webp": {
+      source: require("../../../../assets/mandir/special/haar.webp"),
+      aspect: 512 / 412,
+    },
+    "special/makhan.webp": {
+      source: require("../../../../assets/mandir/special/makhan.webp"),
+      aspect: 505 / 512,
+    },
+    "special/modak.webp": {
+      source: require("../../../../assets/mandir/special/modak.webp"),
+      aspect: 512 / 353,
+    },
+    "special/morpankh.webp": {
+      source: require("../../../../assets/mandir/special/morpankh.webp"),
+      aspect: 268 / 512,
+    },
+    "special/mukut.webp": {
+      source: require("../../../../assets/mandir/special/mukut.webp"),
+      aspect: 502 / 512,
+    },
+    "special/panch-diya.webp": {
+      source: require("../../../../assets/mandir/special/panch-diya.webp"),
+      aspect: 512 / 322,
+    },
+    "special/shriphal.webp": {
+      source: require("../../../../assets/mandir/special/shriphal.webp"),
+      aspect: 512 / 462,
+    },
     "murti/shiva.webp": {
       source: require("../../../../assets/mandir/murti/shiva.webp"),
       aspect: 574 / 800,
@@ -176,6 +233,7 @@ const entrySchema = mandirOfferingInputSchema
     name: true,
     kind: true,
     flowerKind: true,
+    offerAt: true,
     placement: true,
     stage: true,
     unlock: true,

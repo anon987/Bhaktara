@@ -70,31 +70,6 @@ export const strings = {
   ],
   loadMore: ["Load more", "और देखें"],
   chooseDeity: ["Choose your deity", "अपने आराध्य चुनें"],
-  deityHint: [
-    "Create a quiet corner of your own. Change your choice anytime.",
-    "अपना शांत भक्ति स्थल बनाएँ। चयन कभी भी बदलें।",
-  ],
-  change: ["Change", "बदलें"],
-  sacredSpace: ["Your quiet, sacred space", "आपका शांत भक्ति स्थल"],
-  diya: ["Light diya", "दीप जलाएँ"],
-  flowers: ["Offer flowers", "फूल अर्पित करें"],
-  bell: ["Ring bell", "घंटी बजाएँ"],
-  diyaLit: ["Your diya is glowing", "आपका दीप जल रहा है"],
-  flowersOffered: ["Flowers offered", "फूल अर्पित हुए"],
-  bellRung: [
-    "Bell interaction preview · no sound",
-    "घंटी का प्रीव्यू · ध्वनि उपलब्ध नहीं",
-  ],
-  freeOfferings: [
-    "Simple offerings, always free",
-    "साधारण अर्पण, हमेशा निःशुल्क",
-  ],
-  special: ["A special offering", "विशेष अर्पण"],
-  specialHint: [
-    "Offer a marigold garland for this visit.",
-    "इस दर्शन में गेंदे की माला अर्पित करें।",
-  ],
-  watchOffer: ["Watch an ad to offer", "विज्ञापन देखकर अर्पित करें"],
   today: ["Today", "आज"],
   challenges: ["Challenges", "चुनौतियाँ"],
   league: ["League", "लीग"],
@@ -336,10 +311,6 @@ export const strings = {
     "Google sign-in is not connected. You can keep using the app as a guest.",
     "Google साइन इन अभी जुड़ा नहीं है। आप अतिथि के रूप में ऐप उपयोग कर सकते हैं।",
   ],
-  adsUnavailable: [
-    "In the full app, one rewarded ad will play for this action. Ads are not connected in this preview; nothing has been unlocked or saved.",
-    "पूरे ऐप में इस कार्य के लिए एक पुरस्कृत विज्ञापन चलेगा। इस प्रीव्यू में विज्ञापन जुड़े नहीं हैं; कुछ अनलॉक या सहेजा नहीं गया है।",
-  ],
   shareUnavailable: [
     "WhatsApp sharing will always be free. Media files and the native share integration are not connected yet.",
     "WhatsApp साझा करना हमेशा निःशुल्क रहेगा। मीडिया फ़ाइलें और साझा करने की सुविधा अभी जुड़ी नहीं हैं।",
@@ -413,7 +384,6 @@ export const strings = {
   threeLamps: ["Today’s three lamps", "आज के तीन दीप"],
   jaapShort: ["Jaap", "जाप"],
   dhyanShort: ["Meditation", "ध्यान"],
-  prarthanaShort: ["Prayer", "प्रार्थना"],
   taskDone: ["Done", "पूर्ण"],
   taskBegin: ["Begin", "शुरू करें"],
   fullSadhanaToday: [
@@ -520,7 +490,7 @@ export const strings = {
   minutesLong: ["minutes", "मिनट"],
   templeBells: ["Temple bells", "मंदिर की घंटियाँ"],
   resetOfferings: ["Reset offerings", "अर्पण फिर से"],
-  // Mandir decor on the Prayer screen: temples to swipe, lights, bells.
+  // Mandir decor: temples to swipe, lights, bells.
   decorLights: ["Lights", "रोशनी"],
   decorBell: ["Bell", "घंटी"],
   noLights: ["No lights", "रोशनी नहीं"],
@@ -535,6 +505,11 @@ export const strings = {
     "मंदिर बदलने के लिए दाएँ-बाएँ सरकाएँ",
   ],
   lockedDecor: ["Locked", "बंद है"],
+  // The Mandir tab: special offerings (D-040) and the daily visit.
+  specialOfferings: ["Special offerings", "विशेष अर्पण"],
+  watchOffer: ["Watch a short ad to offer", "विज्ञापन देखकर अर्पित करें"],
+  darshanDone: ["Today’s darshan is done", "आज के दर्शन हुए"],
+  pujaInMandir: ["Puja in the Mandir", "मंदिर में पूजा"],
   restartMalaShort: ["Restart mala", "माला फिर से"],
   practiceSound: ["Sound", "ध्वनि"],
   practiceVibration: ["Vibration", "कंपन"],

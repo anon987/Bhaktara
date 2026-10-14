@@ -70,7 +70,8 @@ xp
 tasks { jaap: bool, meditation: bool, prayer: bool }
 fullSadhana: bool
 malas, meditationMinutes
-mandirVisited: bool
+mandirVisited: bool          # the day's diya was lit (recordMandirVisit, D-058)
+mandirDeityId?               # the deity of the first diya that day
 ```
 
 Used by the History heatmap and streak logic.

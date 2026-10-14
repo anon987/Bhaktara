@@ -7,8 +7,8 @@ import {
   TilakStyle,
 } from "../../../domain/puja";
 import { sanctum } from "../../../theme/tokens";
-import { MarigoldShape } from "../art/Marigold";
-import { SlotImage } from "../shrine/Ornaments";
+import { MarigoldShape } from "../../sadhana/art/Marigold";
+import { SlotImage } from "../../sadhana/shrine/Ornaments";
 
 // Offerings drawn in a 40 × 40 box; decorative (callers label them).
 

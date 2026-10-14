@@ -27,7 +27,10 @@ import {
   getFunctions,
   httpsCallable,
 } from "firebase/functions";
-import type { PracticeResult } from "../../src/domain/progression";
+import type {
+  MandirVisitResult,
+  PracticeResult,
+} from "../../src/domain/progression";
 import { bhaktiDayAt } from "../../src/domain/progression";
 import { seedEmulator } from "../../scripts/emulator/seed";
 
@@ -312,6 +315,105 @@ describe("prayer checklist and full Sadhana", () => {
     });
     assert.equal(again.status, "ALREADY_DONE");
     assert.equal(again.totalXp, prayer.totalXp);
+  });
+});
+
+describe("Mandir visit (D-058)", () => {
+  test("the first diya of the day pays 5 XP, counts the visit and advances challenges and badges once", async () => {
+    const player = await guest();
+    // Six earlier visits: today's is the seventh (badge mandir-7).
+    await db
+      .doc(`userStats/${player.uid}`)
+      .set({ counters: { mandirVisits: 6 } });
+    const today = bhaktiDayAt(new Date(), "Asia/Kolkata");
+    const first = await player.call<MandirVisitResult>("recordMandirVisit", {
+      deityId: "shiva",
+      bhaktiDay: today,
+    });
+    assert.equal(first.status, "COMPLETED");
+    assert.equal(first.alreadyCounted, false);
+    assert.equal(first.mandirVisited, true);
+    assert.equal(first.bhaktiDay, today);
+    assert.deepEqual(
+      first.badgesUnlocked.map((b) => b.id),
+      ["mandir-7"],
+    );
+    // 5 (visit) + 25 (badge mandir-7).
+    assert.equal(first.xpGranted, 30);
+    // Doc 10 §3: the visit alone does not start a streak.
+    assert.equal(first.currentStreak, 0);
+    assert.equal(first.tasks.prayer, false);
+    const visit = (
+      await db
+        .doc(`rewardTransactions/${player.uid}_MANDIR_VISIT_${today}`)
+        .get()
+    ).data()!;
+    assert.deepEqual(
+      [visit.type, visit.xp, visit.status],
+      ["MANDIR", 5, "GRANTED"],
+    );
+    assert.equal((await stats(player.uid)).counters.mandirVisits, 7);
+    const dayRef = db.doc(`users/${player.uid}/days/${today}`);
+    const day = (await dayRef.get()).data()!;
+    assert.equal(day.mandirVisited, true);
+    assert.equal(day.mandirDeityId, "shiva");
+    assert.equal(day.qualifying, false);
+    const weekly = (
+      await db
+        .collection("userChallenges")
+        .where("uid", "==", player.uid)
+        .where("challengeId", "==", "dev-weekly-3-mandir")
+        .get()
+    ).docs.map((d) => d.data());
+    assert.deepEqual(
+      weekly.map((c) => [c.progress, c.status]),
+      [[1, "ACTIVE"]],
+    );
+    // A second diya the same day changes nothing.
+    const again = await player.call<MandirVisitResult>("recordMandirVisit", {
+      deityId: "krishna",
+    });
+    assert.equal(again.alreadyCounted, true);
+    assert.equal(again.status, "ALREADY_DONE");
+    assert.equal(again.xpGranted, 0);
+    assert.equal(again.totalXp, first.totalXp);
+    assert.equal((await stats(player.uid)).counters.mandirVisits, 7);
+    assert.equal((await ledger(player.uid)).length, 2);
+    assert.equal((await dayRef.get()).get("mandirDeityId"), "shiva");
+    // Later practice keeps the visit on the day; the mala starts the streak.
+    const { result } = await chantMala(player);
+    assert.equal(result.currentStreak, 1);
+    const after = (await dayRef.get()).data()!;
+    assert.deepEqual(
+      [after.mandirVisited, after.mandirDeityId, after.malas],
+      [true, "shiva", 1],
+    );
+    await rejects(
+      player.call("recordMandirVisit", { deityId: "Not a slug" }),
+      "invalid-argument",
+    );
+  });
+
+  test("parallel visits pay once and the daily cap holds", async () => {
+    const player = await guest();
+    const today = bhaktiDayAt(new Date(), "Asia/Kolkata");
+    await db.doc(`userStats/${player.uid}`).set({
+      totalXp: 500,
+      dailyXp: { day: today, xp: 298 },
+    });
+    const results = await Promise.all(
+      [1, 2, 3].map(() =>
+        player.call<MandirVisitResult>("recordMandirVisit", {}),
+      ),
+    );
+    assert.equal(results.filter((r) => !r.alreadyCounted).length, 1);
+    const lines = await ledger(player.uid);
+    assert.deepEqual(
+      lines.map((l) => [l.type, l.xp, l.requestedXp, l.status]),
+      [["MANDIR", 2, 5, "CAPPED"]],
+    );
+    const s = await stats(player.uid);
+    assert.deepEqual([s.totalXp, s.counters.mandirVisits], [502, 1]);
   });
 });
 

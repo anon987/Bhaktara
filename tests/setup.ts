@@ -142,7 +142,7 @@ jest.mock("react-native-reanimated", () =>
 );
 
 // The Skia light/smoke layer needs native Skia; unit tests skip drawing it.
-jest.mock("../src/features/sadhana/puja/Effects", () => ({
+jest.mock("../src/features/mandir/puja/Effects", () => ({
   PujaEffects: () => null,
 }));
 
