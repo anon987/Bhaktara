@@ -12,6 +12,7 @@ import {
   ConfigDoc,
   configDocs,
   deleteCatalogItemSchema,
+  offerAtKinds,
   rollbackConfigSchema,
   saveCatalogItemSchema,
   saveConfigSchema,
@@ -47,30 +48,36 @@ function toDocument(kind: CatalogKind, value: Record<string, unknown>) {
   return stripUndefined(out);
 }
 
-// Mandir decor fields that belong to one kind only.
-const decorFields = [
-  { field: "stage", kind: "temple", label: "Where the deity stands" },
-  { field: "sound", kind: "bell", label: "A sound" },
-  { field: "placement", kind: "light", label: "Where it hangs" },
-  { field: "flowerKind", kind: "flower", label: "The flower kind" },
-] as const;
+// Mandir decor fields that belong to some kinds only.
+const decorFields: { field: string; kinds: string[]; label: string }[] = [
+  { field: "stage", kinds: ["temple"], label: "Where the deity stands" },
+  { field: "sound", kinds: ["bell"], label: "A sound" },
+  { field: "placement", kinds: ["light"], label: "Where it hangs" },
+  { field: "flowerKind", kinds: ["flower"], label: "The flower kind" },
+  // Special offerings placed on the murti or the altar (D-058).
+  { field: "offerAt", kinds: [...offerAtKinds], label: "Where it is offered" },
+];
+const kindList = (kinds: string[]) =>
+  kinds.length === 1
+    ? `a ${kinds[0]}`
+    : `a ${kinds.slice(0, -1).join(", ")} or ${kinds[kinds.length - 1]}`;
 // Temples, lights and bells are nothing but their picture.
 const decorNeedsArt = ["temple", "light", "bell"];
 
 export function checkMandirOffering(value: Record<string, unknown>) {
   const kind = value.kind as string;
   const wrong = decorFields.filter(
-    (rule) => value[rule.field] !== undefined && rule.kind !== kind,
+    (rule) => value[rule.field] !== undefined && !rule.kinds.includes(kind),
   );
   if (wrong.length)
     throw new HttpsError(
       "invalid-argument",
-      wrong.map((rule) => `${rule.label} is only for a ${rule.kind}.`).join(" "),
+      wrong.map((rule) => `${rule.label} is only for ${kindList(rule.kinds)}.`).join(" "),
       {
         reason: "FIELD_NOT_FOR_KIND",
         issues: wrong.map((rule) => ({
           path: rule.field,
-          message: `only for kind ${rule.kind}`,
+          message: `only for kind ${rule.kinds.join(" | ")}`,
         })),
       },
     );

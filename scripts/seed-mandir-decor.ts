@@ -9,7 +9,9 @@ import {
   AssetPurpose,
   deityInputSchema,
   mandirOfferingInputSchema,
+  offerAtKinds,
   offeringKinds,
+  offerPlaces,
   offeringUnlocks,
   OfferingKind,
   templeStageSchema,
@@ -25,12 +27,14 @@ import {
   withFirestore,
 } from "./firebase/target";
 
-const usage = `Seed the Mandir decor (temples, lights, bells, flowers and each deity's
-murti) from assets/mandir/manifest.json into the admin catalogue.
+const usage = `Seed the Mandir decor (temples, lights, bells, flowers, the special
+offerings and each deity's murti) from assets/mandir/manifest.json into the
+admin catalogue.
 
   npx tsx --env-file-if-exists=.env.r2 scripts/seed-mandir-decor.ts [options]
 
-Writes mandirOfferings/{id} (ids from the manifest, active, for every deity),
+Writes mandirOfferings/{id} (ids from the manifest, active, for the deities
+the manifest lists or else every deity; special offerings with offerAt),
 deities/{id}.murtiArt (creating vishnu, lakshmi, ram, saraswati… when they
 are missing) and library entries in mediaAssets, plus one audit entry.
 Re-running updates the same documents; it never duplicates them.
@@ -76,6 +80,10 @@ const manifestSchema = z.object({
           placement: z.enum(["top", "bottom", "sides"]).optional(),
           sound: relativePath.optional(),
           flowerKind: z.enum(flowerKinds).optional(),
+          // Special offerings: where they appear on the murti or the altar.
+          offerAt: z.enum(offerPlaces).optional(),
+          // Only for these deities; missing or empty: every deity.
+          deityIds: z.array(slugSchema).max(40).optional(),
         })
         .strict(),
     )
@@ -85,16 +93,22 @@ const manifestSchema = z.object({
 export type DecorManifest = z.infer<typeof manifestSchema>;
 
 // Kind-only fields, as functions/src/catalog.ts enforces for the admin.
-const kindFields = { stage: "temple", sound: "bell", placement: "light", flowerKind: "flower" } as const;
+const kindFields: Record<"stage" | "sound" | "placement" | "flowerKind" | "offerAt", readonly OfferingKind[]> = {
+  stage: ["temple"],
+  sound: ["bell"],
+  placement: ["light"],
+  flowerKind: ["flower"],
+  offerAt: offerAtKinds,
+};
 export function manifestProblems(manifest: DecorManifest): string[] {
   const problems: string[] = [];
   const ids = new Set<string>();
   for (const item of manifest.offerings) {
     if (ids.has(item.id)) problems.push(`${item.id}: duplicated id`);
     ids.add(item.id);
-    for (const [field, kind] of Object.entries(kindFields))
-      if (item[field as keyof typeof kindFields] !== undefined && item.kind !== kind)
-        problems.push(`${item.id}: ${field} is only for a ${kind}`);
+    for (const [field, kinds] of Object.entries(kindFields))
+      if (item[field as keyof typeof kindFields] !== undefined && !kinds.includes(item.kind))
+        problems.push(`${item.id}: ${field} is only for ${kinds.join(", ")}`);
     if (item.kind === "bell" && !item.sound) problems.push(`${item.id}: a bell needs its sound`);
   }
   return problems;
@@ -188,8 +202,9 @@ export async function planSeed(manifestPath: string): Promise<SeedPlan> {
       ...(sound ? { sound: { audio: sound.variant } } : {}),
       ...(item.placement ? { placement: item.placement } : {}),
       ...(item.stage ? { stage: item.stage } : {}),
-      // For every deity; the app leaves a flower out where it is forbidden.
-      deityIds: [],
+      ...(item.offerAt ? { offerAt: item.offerAt } : {}),
+      // Empty: every deity; the app leaves a flower out where it is forbidden.
+      deityIds: item.deityIds ?? [],
       unlock: item.unlock,
       sortOrder: item.sortOrder,
       isActive: true,

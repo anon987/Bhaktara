@@ -161,6 +161,8 @@ export const completeSession = player(progression.completeSession);
 export const completePrayerChecklist = player(
   progression.completePrayerChecklist,
 );
+// D-058: the diya lit in the Mandir tab is the daily Mandir visit.
+export const recordMandirVisit = player(progression.recordMandirVisit);
 
 // Doc 08 §4: close ended daily and weekly challenges after the 04:00 rollover.
 export const expireChallenges = onSchedule(
