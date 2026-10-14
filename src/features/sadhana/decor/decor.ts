@@ -17,6 +17,8 @@ export type MandirDecor = Omit<DecorItem, "imageKey" | "soundKey"> & {
   image: ImageSourcePropType;
   // Width / height when known before loading (bundled files).
   aspect?: number;
+  // A CDN image's bundled copy (same id), drawn while the CDN one loads.
+  placeholder?: ImageSourcePropType;
   // Bells: the sound when rung.
   sound?: AudioSource;
 };
@@ -50,6 +52,7 @@ export function mergeDecor(
     byId.set(item.id, {
       ...fields,
       image,
+      ...(uri && base?.image ? { placeholder: base.image } : {}),
       ...(aspect !== undefined ? { aspect } : {}),
       ...(sound !== undefined ? { sound } : {}),
       stage: fields.stage ?? base?.stage,

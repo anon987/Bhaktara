@@ -246,6 +246,21 @@ const TemplePage = memo(function TemplePage({
     >
       {/* Images get explicit sizes: a bundled image styled only to fill
           its parent draws at its pixel size on Fabric. */}
+      {item.placeholder && (
+        <Image
+          accessible={false}
+          source={item.placeholder}
+          resizeMode="stretch"
+          fadeDuration={0}
+          style={{
+            position: "absolute",
+            left: view.image.x,
+            top: view.image.y,
+            width: view.image.width,
+            height: view.image.height,
+          }}
+        />
+      )}
       <Image
         accessible={false}
         source={item.image}
