@@ -529,6 +529,7 @@ export function MandirScreen() {
                 bell={bell}
                 ringKey={bellKey}
                 reduced={reduced}
+                ceiling={murti?.y}
               />
               <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
                 <PujaScene

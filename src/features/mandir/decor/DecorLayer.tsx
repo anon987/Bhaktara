@@ -36,6 +36,7 @@ export function DecorLayer({
   bell,
   ringKey,
   reduced,
+  ceiling,
 }: {
   width: number;
   height: number;
@@ -43,6 +44,8 @@ export function DecorLayer({
   bell: MandirDecor | null;
   ringKey: number;
   reduced: boolean;
+  // The top of the murti: lights hung from the top stay above it.
+  ceiling?: number;
 }) {
   const tilt = useTilt(!reduced);
   const front = useAnimatedStyle(() => ({
@@ -58,6 +61,7 @@ export function DecorLayer({
     >
       {light && (
         <Lights
+          ceiling={ceiling}
           key={light.id}
           width={width}
           height={height}
@@ -84,11 +88,13 @@ function Lights({
   height,
   light,
   reduced,
+  ceiling,
 }: {
   width: number;
   height: number;
   light: MandirDecor;
   reduced: boolean;
+  ceiling?: number;
 }) {
   const [measured, setMeasured] = useState<number | undefined>();
   const boxes = lightBoxes(
@@ -96,6 +102,7 @@ function Lights({
     height,
     light.placement ?? "top",
     light.aspect ?? measured ?? 1,
+    ceiling,
   );
   // Opacity only, on the UI thread; still when motion is reduced.
   const glow = useSharedValue(1);

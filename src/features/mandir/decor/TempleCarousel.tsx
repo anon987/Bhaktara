@@ -115,11 +115,30 @@ function TempleCarouselView({
   const list = useRef<FlatList<MandirDecor>>(null);
   // The page the list is showing (set by swipes and by the arrows).
   const shown = useRef(page);
+  // Where the pager is being taken (arrows, or a page chosen elsewhere): the
+  // pages it passes on the way are not "reached".
+  const target = useRef<number | null>(null);
   useEffect(() => {
     if (shown.current === page) return;
+    const far = Math.abs(page - shown.current) > 1;
     shown.current = page;
-    list.current?.scrollToOffset({ offset: page * width, animated: true });
-  }, [page, width]);
+    // A jump of more than one page goes straight there.
+    target.current = far ? null : page;
+    if (far) scrollX.set(page * width);
+    list.current?.scrollToOffset({ offset: page * width, animated: !far });
+  }, [page, width, scrollX]);
+  // The list can only be scrolled once its pages are laid out: open on the
+  // saved temple then (an earlier scroll is ignored).
+  const placed = useRef(false);
+  const placeOnce = () => {
+    if (placed.current || width <= 0) return;
+    placed.current = true;
+    scrollX.set(shown.current * width);
+    list.current?.scrollToOffset({
+      offset: shown.current * width,
+      animated: false,
+    });
+  };
   // A new width (rotation, first layout) keeps the same page in view. The
   // scroll position starts there too (no scroll event reports a list that
   // opens on a later page).
@@ -137,10 +156,10 @@ function TempleCarouselView({
     },
   });
   const last = temples.length - 1;
-  // Where an arrow is taking the pager (fast taps add up).
-  const target = useRef<number | null>(null);
   const settleIndex = (raw: number) => {
     const index = Math.max(0, Math.min(last, raw));
+    // On the way to a target: only the target counts.
+    if (target.current !== null && index !== target.current) return;
     if (target.current === index) target.current = null;
     if (index === shown.current) return;
     shown.current = index;
@@ -237,6 +256,11 @@ function TempleCarouselView({
       onScroll={onScroll}
       scrollEventThrottle={16}
       onMomentumScrollEnd={(event) => settle(event.nativeEvent.contentOffset.x)}
+      onContentSizeChange={placeOnce}
+      // A finger takes over from any arrow or jump in progress.
+      onScrollBeginDrag={() => {
+        target.current = null;
+      }}
       style={{ width, height }}
     />
   );

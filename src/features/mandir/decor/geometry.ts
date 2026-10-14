@@ -73,6 +73,8 @@ export function lightBoxes(
   height: number,
   placement: "top" | "bottom" | "sides" = "top",
   aspect = 1,
+  // The top of the murti: a light hung from the top stops above it.
+  ceiling?: number,
 ): Box[] {
   if (placement === "sides") {
     let h = height * 0.42;
@@ -87,7 +89,13 @@ export function lightBoxes(
       { x: width - w, y, width: w, height: h },
     ];
   }
-  const max = placement === "top" ? height * 0.36 : height * 0.2;
+  const max =
+    placement === "top"
+      ? Math.max(
+          height * 0.12,
+          Math.min(height * 0.36, (ceiling ?? height) - height * 0.02),
+        )
+      : height * 0.2;
   let w = width;
   let h = w / aspect;
   if (h > max) {
