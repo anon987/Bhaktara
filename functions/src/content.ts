@@ -79,6 +79,8 @@ function publicFields(
     type: draft.type,
     title: draft.title,
     description: draft.description,
+    // Stored only when there are lyrics, so plain items stay small.
+    lyrics: draft.lyrics.hi || draft.lyrics.en ? draft.lyrics : undefined,
     slug: id,
     audioLanguage: draft.audioLanguage,
     deityIds: draft.deityIds,
@@ -182,6 +184,15 @@ export async function createContent(actor: Actor, data: unknown) {
   });
 }
 
+const lyricsOmitted = (data: unknown) => {
+  const draft = (data as { draft?: unknown } | null)?.draft;
+  return (
+    typeof draft === "object" &&
+    draft !== null &&
+    (draft as { lyrics?: unknown }).lyrics === undefined
+  );
+};
+
 // Fields are edited only in DRAFT (live items are moved back first), so an
 // edit can never silently change what users see.
 export async function updateContent(actor: Actor, data: unknown) {
@@ -204,6 +215,13 @@ export async function updateContent(actor: Actor, data: unknown) {
     const deities = await loadDeities(tx, draft.deityIds);
     assertKnownDeities(draft, deities);
     const previous = draftFromDocuments(content, stored);
+    // A save that leaves lyrics out (an editor without the lyrics field)
+    // keeps the stored ones; sending empty lyrics clears them.
+    if (lyricsOmitted(data) && previous.lyrics)
+      draft.lyrics = {
+        hi: previous.lyrics.hi ?? "",
+        en: previous.lyrics.en ?? "",
+      };
     const changedFields = (Object.keys(draft) as (keyof ContentDraft)[])
       .filter((key) => stable(previous[key]) !== stable(draft[key]))
       .sort();

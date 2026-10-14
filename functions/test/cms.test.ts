@@ -388,6 +388,80 @@ describe("content workflow", () => {
     );
   });
 
+  test("lyrics are optional and round-trip through save and publish", async () => {
+    const contentId = "cms-lyrics";
+    const lyrics = {
+      hi: "[Intro — Female Lead]\nसखी री, आँगन सजा दो,\nआज हनुमत का गुण गाएँ।",
+      en: "",
+    };
+    const bhajan = (overrides: Partial<ContentDraftInput> = {}) =>
+      draft({
+        type: "BHAJAN",
+        saveGate: "FREE",
+        media: {
+          thumb: { key: "bhajan/cms-lyrics/thumb.0123abcd.webp" },
+          stream: { key: "bhajan/cms-lyrics/stream.0123abcd.m4a" },
+        },
+        ...overrides,
+      });
+    const stored = async () =>
+      (await db.doc(`content/${contentId}`).get()).data()!;
+    // Drafts without lyrics stay as they were: no lyrics field is stored.
+    await users.EDITOR.call("createContent", {
+      id: contentId,
+      draft: bhajan(),
+    });
+    assert.equal((await stored()).lyrics, undefined);
+
+    await users.EDITOR.call("updateContent", {
+      id: contentId,
+      draft: bhajan({ lyrics }),
+    });
+    assert.deepEqual((await stored()).lyrics, lyrics);
+    const changed = async () =>
+      (await auditFor(contentId)).at(-1)!.afterSummary
+        .changedFields as string[];
+    assert.ok((await changed()).includes("lyrics"));
+
+    await users.EDITOR.call("transitionContentStatus", {
+      contentId,
+      to: "READY",
+    });
+    await users.CONTENT_ADMIN.call("transitionContentStatus", {
+      contentId,
+      to: "PUBLISHED",
+    });
+    const live = await stored();
+    assert.equal(live.status, "PUBLISHED");
+    assert.deepEqual(live.lyrics, lyrics);
+
+    // Back to DRAFT, add the Hinglish lyrics, and clear them again.
+    await users.CONTENT_ADMIN.call("transitionContentStatus", {
+      contentId,
+      to: "DRAFT",
+    });
+    const both = { ...lyrics, en: "Sakhi ri, aangan saja do," };
+    await users.EDITOR.call("updateContent", {
+      id: contentId,
+      draft: bhajan({ lyrics: both }),
+    });
+    assert.deepEqual((await stored()).lyrics, both);
+    // An editor that does not send lyrics keeps the stored ones.
+    await users.EDITOR.call("updateContent", {
+      id: contentId,
+      draft: bhajan({ tags: ["sakhi"] }),
+    });
+    assert.deepEqual((await stored()).lyrics, both);
+    assert.ok((await changed()).includes("tags"));
+    assert.ok(!(await changed()).includes("lyrics"));
+    // Sending empty lyrics clears them.
+    await users.EDITOR.call("updateContent", {
+      id: contentId,
+      draft: bhajan({ tags: ["sakhi"], lyrics: { hi: "", en: "" } }),
+    });
+    assert.equal((await stored()).lyrics, undefined);
+  });
+
   test("updates record changed fields; READY items are locked; invalid moves fail", async () => {
     await users.EDITOR.call("updateContent", {
       id,

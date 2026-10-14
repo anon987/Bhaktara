@@ -177,6 +177,7 @@ export const strings = {
     "ऑडियो लोड नहीं हो सका। इंटरनेट कनेक्शन जाँचें और फिर प्रयास करें।",
   ],
   buffering: ["Loading…", "लोड हो रहा है…"],
+  lyrics: ["Lyrics", "बोल"],
   seekBack: ["Back 15 seconds", "15 सेकंड पीछे"],
   seekForward: ["Forward 15 seconds", "15 सेकंड आगे"],
   playbackPosition: ["Playback position", "चलने की स्थिति"],

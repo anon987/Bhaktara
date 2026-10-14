@@ -24,6 +24,8 @@ export type DraftForm = {
   type: ContentType;
   title: { hi: string; en: string };
   description: { hi: string; en: string };
+  // Song lyrics: Hindi (Devanagari) and Hinglish (Roman script).
+  lyrics: { hi: string; en: string };
   audioLanguage: string;
   deityIds: string[];
   categoryIds: string[];
@@ -48,6 +50,7 @@ export function emptyForm(type: ContentType = "BHAJAN"): DraftForm {
     type,
     title: { hi: "", en: "" },
     description: { hi: "", en: "" },
+    lyrics: { hi: "", en: "" },
     audioLanguage: "",
     deityIds: [],
     categoryIds: [],
@@ -78,6 +81,7 @@ export function formFromDraft(draft: ContentDraftInput): DraftForm {
     type: draft.type,
     title: { ...draft.title },
     description: { ...draft.description },
+    lyrics: { hi: draft.lyrics?.hi ?? "", en: draft.lyrics?.en ?? "" },
     audioLanguage: (draft.audioLanguage as string | undefined) ?? "",
     deityIds: [...draft.deityIds],
     categoryIds: [...draft.categoryIds],
@@ -113,6 +117,7 @@ export function draftFromForm(form: DraftForm): ContentDraftInput {
     type: form.type,
     title: { ...form.title },
     description: { ...form.description },
+    lyrics: { ...form.lyrics },
     audioLanguage: form.audioLanguage.trim() || undefined,
     deityIds: form.deityIds,
     categoryIds: form.categoryIds,

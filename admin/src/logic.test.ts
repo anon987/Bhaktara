@@ -106,12 +106,16 @@ describe("draft form", () => {
       sourceTextRef: "Tulsidas",
       checklist: { titleChecked: true },
       media: { stream: { key: "bhajan/x/stream.abcd1234.m4a" } },
+      lyrics: { hi: "सखी री, आँगन सजा दो,", en: "Sakhi ri, aangan saja do," },
     });
     const form = formFromDraft(stored);
     form.tags = ["aarti"];
     const draft = draftFromForm(form);
     expect(draft.private).toEqual(stored.private);
     expect(draft.media).toEqual(stored.media);
+    expect(draft.lyrics).toEqual(stored.lyrics);
+    // Drafts saved before lyrics existed load with empty lyrics.
+    expect(formFromDraft({ ...stored, lyrics: undefined }).lyrics).toEqual({ hi: "", en: "" });
   });
 
   it("generates a slug ID from the English title", () => {

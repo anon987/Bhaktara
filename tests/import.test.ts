@@ -249,3 +249,27 @@ test("documents carry derived fields and parse as app content", () => {
     }).content.saveGate,
   ).toBe("REWARDED");
 });
+
+test("optional lyrics columns are imported, and kept when a row has none", () => {
+  const build = (
+    record: Record<string, string>,
+    existing: Parameters<typeof buildDocuments>[0]["existing"],
+  ) =>
+    buildDocuments({
+      row: parseRow({ ...wallpaper, ...record }).row!,
+      media,
+      deities,
+      existing,
+      publishReady: false,
+      now: "NOW",
+    }).content;
+  expect(unknownColumns(["lyrics_hi", "lyrics_en"])).toEqual([]);
+  const withLyrics = build({ lyrics_hi: "सखी री\nआँगन सजा दो" }, null);
+  expect(withLyrics.lyrics).toEqual({ hi: "सखी री\nआँगन सजा दो", en: "" });
+  expect(
+    contentSchema.parse({ ...withLyrics, id: "wallpaper-hanuman-dawn" }).lyrics,
+  ).toEqual({ hi: "सखी री\nआँगन सजा दो", en: "" });
+  expect(build({}, null)).not.toHaveProperty("lyrics");
+  const stored = { hi: "सखी री", en: "Sakhi ri" };
+  expect(build({}, { status: "READY", lyrics: stored }).lyrics).toEqual(stored);
+});

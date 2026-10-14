@@ -11,6 +11,8 @@ import { fixtures } from "../src/repositories/fixtures";
 import { localStore, initialState } from "../src/services/storage/localStore";
 import { analytics } from "../src/services/analytics";
 import { Content } from "../src/domain/models";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PlayerScreen } from "../src/features/player/PlayerScreen";
 
 // A controllable stand-in for expo-audio's native player.
 type Listener = (status: Record<string, unknown>) => void;
@@ -187,4 +189,74 @@ test("a stream that never loads becomes an error that can be retried", async () 
   } finally {
     jest.useRealTimers();
   }
+});
+
+const metrics = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
+const sampleLyrics = `[Intro — Female Lead]
+सखी री, आँगन सजा दो,
+आज हनुमत का गुण गाएँ।
+
+[Chorus — Lead and Female Group]
+मेरे आँगन भजन की रात,
+आओ सखियों, बजाओ ताली।`;
+async function renderPlayerScreen(item: Content) {
+  const screen = render(
+    <SafeAreaProvider initialMetrics={metrics}>
+      <AppProvider>
+        <PlayerProvider>
+          <Probe />
+          <PlayerScreen
+            navigation={{ goBack: jest.fn() } as never}
+            route={{ key: "Player", name: "Player" } as never}
+          />
+        </PlayerProvider>
+      </AppProvider>
+    </SafeAreaProvider>,
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+  await waitFor(() => expect(handle.current).not.toBeNull());
+  act(() => handle.current!.load(item, "explore"));
+  return screen;
+}
+
+test("the player shows the lyrics stanzas without the section notes", async () => {
+  // The app is in English and the Hinglish lyrics are empty: Hindi is shown.
+  const screen = await renderPlayerScreen({
+    ...streamable,
+    lyrics: { hi: sampleLyrics, en: "" },
+  });
+  expect(screen.getByTestId("player-lyrics")).toBeTruthy();
+  expect(screen.getByText("Lyrics")).toBeTruthy();
+  expect(
+    screen.getByText("सखी री, आँगन सजा दो,\nआज हनुमत का गुण गाएँ।", {
+      normalizer: (text) => text,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByText("मेरे आँगन भजन की रात,\nआओ सखियों, बजाओ ताली।", {
+      normalizer: (text) => text,
+    }),
+  ).toBeTruthy();
+  expect(screen.queryByText(/Intro|Chorus|\[/)).toBeNull();
+});
+
+test("the player prefers the app language and hides an empty lyrics section", async () => {
+  const screen = await renderPlayerScreen({
+    ...streamable,
+    lyrics: { hi: sampleLyrics, en: "[Intro]\nSakhi ri, aangan saja do," },
+  });
+  expect(screen.getByText("Sakhi ri, aangan saja do,")).toBeTruthy();
+  expect(screen.queryByText(/सखी री/)).toBeNull();
+  act(() =>
+    handle.current!.load(
+      { ...streamable, id: "plain", lyrics: { hi: "[Intro]", en: "" } },
+      "explore",
+    ),
+  );
+  expect(screen.queryByTestId("player-lyrics")).toBeNull();
 });

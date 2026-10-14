@@ -14,3 +14,9 @@ export {
   type MediaVariant,
   type MediaVariantName,
 } from "../../src/domain/media";
+export {
+  cleanLyricsForDisplay,
+  LYRICS_MAX_LENGTH,
+  lyricsForLanguage,
+  type Lyrics,
+} from "../../src/domain/lyrics";
