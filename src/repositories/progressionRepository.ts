@@ -12,8 +12,6 @@ import {
   GamificationConfig,
   gamificationConfigSchema,
   levelProgress,
-  MandirVisitInput,
-  MandirVisitResult,
   PracticeDay,
   PracticeResult,
   ProgressCounters,
@@ -85,9 +83,6 @@ export interface ProgressionRepository {
     bhaktiDay?: string;
     itemIds: string[];
   }): Promise<PracticeResult>;
-  // The diya lit in the Mandir tab: the daily Mandir visit (D-058). Safe to
-  // call on every lighting; only the first of the practice day is counted.
-  recordMandirVisit(input: MandirVisitInput): Promise<MandirVisitResult>;
   load(timezone: string): Promise<ProgressSnapshot>;
 }
 
@@ -171,7 +166,6 @@ export function createProgressionRepository(
     startSession: (input) => call("startSession", input),
     completeSession: (input) => call("completeSession", input),
     completePrayer: (input) => call("completePrayerChecklist", input),
-    recordMandirVisit: (input) => call("recordMandirVisit", input),
     async load(timezone) {
       const id = await uid();
       const now = new Date();
