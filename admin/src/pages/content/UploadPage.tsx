@@ -39,14 +39,23 @@ import { MediaThumb } from "../../components/panel/media";
 import { AudioPlayer, audioVariant, isAudio, VisualTile } from "../../components/panel/preview";
 import { typeInfo } from "./ContentLibraryPage";
 import { localizeError } from "../../content/localize";
+import { LyricsField } from "../../components/panel/LyricsField";
 import {
+  eachLimit,
+  hasLyrics,
+  localizeRowLyrics,
   localizeRowTitles,
   needsLocalizing,
-  rowFromPlan,
+  needsLyrics,
+  needsTags,
+  readRowTags,
+  replanRow,
   runUpload,
-  saveTitles,
+  saveRowText,
   uploadsUnavailable,
+  withLocalizedLyrics,
   withLocalizedTitles,
+  withTags,
   type BatchDefaults,
   type UploadRow,
 } from "./uploadPipeline";
@@ -134,11 +143,23 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
 
   const replan = (nextType: ContentType, all: File[]) => {
     const plan = planItems(nextType, all);
-    // Keep rows already started; re-plan only the waiting ones.
+    // Keep rows already started; re-plan only the waiting ones, keeping what
+    // they already have (titles, lyrics, tags, album art).
     const started = rowsRef.current.filter((row) => row.stage !== "waiting");
     const startedNames = new Set(started.map((row) => row.name));
-    commit([...started, ...plan.items.filter((item) => !startedNames.has(item.name)).map(rowFromPlan)]);
+    const waiting = new Map(rowsRef.current.filter((row) => row.stage === "waiting").map((row) => [row.name, row]));
+    commit([
+      ...started,
+      ...plan.items.filter((item) => !startedNames.has(item.name)).map((item) => replanRow(item, waiting.get(item.name))),
+    ]);
     setSkipped(plan.skipped);
+  };
+  // After files are added: read the m4a tags first (their titles replace
+  // the file names), then Gemini fills the titles and lyrics.
+  const prepare = async (forType: ContentType) => {
+    await readTags(forType);
+    void fillTitles(forType, true);
+    void fillLyrics(forType, true);
   };
   const addFiles = (incoming: File[]) => {
     const known = new Set(files.map((file) => `${file.name}:${file.size}`));
@@ -146,13 +167,88 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
     setFiles(all);
     setNotice(null);
     replan(type, all);
-    void fillTitles(type, true);
+    void prepare(type);
   };
   const chooseType = (next: ContentType) => {
     if (running) return;
     setType(next);
     replan(next, files);
-    void fillTitles(next, true);
+    void prepare(next);
+  };
+
+  // Title, lyrics and album art from each m4a's tags, 4 files at a time.
+  const [reading, setReading] = useState(0);
+  const readingKeys = useRef(new Set<string>());
+  const readTags = async (forType: ContentType) => {
+    const pending = rowsRef.current.filter((row) => needsTags(row) && !readingKeys.current.has(row.key));
+    if (!pending.length) return;
+    const keys = new Set(pending.map((row) => row.key));
+    keys.forEach((key) => readingKeys.current.add(key));
+    if (hasLyrics(forType))
+      commit(rowsRef.current.map((row) => (keys.has(row.key) ? { ...row, lyricsStatus: "reading" } : row)));
+    setReading((count) => count + pending.length);
+    await readRowTags(pending, (key, file, tags) => {
+      readingKeys.current.delete(key);
+      setReading((count) => count - 1);
+      commit(
+        rowsRef.current.map((row) => {
+          if (row.key !== key) return row;
+          const next = withTags(row, file, tags, forType);
+          return next.lyricsStatus === "reading" ? { ...next, lyricsStatus: undefined } : next;
+        }),
+      );
+    });
+  };
+
+  // Gemini writes the missing side of each row's lyrics (Hindi ⇄ Hinglish):
+  // one call per row, two at a time, automatically after the tags are read
+  // and again from the buttons. Typed sides are never replaced.
+  const fillRowLyrics = async (key: string, forType: ContentType, quiet = false): Promise<"filled" | "skipped" | Error> => {
+    const row = rowsRef.current.find((item) => item.key === key);
+    if (!row || !needsLyrics(row, forType)) return "skipped";
+    updateRow(key, { lyricsStatus: "writing" });
+    try {
+      const answer = await localizeRowLyrics(api, row);
+      const latest = rowsRef.current.find((item) => item.key === key);
+      if (!latest) return "skipped";
+      const next = withLocalizedLyrics(latest, answer);
+      commit(rowsRef.current.map((item) => (item.key !== key ? item : next ? { ...next, lyricsStatus: "done" } : { ...item, lyricsStatus: undefined })));
+      return next ? "filled" : "skipped";
+    } catch (error) {
+      updateRow(key, { lyricsStatus: "failed" });
+      if (!quiet) toast.error("Gemini could not write the lyrics", { id: "gemini-lyrics", description: localizeError(error) });
+      return error instanceof Error ? error : new Error(String(error));
+    }
+  };
+  const [writingLyrics, setWritingLyrics] = useState(false);
+  const toFillLyrics = useMemo(() => rows.filter((row) => needsLyrics(row, type)).length, [rows, type]);
+  const fillLyrics = async (forType: ContentType, auto: boolean) => {
+    // Automatic runs skip rows that failed; the button retries them.
+    const keys = rowsRef.current
+      .filter((row) => needsLyrics(row, forType) && !(auto && row.lyricsStatus === "failed"))
+      .map((row) => row.key);
+    if (!keys.length) {
+      if (!auto) toast.info("Every song with lyrics already has both Hindi and Hinglish.", { id: "gemini-lyrics" });
+      return;
+    }
+    setWritingLyrics(true);
+    let filled = 0;
+    const failures: unknown[] = [];
+    try {
+      await eachLimit(keys, 2, async (key) => {
+        const result = await fillRowLyrics(key, forType, true);
+        if (result === "filled") filled += 1;
+        else if (result instanceof Error) failures.push(result);
+      });
+    } finally {
+      setWritingLyrics(false);
+    }
+    if (failures.length)
+      toast.error(`Gemini could not write the lyrics for ${failures.length} song${failures.length === 1 ? "" : "s"}`, {
+        id: "gemini-lyrics",
+        description: `${localizeError(failures[0])} Those rows are unchanged; try “Fill lyrics with Gemini” again.`,
+      });
+    else if (filled) toast.success(`Gemini wrote the lyrics for ${filled} song${filled === 1 ? "" : "s"}. Check them before uploading.`, { id: "gemini-lyrics" });
   };
   const removeRow = (key: string) => {
     const row = rowsRef.current.find((item) => item.key === key);
@@ -357,6 +453,28 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
                     aria-label="Gemini progress"
                   />
                 )}
+                {hasLyrics(type) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={running || writingLyrics || reading > 0 || toFillLyrics === 0}
+                      onClick={() => void fillLyrics(type, false)}
+                    >
+                      {writingLyrics ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                      {writingLyrics ? "Writing lyrics…" : "Fill lyrics with Gemini"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground" role="status">
+                      {reading > 0
+                        ? `Reading the tags of ${reading} m4a file${reading === 1 ? "" : "s"}…`
+                        : writingLyrics
+                          ? "Gemini is writing the other side of the lyrics, two songs at a time…"
+                          : toFillLyrics
+                            ? `${toFillLyrics} song${toFillLyrics === 1 ? " has" : "s have"} lyrics in one language only. Hindi lyrics get Hinglish; Hinglish gets Hindi.`
+                            : "Lyrics come from the m4a tags; open a row to add or edit them."}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             {rows.map((row) => (
@@ -367,7 +485,10 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
                 busy={running}
                 onChange={(patch) => updateRow(row.key, patch)}
                 onRemove={() => removeRow(row.key)}
-                onSaved={() => updateRow(row.key, { titleUnsaved: false })}
+                onSaved={() => updateRow(row.key, { titleUnsaved: false, lyricsUnsaved: false })}
+                onFillLyrics={async () => {
+                  await fillRowLyrics(row.key, type);
+                }}
                 api={api}
               />
             ))}
@@ -391,7 +512,7 @@ export function UploadPage({ type: initialType }: { type?: ContentType }) {
               <Button variant="outline" onClick={() => navigate(paths.page(sectionForType(type)))}><ExternalLink /> Open {info.many}</Button>
             )}
             {(running || counts.waiting > 0) && (
-              <Button disabled={running || !!filling} onClick={() => void start()}>
+              <Button disabled={running || !!filling || reading > 0} onClick={() => void start()}>
                 {running ? <Loader2 className="animate-spin" /> : <UploadCloud />}
                 {running ? "Uploading…" : `Upload ${counts.waiting} ${counts.waiting === 1 ? info.one : info.many.toLowerCase()}`}
               </Button>
@@ -410,6 +531,7 @@ function UploadRowCard({
   onChange,
   onRemove,
   onSaved,
+  onFillLyrics,
   api,
 }: {
   row: UploadRow;
@@ -418,25 +540,35 @@ function UploadRowCard({
   onChange: (patch: Partial<UploadRow>) => void;
   onRemove: () => void;
   onSaved: () => void;
+  onFillLyrics: () => Promise<void>;
   api: ReturnType<typeof useAdmin>["api"];
 }) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
   const done = row.stage === "done";
   const editable = row.stage === "waiting" || row.stage === "error" || done;
+  const locked = !editable || (busy && !done);
+  const songLyrics = hasLyrics(type);
   // The side typed into is the editor's: Gemini never overwrites it.
   const setTitle = (side: "hi" | "en", value: string) => {
     onChange({ title: { ...row.title, [side]: value }, typed: { ...row.typed, [side]: true } });
+    if (done) setDirty(true);
+  };
+  const setLyrics = (lyrics: UploadRow["lyrics"]) => {
+    const typed = { ...row.lyricsTyped };
+    for (const side of ["hi", "en"] as const) if (lyrics[side] !== row.lyrics[side]) typed[side] = true;
+    onChange({ lyrics, lyricsTyped: typed });
     if (done) setDirty(true);
   };
   const save = async () => {
     if (!row.contentId) return;
     setSaving(true);
     try {
-      await saveTitles(api, row.contentId, row.title);
+      await saveRowText(api, row.contentId, { title: row.title, ...(songLyrics ? { lyrics: row.lyrics } : {}) });
       setDirty(false);
       onSaved();
-      toast.success("Titles saved");
+      toast.success(songLyrics ? "Titles and lyrics saved" : "Titles saved");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save");
     } finally {
@@ -466,15 +598,15 @@ function UploadRowCard({
           </div>
         </div>
         {type === "WALLPAPER" ? <div className="flex-1" /> : <div className="grid flex-1 gap-2 sm:grid-cols-2">
-          <Input aria-label={`English title for ${row.name}`} value={row.title.en} disabled={!editable || busy && !done} placeholder="English title" onChange={(event) => setTitle("en", event.target.value)} />
-          <Input aria-label={`Hindi title for ${row.name}`} lang="hi" value={row.title.hi} disabled={!editable || busy && !done} placeholder="हिन्दी शीर्षक" onChange={(event) => setTitle("hi", event.target.value)} />
+          <Input aria-label={`English title for ${row.name}`} value={row.title.en} disabled={locked} placeholder="English title" onChange={(event) => setTitle("en", event.target.value)} />
+          <Input aria-label={`Hindi title for ${row.name}`} lang="hi" value={row.title.hi} disabled={locked} placeholder="हिन्दी शीर्षक" onChange={(event) => setTitle("hi", event.target.value)} />
         </div>}
         <div className="flex items-center gap-2 lg:w-72 lg:justify-end">
           {done && isAudio(type) && (
             <AudioPlayer iconOnly mediaKey={audioVariant(type, row.media)?.key} title={title} />
           )}
           <StageBadge row={row} />
-          {done && (dirty || row.titleUnsaved) && (
+          {done && (dirty || row.titleUnsaved || row.lyricsUnsaved) && (
             <Button size="sm" disabled={saving} onClick={() => void save()}><Save /> Save</Button>
           )}
           {done && row.contentId && (
@@ -490,8 +622,58 @@ function UploadRowCard({
       {(row.stage === "uploading" || row.stage === "rendering") && (
         <Progress value={row.stage === "rendering" ? 100 : row.progress * 100} className={cn("mt-2 h-1", row.stage === "rendering" && "animate-pulse")} aria-label={`Progress of ${row.name}`} />
       )}
+      {row.coverFromFile && row.extra && !done && (
+        <AlbumArt file={row.extra} name={row.name} disabled={locked} onRemove={() => onChange({ extra: undefined, coverFromFile: false })} />
+      )}
+      {songLyrics && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className={cn("text-xs", row.lyricsStatus === "failed" ? "text-destructive" : "text-muted-foreground")} aria-label={`Lyrics for ${row.name}`}>
+            {lyricsSummary(row)}
+          </p>
+          <Button variant="ghost" size="xs" aria-expanded={lyricsOpen} onClick={() => setLyricsOpen(!lyricsOpen)}>
+            {lyricsOpen ? "Hide lyrics" : row.lyrics.hi || row.lyrics.en ? "Edit lyrics" : "Add lyrics"}
+            <ChevronDown className={cn("transition-transform", lyricsOpen && "rotate-180")} />
+          </Button>
+        </div>
+      )}
+      {songLyrics && lyricsOpen && (
+        <fieldset disabled={locked} className="mt-3 rounded-lg border bg-muted/20 p-3">
+          <LyricsField value={row.lyrics} onChange={setLyrics} onFillHinglish={onFillLyrics} busy={row.lyricsStatus === "writing" || locked} />
+        </fieldset>
+      )}
       {row.error && <p className="mt-2 text-sm text-destructive">{row.error}</p>}
       {done && row.warnings.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{row.warnings.join(" ")}</p>}
+    </div>
+  );
+}
+
+// "Lyrics: Hindi ✓ · Hinglish —", or what is happening to them.
+function lyricsSummary(row: UploadRow): string {
+  const has = (side: "hi" | "en") => (row.lyrics[side].trim() ? "✓" : "—");
+  if (row.lyricsStatus === "reading") return "Lyrics: reading…";
+  if (row.lyricsStatus === "writing") return `Lyrics: writing ${row.lyrics.hi.trim() ? "Hinglish" : "Hindi"}…`;
+  if (!row.lyrics.hi.trim() && !row.lyrics.en.trim()) return row.lyricsStatus === "failed" ? "Lyrics: failed" : "Lyrics: none";
+  const sides = `Lyrics: Hindi ${has("hi")} · Hinglish ${has("en")}`;
+  return row.lyricsStatus === "done" ? `${sides} · done` : row.lyricsStatus === "failed" ? `${sides} · failed` : sides;
+}
+
+// The cover found inside the m4a, shown until the row is uploaded.
+function AlbumArt({ file, name, disabled, onRemove }: { file: File; name: string; disabled: boolean; onRemove: () => void }) {
+  // The object URL goes straight onto the <img> and is revoked with it.
+  const image = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    if (!image.current || typeof URL.createObjectURL !== "function") return;
+    const url = URL.createObjectURL(file);
+    image.current.src = url;
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <img ref={image} alt={`Album art from ${name}`} className="h-10 w-[4.5rem] shrink-0 rounded-md border bg-muted object-cover" />
+      <span className="text-xs text-muted-foreground">Album art from file</span>
+      <Button variant="ghost" size="xs" disabled={disabled} aria-label={`Remove the album art of ${name}`} onClick={onRemove}>
+        <Trash2 /> Remove
+      </Button>
     </div>
   );
 }

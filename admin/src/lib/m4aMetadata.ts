@@ -1,10 +1,15 @@
-// Reads iTunes-style tags (title, artist, lyrics) from an .m4a/.mp4 file in
-// the browser. Only the atom headers and the `moov` box are read (Blob.slice),
-// never the audio in `mdat`, so multi-megabyte files cost a few small reads.
-// Tags live in moov/udta/meta/ilst/{©nam,©ART,©lyr}/data.
+// Reads iTunes-style tags (title, artist, lyrics, album art) from an
+// .m4a/.mp4 file in the browser. Only the atom headers and the `moov` box are
+// read (Blob.slice), never the audio in `mdat`, so multi-megabyte files cost a
+// few small reads. Tags live in moov/udta/meta/ilst/{©nam,©ART,©lyr,covr}/data.
 export { cleanLyricsForDisplay } from "../domain";
 
-export type M4aMetadata = { title?: string; artist?: string; lyrics?: string };
+// An .m4a file, by extension or type (browsers say audio/mp4 or audio/x-m4a).
+export const isM4a = (file: File) =>
+  /\.m4a$/i.test(file.name) || file.type === "audio/mp4" || file.type === "audio/x-m4a";
+
+export type M4aCover ={ mime: "image/jpeg" | "image/png"; bytes: Uint8Array };
+export type M4aMetadata = { title?: string; artist?: string; lyrics?: string; cover?: M4aCover };
 
 // Top-level atoms that can start an MP4/QuickTime file.
 const firstAtoms = new Set(["ftyp", "moov", "mdat", "free", "skip", "wide", "uuid", "pdin", "styp"]);
@@ -93,6 +98,20 @@ function itemText(bytes: Uint8Array, item: Atom): string | undefined {
   return text || undefined;
 }
 
+// The image of a covr item: its first `data` atom, type 13 (JPEG) or 14
+// (PNG); other type codes are recognised by the image's magic bytes.
+function itemCover(bytes: Uint8Array, item: Atom): M4aCover | undefined {
+  const data = child(bytes, item, "data");
+  if (!data || data.end - data.start <= 8) return undefined;
+  const typeIndicator = new DataView(bytes.buffer, bytes.byteOffset + data.start, 4).getUint32(0) & 0xffffff;
+  const image = bytes.slice(data.start + 8, data.end);
+  const jpeg = image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
+  const png = image[0] === 0x89 && image[1] === 0x50 && image[2] === 0x4e && image[3] === 0x47;
+  const mime =
+    typeIndicator === 13 ? "image/jpeg" : typeIndicator === 14 ? "image/png" : jpeg ? "image/jpeg" : png ? "image/png" : null;
+  return mime ? { mime, bytes: image } : undefined;
+}
+
 // `meta` is a full box (4 bytes of version and flags before its children),
 // except in some QuickTime files that go straight to `hdlr`.
 function metaChildrenStart(bytes: Uint8Array, meta: Atom) {
@@ -111,6 +130,18 @@ export function parseMoov(bytes: Uint8Array): M4aMetadata {
   const ilst = child(bytes, metaBox, "ilst");
   if (!ilst) return result;
   for (const item of children(bytes, ilst.start, ilst.end)) {
+    if (item.type === "covr") {
+      // Several covers: the first one counts.
+      if (!result.cover) {
+        try {
+          const cover = itemCover(bytes, item);
+          if (cover) result.cover = cover;
+        } catch {
+          // A damaged cover is skipped.
+        }
+      }
+      continue;
+    }
     const field = tags[item.type as keyof typeof tags];
     if (!field || result[field] !== undefined) continue;
     try {
@@ -123,7 +154,7 @@ export function parseMoov(bytes: Uint8Array): M4aMetadata {
   return result;
 }
 
-// Title, artist and lyrics from an m4a file's tags. Returns {} for files that
+// Title, artist, lyrics and album art from an m4a file's tags. Returns {} for files that
 // are not MP4 or have no tags, and never throws: a malformed file yields
 // whatever was found before the damage.
 export async function readM4aMetadata(file: Blob): Promise<M4aMetadata> {

@@ -15,6 +15,15 @@ export function sourceSide(title: Localized): Side | null {
   return hi && !en ? "hi" : en && !hi ? "en" : null;
 }
 
+// The side lyrics belong on: Hindi when most of their letters are
+// Devanagari ("[Chorus]" style section notes in English do not count).
+export function lyricsSide(text: string): Side {
+  const body = text.replace(/^\s*\[[^\]]*\]\s*$/gm, "");
+  const devanagari = body.match(/[ऀ-ॿ]/g)?.length ?? 0;
+  const latin = body.match(/[A-Za-z]/g)?.length ?? 0;
+  return devanagari > latin ? "hi" : "en";
+}
+
 // Gemini's answer for `sent` (the text of `source`) placed into `title`, or
 // null when nothing may change: the source text changed meanwhile, the
 // empty side was filled meanwhile, or the text belongs on the other side but

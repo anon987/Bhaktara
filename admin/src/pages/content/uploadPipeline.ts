@@ -1,11 +1,12 @@
 import { MAX_LOCALIZE_TITLES, type AdminApi, type LocalizedText } from "../../api";
-import { placeLocalized, sourceSide, type Side } from "../../content/localize";
+import { lyricsSide, placeLocalized, sourceSide, type Side } from "../../content/localize";
 import { draftFromForm, emptyForm } from "../../content/draftForm";
-import type { ContentType, UploadMime } from "../../domain";
+import { descriptionRequiredTypes, LYRICS_MAX_LENGTH, uploadKinds, type ContentType, type Lyrics, type UploadMime } from "../../domain";
+import { isM4a, readM4aMetadata, type M4aMetadata } from "../../lib/m4aMetadata";
 import type { MediaInputRole } from "../../../../src/domain/mediaProcessing";
 import { readableError } from "../../errors";
 import type { PanelApi } from "../../panelApi";
-import { deitiesFromPath, roleOf, slugFromFileName, titleFromFileName, type PlannedItem } from "../../components/panel/files";
+import { deitiesFromPath, roleOf, rolesFor, slugFromFileName, titleFromFileName, type PlannedItem } from "../../components/panel/files";
 import type { MediaSet } from "../../components/panel/preview";
 
 // The bulk uploader's steps for one item (D-036 drafts + doc 22 §A4 media):
@@ -31,7 +32,19 @@ export type UploadRow = PlannedItem & {
   titleUnsaved?: boolean;
   // Sides the editor typed into; Gemini never overwrites them.
   typed?: Partial<Record<Side, boolean>>;
+  // Song lyrics (Hindi and Hinglish), from the m4a tags, Gemini or typed.
+  lyrics: Lyrics;
+  // Lyrics sides the editor typed into; Gemini never overwrites them.
+  lyricsTyped?: Partial<Record<Side, boolean>>;
+  lyricsStatus?: LyricsStatus;
+  // Lyrics changed after the draft was created; the row offers Save.
+  lyricsUnsaved?: boolean;
+  // The m4a tags were read (once per row, before Gemini fills anything).
+  tagsRead?: boolean;
+  // `extra` is the album art from the m4a, not an image the operator added.
+  coverFromFile?: boolean;
 };
+export type LyricsStatus = "reading" | "writing" | "done" | "failed";
 export type BatchDefaults = {
   deityIds: string[];
   audioLanguage: string;
@@ -41,22 +54,115 @@ export type BatchDefaults = {
   markReady: boolean;
 };
 
-// A file name in Devanagari only is a Hindi title; anything else starts on
-// the English side. Gemini then fills the other side (and moves a title it
-// reads as the other language).
-export function titleFromName(name: string): UploadRow["title"] {
-  const title = titleFromFileName(name);
-  return /[ऀ-ॿ]/.test(title) && !/[A-Za-z]/.test(title) ? { hi: title, en: "" } : { hi: "", en: title };
-}
+// A title in Devanagari only is Hindi; anything else starts on the English
+// side. Gemini then fills the other side (and moves a title it reads as the
+// other language).
+export const titleSide = (title: string): Side => (/[ऀ-ॿ]/.test(title) && !/[A-Za-z]/.test(title) ? "hi" : "en");
+const titleOnSide = (title: string): UploadRow["title"] =>
+  titleSide(title) === "hi" ? { hi: title, en: "" } : { hi: "", en: title };
+export const titleFromName = (name: string): UploadRow["title"] => titleOnSide(titleFromFileName(name));
+
+// Types that carry song lyrics: the devotional audio types (cms.ts).
+export const hasLyrics = (type: ContentType) => descriptionRequiredTypes.includes(type);
 
 export const rowFromPlan = (item: PlannedItem): UploadRow => ({
   ...item,
   id: slugFromFileName(item.name),
   title: titleFromName(item.name),
+  lyrics: { hi: "", en: "" },
   stage: "waiting",
   progress: 0,
   warnings: [],
 });
+
+const sameFile = (a: File, b: File) => a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+
+// A re-planned item (more files were added) keeps what its waiting row
+// already has: titles, lyrics, the tags read and album art. An image the
+// operator attaches replaces the album art.
+export function replanRow(item: PlannedItem, previous: UploadRow | undefined): UploadRow {
+  const row = rowFromPlan(item);
+  if (!previous || previous.stage !== "waiting" || !sameFile(previous.main, item.main)) return row;
+  const keepCover = !item.extra && previous.coverFromFile && previous.extra;
+  return {
+    ...row,
+    title: previous.title,
+    typed: previous.typed,
+    lyrics: previous.lyrics,
+    lyricsTyped: previous.lyricsTyped,
+    lyricsStatus: previous.lyricsStatus,
+    tagsRead: previous.tagsRead,
+    ...(keepCover ? { extra: previous.extra, coverFromFile: true } : {}),
+  };
+}
+
+// ---- m4a tags --------------------------------------------------------------
+
+// The album art as the row's cover image, named after the row, or null when
+// it is larger than an image upload may be.
+export function coverFile(row: Pick<UploadRow, "id">, cover: NonNullable<M4aMetadata["cover"]>): File | null {
+  const kind = uploadKinds[cover.mime];
+  if (!cover.bytes.length || cover.bytes.length > kind.maxBytes) return null;
+  return new File([cover.bytes as BlobPart], `${row.id}-cover.${kind.ext}`, { type: cover.mime });
+}
+
+// The row with its m4a tags applied:
+// - the title tag replaces the file-name title, on its script's side, unless
+//   the editor typed a title or it was changed (e.g. by Gemini) already;
+// - lyrics go to their script's side when that side is empty and untyped;
+// - album art becomes the cover when the operator attached no image.
+// A row whose file changed meanwhile is returned as it is.
+export function withTags(row: UploadRow, file: File, tags: M4aMetadata, type: ContentType): UploadRow {
+  if (row.main !== file && !sameFile(row.main, file)) return row;
+  const next: UploadRow = { ...row, tagsRead: true };
+  const fromName = titleFromName(row.name);
+  const title = tags.title?.trim().slice(0, 200);
+  if (title && !row.typed?.hi && !row.typed?.en && row.title.hi === fromName.hi && row.title.en === fromName.en)
+    next.title = titleOnSide(title);
+  const lyrics = tags.lyrics?.trim().slice(0, LYRICS_MAX_LENGTH);
+  if (lyrics && hasLyrics(type)) {
+    const side = lyricsSide(lyrics);
+    if (!row.lyrics[side].trim() && !row.lyricsTyped?.[side]) next.lyrics = { ...row.lyrics, [side]: lyrics };
+  }
+  if (tags.cover && !row.extra && rolesFor(type).extra === "image") {
+    const cover = coverFile(row, tags.cover);
+    if (cover) {
+      next.extra = cover;
+      next.coverFromFile = true;
+    }
+  }
+  return next;
+}
+
+// Rows whose m4a tags are still to be read.
+export const needsTags = (row: UploadRow) => !row.tagsRead && row.stage === "waiting" && isM4a(row.main);
+
+// Runs `task` for each item, at most `limit` at a time.
+export async function eachLimit<T>(items: T[], limit: number, task: (item: T) => Promise<void>): Promise<void> {
+  const queue = [...items];
+  const worker = async () => {
+    for (let item = queue.shift(); item !== undefined; item = queue.shift()) await task(item);
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, queue.length) }, worker));
+}
+
+// Reads the tags of every row that needs it (4 files at a time) and hands
+// each result to `apply` as it arrives. A failed read counts as no tags.
+export async function readRowTags(
+  rows: UploadRow[],
+  apply: (key: string, file: File, tags: M4aMetadata) => void,
+  read: (file: Blob) => Promise<M4aMetadata> = readM4aMetadata,
+): Promise<void> {
+  await eachLimit(rows.filter(needsTags), 4, async (row) => {
+    let tags: M4aMetadata = {};
+    try {
+      tags = await read(row.main);
+    } catch {
+      // Nothing found; the row keeps its file-name title.
+    }
+    apply(row.key, row.main, tags);
+  });
+}
 
 const codeOf = (error: unknown) => (error as { code?: string } | null)?.code ?? "";
 
@@ -160,6 +266,7 @@ export async function runUpload(
       }
       const form = emptyForm(type);
       form.title = { hi: row.title.hi.trim(), en: row.title.en.trim() };
+      if (hasLyrics(type)) form.lyrics = { hi: row.lyrics.hi.trim(), en: row.lyrics.en.trim() };
       const named = deitiesFromPath(row.main, deities);
       form.deityIds = named.length ? named : defaults.deityIds;
       form.audioLanguage = defaults.audioLanguage === "none" ? "" : defaults.audioLanguage;
@@ -228,17 +335,28 @@ export function errorText(error: unknown): string {
   return problems ? `${readable.message} ${problems}` : readable.message;
 }
 
-// Saves titles typed after the upload onto the draft.
-export async function saveTitles(api: AdminApi, contentId: string, title: { hi: string; en: string }) {
+// Saves titles and lyrics changed after the upload onto the draft.
+export async function saveRowText(
+  api: AdminApi,
+  contentId: string,
+  text: { title?: { hi: string; en: string }; lyrics?: Lyrics },
+) {
   const record = await api.getContent(contentId);
   if (!record) throw new Error("The item no longer exists.");
-  await api.updateContent(contentId, { ...record.draft, title: { hi: title.hi.trim(), en: title.en.trim() } });
+  const trim = (value: { hi: string; en: string }) => ({ hi: value.hi.trim(), en: value.en.trim() });
+  await api.updateContent(contentId, {
+    ...record.draft,
+    ...(text.title ? { title: trim(text.title) } : {}),
+    ...(text.lyrics ? { lyrics: trim(text.lyrics) } : {}),
+  });
 }
 
 // Rows Gemini fills: one side has a title, the other is empty, and the row is
 // not in the middle of an upload (the draft takes the title when created).
+// An m4a waits for its tags first: the title tag may replace the file name.
 export const needsLocalizing = (row: UploadRow) => {
   if (row.stage !== "waiting" && row.stage !== "error" && row.stage !== "done") return false;
+  if (needsTags(row)) return false;
   const source = sourceSide(row.title);
   return !!source && row.title[source].trim().length <= 200;
 };
@@ -284,4 +402,39 @@ export function withLocalizedTitles(rows: UploadRow[], answers: LocalizedRow[]):
     return { ...row, title, titleUnsaved: row.contentId ? true : row.titleUnsaved };
   });
   return { rows: next, count };
+}
+
+// ---- Lyrics ----------------------------------------------------------------
+
+// Rows Gemini writes the other side of the lyrics for: lyrics on one side
+// only, tags read, and not already being written. Rows with both sides are
+// never sent again (each call costs).
+export const needsLyrics = (row: UploadRow, type: ContentType) => {
+  if (!hasLyrics(type) || needsTags(row) || row.lyricsStatus === "writing") return false;
+  if (row.stage !== "waiting" && row.stage !== "error" && row.stage !== "done") return false;
+  const source = sourceSide(row.lyrics);
+  return !!source && row.lyrics[source].trim().length <= LYRICS_MAX_LENGTH;
+};
+
+// Asks Gemini for the other side of one row's lyrics (one item per call).
+// Nothing is applied here: on a failure the row stays as it is.
+export async function localizeRowLyrics(api: AdminApi, row: UploadRow): Promise<LocalizedRow> {
+  const source = sourceSide(row.lyrics);
+  if (!source) throw new Error("Only lyrics with one side filled can be converted.");
+  const sent = row.lyrics[source].trim();
+  const [result] = await api.localizeText({ kind: "lyrics", items: [sent] });
+  if (!result) throw new Error("Gemini sent no lyrics. Try again or type them in.");
+  return { key: row.key, source, sent, result };
+}
+
+// Puts Gemini's lyrics on the latest row with the title rules: typed sides
+// are kept and a row whose lyrics changed meanwhile is left alone. A row
+// whose draft exists (or is being made) is marked unsaved. Null when
+// nothing may change.
+export function withLocalizedLyrics(row: UploadRow, answer: LocalizedRow): UploadRow | null {
+  if (answer.key !== row.key) return null;
+  const lyrics = placeLocalized(row.lyrics, answer.source, answer.sent, answer.result, row.lyricsTyped);
+  if (!lyrics) return null;
+  const drafted = !!row.contentId || (row.stage !== "waiting" && row.stage !== "error");
+  return { ...row, lyrics, lyricsUnsaved: drafted || row.lyricsUnsaved };
 }

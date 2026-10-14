@@ -1,46 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cleanLyricsForDisplay, readM4aMetadata } from "./m4aMetadata";
+import { atom, atom64, concat, covr, ftyp, hdlr, jpegBytes, latin1, m4aBlob, mdat, moov, pngBytes, text, u32, utf8 } from "../test/m4a";
 
-// ---- A tiny MP4 writer: atoms are built in memory, no binaries committed.
-const latin1 = (text: string) => Uint8Array.from(text, (char) => char.charCodeAt(0));
-const utf8 = (text: string) => new TextEncoder().encode(text);
-const u32 = (value: number) => {
-  const bytes = new Uint8Array(4);
-  new DataView(bytes.buffer).setUint32(0, value);
-  return bytes;
-};
-const concat = (...parts: Uint8Array[]) => {
-  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
-  let offset = 0;
-  for (const part of parts) {
-    out.set(part, offset);
-    offset += part.length;
-  }
-  return out;
-};
-// An atom with a 32-bit size; `type` is four Latin-1 characters ("©lyr").
-const atom = (type: string, ...body: Uint8Array[]) => {
-  const content = concat(...body);
-  return concat(u32(8 + content.length), latin1(type), content);
-};
-// The same atom with size = 1 and a 64-bit size after the type.
-const atom64 = (type: string, ...body: Uint8Array[]) => {
-  const content = concat(...body);
-  return concat(u32(1), latin1(type), u32(0), u32(16 + content.length), content);
-};
-const text = (type: string, value: string) =>
-  atom(type, atom("data", u32(1), u32(0), utf8(value)));
-const ftyp = atom("ftyp", latin1("M4A "), u32(0), latin1("M4A isommp42"));
-const mdat = atom("mdat", new Uint8Array(4096).fill(0x55));
-const hdlr = atom("hdlr", u32(0), u32(0), latin1("mdirappl"), new Uint8Array(9));
-const moov = (...items: Uint8Array[]) =>
-  atom(
-    "moov",
-    atom("mvhd", new Uint8Array(100)),
-    atom("trak", atom("tkhd", new Uint8Array(84))),
-    atom("udta", atom("meta", u32(0), hdlr, atom("ilst", ...items))),
-  );
-const file = (...atoms: Uint8Array[]) => new Blob([concat(...atoms)], { type: "audio/mp4" });
+const file = m4aBlob;
 
 const hindiLyrics = "[Intro — Female Lead]\r\nसखी री, आँगन सजा दो,\r\nआज हनुमत का गुण गाएँ।";
 const tags = [
@@ -93,6 +55,27 @@ describe("readM4aMetadata", () => {
     expect(await readM4aMetadata(file(ftyp, body))).toEqual({ artist: "Bhaktara" });
     const truncated = concat(ftyp, moov(...tags)).slice(0, 200);
     expect(await readM4aMetadata(new Blob([truncated]))).toEqual({});
+  });
+});
+
+describe("album art", () => {
+  it("reads a JPEG cover (type 13) next to the other tags", async () => {
+    const result = await readM4aMetadata(file(ftyp, mdat, moov(...tags, covr([13, jpegBytes]))));
+    expect(result.title).toBe("मेरे आँगन भजन की रात");
+    expect(result.cover?.mime).toBe("image/jpeg");
+    expect([...result.cover!.bytes]).toEqual([...jpegBytes]);
+  });
+
+  it("reads a PNG cover (type 14) and takes the first of several", async () => {
+    const result = await readM4aMetadata(file(ftyp, moov(covr([14, pngBytes], [13, jpegBytes]), text("©nam", "Aarti")), mdat));
+    expect(result).toMatchObject({ title: "Aarti", cover: { mime: "image/png" } });
+    expect([...result.cover!.bytes]).toEqual([...pngBytes]);
+  });
+
+  it("has no cover when there is no covr atom or its data is not an image", async () => {
+    expect((await readM4aMetadata(file(ftyp, mdat, moov(...tags)))).cover).toBeUndefined();
+    const unknown = await readM4aMetadata(file(ftyp, mdat, moov(covr([1, utf8("not an image")]))));
+    expect(unknown).toEqual({});
   });
 });
 
