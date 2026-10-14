@@ -37,6 +37,31 @@ export const defaultStage: TempleStage = {
   height: 0.4,
 };
 
+// A stored document also carries bookkeeping (createdAt, updatedAt,
+// updatedBy) and Firestore Timestamps for startAt/endAt; the input schema is
+// strict, so keep only its fields and turn timestamps into ISO strings.
+const inputFields = Object.keys(mandirOfferingInputSchema.shape);
+function isoOf(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value === "object") {
+    const stamp = value as { toDate?: () => Date; seconds?: number };
+    if (typeof stamp.toDate === "function") return stamp.toDate().toISOString();
+    if (typeof stamp.seconds === "number")
+      return new Date(stamp.seconds * 1000).toISOString();
+  }
+  return value;
+}
+export function storedToInput(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+  const doc = data as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of inputFields)
+    if (doc[key] !== undefined)
+      out[key] =
+        key === "startAt" || key === "endAt" ? isoOf(doc[key]) : doc[key];
+  return out;
+}
+
 // Lenient on read: a document that does not parse, is inactive, has no image
 // or is outside its start/end window is skipped, never the whole list.
 export function decorFromDocument(
@@ -44,7 +69,7 @@ export function decorFromDocument(
   data: unknown,
   now: Date = new Date(),
 ): DecorItem | null {
-  const parsed = mandirOfferingInputSchema.safeParse(data);
+  const parsed = mandirOfferingInputSchema.safeParse(storedToInput(data));
   if (!parsed.success) return null;
   const doc = parsed.data;
   if (!doc.isActive || !doc.art) return null;
