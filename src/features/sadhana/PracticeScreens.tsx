@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AppState,
   Animated,
@@ -17,7 +23,7 @@ import { useDialog } from "../../components/Dialog";
 import { Txt } from "../../components/ui";
 import { useReducedMotion } from "../../components/useReducedMotion";
 import { formatTime, remainingAt } from "../../domain/practice";
-import { mantraFor } from "../../domain/mantras";
+import { MalaKind, mantraFor } from "../../domain/mantras";
 import { shrine } from "../../theme/tokens";
 import { Flower2, Pause, Play, RotateCcw } from "lucide-react-native";
 import { DeityEmblem } from "./art/Emblems";
@@ -37,7 +43,7 @@ import { Diya } from "./art/Diya";
 import { BEADS, MalaRing } from "./art/MalaRing";
 import { PetalShower } from "./art/PetalShower";
 import { beadTick, malaPulse, useBell } from "./feedback";
-import { useProgression } from "./ProgressionProvider";
+import { useJaapCount, useProgression } from "./ProgressionProvider";
 import { EarningNote } from "./Sanctum";
 
 // ---- Jaap: a 108-bead mala ------------------------------------------------
@@ -48,43 +54,34 @@ export function JaapScreen({
   navigation,
 }: NativeStackScreenProps<RootParams, "Jaap">) {
   const { t, local, update, catalog } = useApp();
-  const { jaapCount, tapBead, resetMala, malaBlessing } = useProgression();
-  const showDialog = useDialog();
   const ring = useBell();
-  const reduced = useReducedMotion();
   const { width, height } = useWindowDimensions();
   const deities = catalog?.deities ?? [];
   const deityId = local.deityId ?? deities[0]?.id ?? null;
   const deity = deities.find((item) => item.id === deityId);
   const devotion = mantraFor(deityId);
-  const beads = jaapCount % BEADS;
-  const malas = Math.floor(jaapCount / BEADS);
   const size = Math.min(width - 40, height * 0.38, 360);
+
+  // The 108 beads are drawn once the screen has slid in, so the tap that
+  // opens Jaap is answered at once.
+  const [showBeads, setShowBeads] = useState(false);
+  useEffect(() => {
+    const show = () => setShowBeads(true);
+    const fallback = setTimeout(show, 400);
+    const off = navigation.addListener("transitionEnd", show);
+    return () => {
+      clearTimeout(fallback);
+      off();
+    };
+  }, [navigation]);
 
   // Local celebration the moment a mala completes (online or not).
   const [completed, setCompleted] = useState(0);
-  const previous = useRef(jaapCount);
-  useEffect(() => {
-    if (jaapCount > previous.current && jaapCount % BEADS === 0) {
-      setCompleted((key) => key + 1);
-      malaPulse();
-      ring();
-    }
-    previous.current = jaapCount;
-  }, [jaapCount, ring]);
-
-  // "+15 XP" rises from the mala when the server credits it.
-  const [float] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    if (!malaBlessing) return;
-    float.setValue(0);
-    Animated.timing(float, {
-      toValue: 1,
-      duration: 2600,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-  }, [malaBlessing, float]);
+  const onMalaComplete = useCallback(() => {
+    setCompleted((key) => key + 1);
+    malaPulse();
+    ring();
+  }, [ring]);
 
   return (
     <ShrinePage
@@ -137,106 +134,179 @@ export function JaapScreen({
           {devotion.mantra[local.language]}
         </SerifText>
         <LotusDivider width={260} assetKey={catalog?.visuals?.scenes.divider} />
-        {/* The mala is one large tap target (C-001: no ads may ever sit
-            next to it). */}
-        <Pressable
-          testID="jaap-counter"
-          accessibilityRole="button"
-          accessibilityLabel={`${t("tapAnywhere")}. ${beads} / ${BEADS}`}
-          onPress={() => {
-            beadTick();
-            tapBead();
-          }}
-          style={styles.tapArea}
-        >
-          <View style={{ width: size, height: size }}>
-            <MalaRing
-              beads={beads}
-              kind={devotion.mala}
-              size={size}
-              completedKey={completed}
-              tone="light"
-            />
-            <View style={styles.ringCenter} pointerEvents="none">
-              <LotusDivider width={70} />
-              <SerifText
-                size={size > 300 ? 88 : 72}
-                style={{ lineHeight: size > 300 ? 100 : 84 }}
-              >
-                {beads}
-              </SerifText>
-              <SerifText size={20} bold={false} color={shrine.maroonDeep}>
-                / {BEADS} {t("beadsLabel")}
-              </SerifText>
-              <LotusDivider width={110} />
-              <SerifText size={15} bold={false} color={shrine.inkMuted}>
-                {t("tapToCount")}
-              </SerifText>
-            </View>
-            {malaBlessing && malaBlessing.result.xpGranted > 0 && !reduced && (
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.float,
-                  {
-                    opacity: float.interpolate({
-                      inputRange: [0, 0.15, 0.75, 1],
-                      outputRange: [0, 1, 1, 0],
-                    }),
-                    transform: [
-                      {
-                        translateY: float.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, -size * 0.35],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Txt bold size={30} style={{ color: shrine.saffronDeep }}>
-                  +{malaBlessing.result.xpGranted} {t("points")}
-                </Txt>
-              </Animated.View>
-            )}
-          </View>
-        </Pressable>
-        <FlankLines width={60}>
-          <View style={styles.malaCount}>
-            <Flower2 size={22} color={shrine.gold} />
-            <SerifText size={20}>
-              {malas} {t("malasToday")}
-            </SerifText>
-          </View>
-        </FlankLines>
-        <EarningNote light />
-        <PracticeToggles />
-        <FlankLines width={40}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: beads === 0 }}
-            disabled={beads === 0}
-            hitSlop={10}
-            onPress={() =>
-              showDialog(t("restartQuestion"), t("restartHint"), [
-                { text: t("cancel"), style: "cancel" },
-                { text: t("restartMala"), onPress: resetMala },
-              ])
-            }
-            style={({ pressed }) => [
-              styles.restart,
-              (pressed || beads === 0) && { opacity: 0.5 },
-            ]}
-          >
-            <RotateCcw size={20} color={shrine.maroon} />
-            <SerifText size={17} bold={false}>
-              {t("restartMalaShort")}
-            </SerifText>
-          </Pressable>
-        </FlankLines>
+        <JaapCounter
+          size={size}
+          mala={devotion.mala}
+          showBeads={showBeads}
+          completed={completed}
+          onMalaComplete={onMalaComplete}
+        />
       </ScrollView>
       <PetalShower trigger={completed} />
     </ShrinePage>
+  );
+}
+
+// Everything that changes with a bead: it reads the count itself, so a tap
+// re-renders only the mala and its counts, not the page around them.
+function JaapCounter({
+  size,
+  mala,
+  showBeads,
+  completed,
+  onMalaComplete,
+}: {
+  size: number;
+  mala: MalaKind;
+  showBeads: boolean;
+  completed: number;
+  onMalaComplete: () => void;
+}) {
+  const { t } = useApp();
+  const { tapBead, resetMala, malaBlessing } = useProgression();
+  const jaapCount = useJaapCount();
+  const showDialog = useDialog();
+  const reduced = useReducedMotion();
+  const beads = jaapCount % BEADS;
+  const malas = Math.floor(jaapCount / BEADS);
+
+  const previous = useRef(jaapCount);
+  useEffect(() => {
+    if (jaapCount > previous.current && jaapCount % BEADS === 0)
+      onMalaComplete();
+    previous.current = jaapCount;
+  }, [jaapCount, onMalaComplete]);
+
+  // "+15 XP" rises from the mala when the server credits it.
+  const [float] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    if (!malaBlessing) return;
+    float.setValue(0);
+    Animated.timing(float, {
+      toValue: 1,
+      duration: 2600,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [malaBlessing, float]);
+
+  // Same elements every render, so a tap skips them.
+  const settings = useMemo(
+    () => (
+      <>
+        <EarningNote light />
+        <PracticeToggles />
+      </>
+    ),
+    [],
+  );
+
+  const countBead = () => {
+    beadTick();
+    tapBead();
+  };
+
+  return (
+    <>
+      {/* The mala is one large tap target (C-001: no ads may ever sit
+          next to it). Counted on touch-down so every tap lands at once;
+          not cancelable, so a finger that drifts is not taken as a scroll. */}
+      <Pressable
+        testID="jaap-counter"
+        accessibilityRole="button"
+        accessibilityLabel={`${t("tapAnywhere")}. ${beads} / ${BEADS}`}
+        accessibilityActions={[{ name: "activate" }]}
+        onAccessibilityAction={countBead}
+        cancelable={false}
+        onPressIn={countBead}
+        style={styles.tapArea}
+      >
+        <View style={{ width: size, height: size }}>
+          <MalaRing
+            beads={beads}
+            kind={mala}
+            size={size}
+            completedKey={completed}
+            tone="light"
+            showBeads={showBeads}
+          />
+          <View style={styles.ringCenter} pointerEvents="none">
+            <LotusDivider width={70} />
+            <SerifText
+              size={size > 300 ? 88 : 72}
+              style={{ lineHeight: size > 300 ? 100 : 84 }}
+            >
+              {beads}
+            </SerifText>
+            <SerifText size={20} bold={false} color={shrine.maroonDeep}>
+              / {BEADS} {t("beadsLabel")}
+            </SerifText>
+            <LotusDivider width={110} />
+            <SerifText size={15} bold={false} color={shrine.inkMuted}>
+              {t("tapToCount")}
+            </SerifText>
+          </View>
+          {malaBlessing && malaBlessing.result.xpGranted > 0 && !reduced && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.float,
+                {
+                  opacity: float.interpolate({
+                    inputRange: [0, 0.15, 0.75, 1],
+                    outputRange: [0, 1, 1, 0],
+                  }),
+                  transform: [
+                    {
+                      translateY: float.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -size * 0.35],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Txt bold size={30} style={{ color: shrine.saffronDeep }}>
+                +{malaBlessing.result.xpGranted} {t("points")}
+              </Txt>
+            </Animated.View>
+          )}
+        </View>
+      </Pressable>
+      <FlankLines width={60}>
+        <View style={styles.malaCount}>
+          <Flower2 size={22} color={shrine.gold} />
+          <SerifText size={20}>
+            {malas} {t("malasToday")}
+          </SerifText>
+        </View>
+      </FlankLines>
+      {settings}
+      <FlankLines width={40}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: beads === 0 }}
+          disabled={beads === 0}
+          hitSlop={10}
+          onPress={() =>
+            showDialog(t("restartQuestion"), t("restartHint"), [
+              { text: t("cancel"), style: "cancel" },
+              { text: t("restartMala"), onPress: resetMala },
+            ])
+          }
+          style={({ pressed }) => [
+            styles.restart,
+            (pressed || beads === 0) && { opacity: 0.5 },
+          ]}
+        >
+          <RotateCcw size={20} color={shrine.maroon} />
+          <SerifText size={17} bold={false}>
+            {t("restartMalaShort")}
+          </SerifText>
+        </Pressable>
+      </FlankLines>
+    </>
   );
 }
 

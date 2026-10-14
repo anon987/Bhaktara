@@ -52,8 +52,7 @@ type ProgressionValue = {
   sadhana: SadhanaConfig;
   today: () => string;
   refresh: () => Promise<void>;
-  // Jaap: beads chanted today and the tap handler.
-  jaapCount: number;
+  // Jaap: the tap handler (the live count is useJaapCount()).
   tapBead: () => void;
   resetMala: () => void;
   // Meditation timer.
@@ -75,6 +74,14 @@ type ProgressionValue = {
 };
 
 const Context = createContext<ProgressionValue | null>(null);
+// Beads chanted today. Its own context, so a tap re-renders only the Jaap
+// screen and not every screen that reads progression.
+const JaapCountContext = createContext(0);
+// App-wide state takes the count once tapping pauses: writing it re-renders
+// the whole app, which made taps lag. Long enough that an unhurried chant
+// (a bead every second or two) never pauses that long; leaving the screen,
+// the app going to the background and each full mala write it at once.
+const JAAP_FLUSH_MS = 3000;
 
 export const deviceTimezone = () => {
   try {
@@ -232,13 +239,43 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
 
   // ---- Jaap --------------------------------------------------------------
   const day = today();
-  const jaapCount = local.jaapDay === day ? local.jaapCount : 0;
-  const countRef = useRef(jaapCount);
+  const stored = local.jaapDay === day ? local.jaapCount : 0;
+  // Taps not yet written to app state; null once they are.
+  const [live, setLive] = useState<{ day: string; count: number } | null>(null);
+  const jaapCount = live?.day === day ? live.count : stored;
+  const countRef = useRef(stored);
   const dayRef = useRef(local.jaapDay);
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    countRef.current = jaapCount;
+    // While taps are pending, the refs are ahead of app state.
+    if (flushTimer.current) return;
+    countRef.current = stored;
     dayRef.current = local.jaapDay;
-  }, [jaapCount, local.jaapDay]);
+  }, [stored, local.jaapDay]);
+  const flushJaap = useCallback(() => {
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = null;
+    const jaapDay = dayRef.current;
+    const count = countRef.current;
+    if (jaapDay === null) return;
+    update((state) => ({
+      ...state,
+      jaapDay,
+      jaapCount: count,
+      jaapSessionId: state.jaapDay === jaapDay ? state.jaapSessionId : null,
+    }));
+    setLive(null);
+  }, [update]);
+  // Never lose pending taps when the app goes to the background or closes.
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", (next) => {
+      if (next !== "active" && flushTimer.current) flushJaap();
+    });
+    return () => {
+      listener.remove();
+      if (flushTimer.current) flushJaap();
+    };
+  }, [flushJaap]);
   // The open session of the mala in progress; persisted in local state.
   const session = useRef<{ id: string; started: Promise<boolean> } | null>(
     null,
@@ -280,17 +317,15 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
     const count = base + 1;
     countRef.current = count;
     dayRef.current = current;
-    update((state) => ({
-      ...state,
-      jaapDay: current,
-      jaapCount: count,
-      jaapSessionId: state.jaapDay === current ? state.jaapSessionId : null,
-    }));
+    setLive({ day: current, count });
     if (count % BEADS !== 0) {
+      if (flushTimer.current) clearTimeout(flushTimer.current);
+      flushTimer.current = setTimeout(flushJaap, JAAP_FLUSH_MS);
       startJaapSession();
       return;
     }
     // A full mala: kept on the device, and credited if a session is open.
+    flushJaap();
     completeTask("jaap");
     const finished = session.current;
     session.current = null;
@@ -311,6 +346,7 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
   }, [
     today,
     update,
+    flushJaap,
     startJaapSession,
     completeTask,
     progression,
@@ -320,11 +356,12 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
 
   const resetMala = useCallback(() => {
     // Back to the start of the current mala; malas already done stay.
+    flushJaap();
     const done = Math.floor(countRef.current / BEADS) * BEADS;
     countRef.current = done;
     session.current = null;
     update((state) => ({ ...state, jaapCount: done, jaapSessionId: null }));
-  }, [update]);
+  }, [update, flushJaap]);
 
   // ---- Meditation --------------------------------------------------------
   const startMeditation = useCallback(() => {
@@ -484,7 +521,6 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       sadhana: snapshot?.sadhana ?? defaultSadhanaConfig,
       today,
       refresh,
-      jaapCount,
       tapBead,
       resetMala,
       startMeditation,
@@ -503,7 +539,6 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       snapshot,
       today,
       refresh,
-      jaapCount,
       tapBead,
       resetMala,
       startMeditation,
@@ -517,8 +552,16 @@ export function ProgressionProvider({ children }: React.PropsWithChildren) {
       notice,
     ],
   );
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={value}>
+      <JaapCountContext.Provider value={jaapCount}>
+        {children}
+      </JaapCountContext.Provider>
+    </Context.Provider>
+  );
 }
+
+export const useJaapCount = () => useContext(JaapCountContext);
 
 // For widgets that may render outside the provider (e.g. Home in tests).
 export const useOptionalProgression = () => useContext(Context);

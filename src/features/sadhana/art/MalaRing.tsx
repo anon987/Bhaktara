@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Animated, Easing, View } from "react-native";
 import Svg, {
   Circle,
@@ -12,6 +12,7 @@ import Svg, {
 import { sanctum, shrine } from "../../../theme/tokens";
 import { useReducedMotion } from "../../../components/useReducedMotion";
 import type { MalaKind } from "../../../domain/mantras";
+import { circlePath } from "./svgPaths";
 
 export const BEADS = 108;
 
@@ -38,14 +39,75 @@ const point = (slot: number, radius = RADIUS) => ({
   y: CENTER + Math.sin(angleOf(slot)) * radius,
 });
 
-const Bead = memo(function Bead({
+// Many beads as one path of circles (offset by dx/dy), so the whole mala is
+// a handful of SVG nodes instead of two or three per bead: cheap to open and
+// to redraw on every tap.
+function beadDots(from: number, to: number, r: number, dx = 0, dy = 0) {
+  let d = "";
+  for (let index = from; index < to; index++) {
+    const { x, y } = point(index + 1);
+    d += circlePath(x + dx, y + dy, r);
+  }
+  return d;
+}
+
+type BeadLayer = { d: string; fill: string; opacity?: number };
+
+// Shadow, body and highlight per state: a lit, rounded bead without a
+// gradient per bead.
+function beadLayers(
+  from: number,
+  to: number,
+  state: "done" | "ahead",
+  kind: MalaKind,
+  light: boolean,
+): BeadLayer[] {
+  if (from >= to) return [];
+  const colors = malaColors[kind];
+  if (light)
+    return state === "done"
+      ? [
+          { d: beadDots(from, to, 6.2), fill: shrine.saffronDeep },
+          { d: beadDots(from, to, 5, -0.7, -0.7), fill: shrine.saffronLight },
+          { d: beadDots(from, to, 1.9, -2, -2), fill: "#FFF6D8" },
+        ]
+      : [
+          { d: beadDots(from, to, 6.2), fill: colors.shade },
+          { d: beadDots(from, to, 5, -0.7, -0.7), fill: colors.bead },
+          {
+            d: beadDots(from, to, 1.6, -2, -2),
+            fill: "#FFFFFF",
+            opacity: 0.5,
+          },
+        ];
+  return state === "done"
+    ? [
+        { d: beadDots(from, to, 6), fill: sanctum.brassLight },
+        { d: beadDots(from, to, 5.2), fill: sanctum.brass },
+        {
+          d: beadDots(from, to, 1.5, -1.6, -1.6),
+          fill: "#FFFFFF",
+          opacity: 0.6,
+        },
+      ]
+    : [
+        { d: beadDots(from, to, 6), fill: colors.shade },
+        { d: beadDots(from, to, 5.2), fill: colors.bead },
+        {
+          d: beadDots(from, to, 1.5, -1.6, -1.6),
+          fill: "#FFFFFF",
+          opacity: 0.25,
+        },
+      ];
+}
+
+// The bead to chant next, drawn on its own and larger.
+function CurrentBead({
   index,
-  state,
   kind,
   shade,
 }: {
   index: number;
-  state: "done" | "current" | "ahead";
   kind: MalaKind;
   // Light tone (D-057): the id prefix of the ring's bead gradients.
   shade?: string;
@@ -55,59 +117,31 @@ const Bead = memo(function Bead({
   if (shade)
     return (
       <G>
-        {state === "current" && (
-          <Circle
-            cx={x}
-            cy={y}
-            r={11}
-            fill={shrine.saffronLight}
-            opacity={0.7}
-          />
-        )}
+        <Circle cx={x} cy={y} r={11} fill={shrine.saffronLight} opacity={0.7} />
         <Circle
           cx={x}
           cy={y}
-          r={state === "current" ? 7.2 : 6.2}
-          fill={`url(#${shade}${state === "ahead" ? "a" : "d"})`}
-          stroke={state === "ahead" ? colors.shade : shrine.saffronDeep}
+          r={7.2}
+          fill={`url(#${shade}d)`}
+          stroke={shrine.saffronDeep}
           strokeWidth={0.5}
-        />
-      </G>
-    );
-  if (state === "current")
-    return (
-      <G>
-        <Circle cx={x} cy={y} r={11} fill={sanctum.ghee} opacity={0.35} />
-        <Circle
-          cx={x}
-          cy={y}
-          r={7.4}
-          fill={colors.bead}
-          stroke={sanctum.brassLight}
-          strokeWidth={1.6}
         />
       </G>
     );
   return (
     <G>
+      <Circle cx={x} cy={y} r={11} fill={sanctum.ghee} opacity={0.35} />
       <Circle
         cx={x}
         cy={y}
-        r={5.6}
-        fill={state === "done" ? sanctum.brass : colors.bead}
-        stroke={state === "done" ? sanctum.brassLight : colors.shade}
-        strokeWidth={0.8}
-      />
-      <Circle
-        cx={x - 1.6}
-        cy={y - 1.6}
-        r={1.5}
-        fill="#FFFFFF"
-        opacity={state === "done" ? 0.6 : 0.25}
+        r={7.4}
+        fill={colors.bead}
+        stroke={sanctum.brassLight}
+        strokeWidth={1.6}
       />
     </G>
   );
-});
+}
 
 // The full mala, seen from above: the guru bead at the bottom, chanted beads
 // turned to gold, the next bead glowing. `beads` is 0–107 within this mala.
@@ -118,6 +152,7 @@ export function MalaRing({
   size,
   completedKey,
   tone = "dark",
+  showBeads = true,
 }: {
   beads: number;
   kind: MalaKind;
@@ -125,12 +160,28 @@ export function MalaRing({
   completedKey: number;
   // "light": polished wooden beads on parchment, chanted ones gold (D-057).
   tone?: "dark" | "light";
+  // False while the screen opens: thread and guru bead only.
+  showBeads?: boolean;
 }) {
   const shade = React.useId().replace(/:/g, "");
   const light = tone === "light";
   const reduced = useReducedMotion();
   const [pulse] = useState(() => new Animated.Value(0));
   const [flash] = useState(() => new Animated.Value(0));
+  // Built once: new interpolations on every tap re-attach native nodes.
+  const breath = useMemo(
+    () => ({
+      opacity: pulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.15, 0.7],
+      }),
+      scale: pulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.85, 1.15],
+      }),
+    }),
+    [pulse],
+  );
   useEffect(() => {
     if (reduced) return;
     const loop = Animated.loop(
@@ -164,6 +215,16 @@ export function MalaRing({
   }, [completedKey, flash]);
 
   const colors = malaColors[kind];
+  const layers = useMemo(
+    () =>
+      showBeads
+        ? [
+            ...beadLayers(0, beads, "done", kind, light),
+            ...beadLayers(beads + 1, BEADS, "ahead", kind, light),
+          ]
+        : [],
+    [showBeads, beads, kind, light],
+  );
   const sumeru = point(0);
   const scale = size / VIEW;
   const current = point(beads + 1);
@@ -219,17 +280,21 @@ export function MalaRing({
           fill="none"
           opacity={0.8}
         />
-        {Array.from({ length: BEADS }, (_, index) => (
-          <Bead
+        {layers.map((layer, index) => (
+          <Path
             key={index}
-            index={index}
-            kind={kind}
-            shade={light ? shade : undefined}
-            state={
-              index < beads ? "done" : index === beads ? "current" : "ahead"
-            }
+            d={layer.d}
+            fill={layer.fill}
+            opacity={layer.opacity}
           />
         ))}
+        {showBeads && (
+          <CurrentBead
+            index={beads}
+            kind={kind}
+            shade={light ? shade : undefined}
+          />
+        )}
         {/* Tassel (phundna) below the sumeru */}
         <G>
           {[-6, -3, 0, 3, 6].map((dx) => (
@@ -266,30 +331,22 @@ export function MalaRing({
         />
       </Svg>
       {/* Gentle breathing ring on the next bead */}
-      <Animated.View
-        style={{
-          position: "absolute",
-          left: (current.x - 15) * scale,
-          top: (current.y - 15) * scale,
-          width: 30 * scale,
-          height: 30 * scale,
-          borderRadius: 15 * scale,
-          borderWidth: 2,
-          borderColor: light ? shrine.saffron : sanctum.brassLight,
-          opacity: pulse.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.15, 0.7],
-          }),
-          transform: [
-            {
-              scale: pulse.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.85, 1.15],
-              }),
-            },
-          ],
-        }}
-      />
+      {showBeads && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            left: (current.x - 15) * scale,
+            top: (current.y - 15) * scale,
+            width: 30 * scale,
+            height: 30 * scale,
+            borderRadius: 15 * scale,
+            borderWidth: 2,
+            borderColor: light ? shrine.saffron : sanctum.brassLight,
+            opacity: breath.opacity,
+            transform: [{ scale: breath.scale }],
+          }}
+        />
+      )}
     </View>
   );
 }
