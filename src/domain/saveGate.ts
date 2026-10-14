@@ -6,7 +6,11 @@ import { Content } from "./models";
 export type SaveVia = "rewarded" | "free" | "fallback";
 export type SaveGate = "free" | "rewarded";
 export type RewardedUnlockType =
-  "save_wallpaper" | "save_ringtone" | "save_status";
+  | "save_wallpaper"
+  | "save_ringtone"
+  | "save_status"
+  // A temple, light, bell or flower on the Prayer screen (mandirOfferings).
+  | "unlock_mandir_decor";
 
 export function decideSaveGate(input: {
   // requiresRewardedAd(action) from the integrations layer.

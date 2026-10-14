@@ -16,6 +16,7 @@ export function PujaEffects({
   height: number;
   lamp: Emitter;
   incense: Emitter[];
+  smoking: boolean;
   deity: { x: number; y: number };
   waterKey: number;
 }) {

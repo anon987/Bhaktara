@@ -1,7 +1,13 @@
 import { contentSchema } from "../domain/models";
 import { ContentQuery, ContentRepository } from "./contracts";
-import { fixtures, homeCollections, homeLayouts } from "./fixtures";
+import {
+  fixtures,
+  homeCollections,
+  homeLayouts,
+  mandirOfferingDocuments,
+} from "./fixtures";
 import { buildHomeFeedSections, parseHomeSections } from "../domain/home";
+import { DecorItem, decorFromDocument } from "../domain/mandirDecor";
 import { searchWords } from "../domain/search";
 // Same normalization as the Firestore publisher/query path, so fixture and
 // emulator modes agree on punctuation, nukta and transliteration variants.
@@ -37,6 +43,13 @@ export const mockContentRepository: ContentRepository = {
         ),
       ),
     };
+  },
+  async getMandirDecor() {
+    // Same lenient read as Firestore (inactive or invalid documents skipped).
+    return mandirOfferingDocuments.flatMap(({ id, data }): DecorItem[] => {
+      const value = decorFromDocument(id, data);
+      return value ? [value] : [];
+    });
   },
   async search(query) {
     const items = filterContent(query);

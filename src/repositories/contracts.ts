@@ -1,5 +1,6 @@
 import { Catalog, Content, ContentType } from "../domain/models";
 import { HomeFeed, HomeLanguage } from "../domain/home";
+import { DecorItem } from "../domain/mandirDecor";
 export interface ContentQuery {
   query?: string;
   type?: ContentType;
@@ -17,6 +18,10 @@ export interface ContentRepository {
   // One read of the precomputed `homeFeeds/{language}` doc; null when none
   // has been published for that language yet.
   getHome(language: HomeLanguage): Promise<HomeFeed | null>;
+  // Published mandir decor (mandirOfferings where isActive): temples,
+  // lights, bells and flowers for the Prayer screen. Optional: the app's
+  // bundled set is used when a repository has none or the read fails.
+  getMandirDecor?(): Promise<DecorItem[]>;
 }
 // One `users/{uid}/favorites/{contentId}` record (doc 06).
 export type FavoriteRecord = {

@@ -33,6 +33,9 @@ export type Deity = {
   // above the mantra (Jaap). Without them the app draws its own.
   shrineKey?: string;
   emblemKey?: string;
+  // The deity alone on a transparent background (deities.murtiArt), stood
+  // in the temple the devotee swipes to on the Prayer screen.
+  murtiKey?: string;
 };
 export type Banner = {
   id: string;

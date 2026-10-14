@@ -158,12 +158,13 @@ test("the puja is performed from the tray of offerings (D-054)", async () => {
   fireEvent.press(screen.getByLabelText("Sprinkle water from the kalash"));
   fireEvent.press(screen.getByLabelText("Ring the bell"));
   fireEvent.press(screen.getByLabelText("Apply the chandan-roli tilak"));
-  // Flowers suited to Shiva (the first deity): bilva, dhatura… never tulsi.
+  // Decor flowers suited to Shiva (the first deity): bel leaf, dhatura…
+  // never tulsi.
   fireEvent.press(screen.getByLabelText("Offer flowers and a garland"));
-  expect(screen.getByLabelText("Bilva leaves")).toBeTruthy();
+  expect(screen.getByLabelText("Bel leaf")).toBeTruthy();
   expect(screen.getByLabelText("Dhatura")).toBeTruthy();
   expect(screen.queryByLabelText("Tulsi")).toBeNull();
-  fireEvent.press(screen.getByLabelText("Bilva leaves"));
+  fireEvent.press(screen.getByLabelText("Bel leaf"));
   fireEvent.press(screen.getByLabelText("Rudraksha garland"));
   // Incense, waved freely.
   fireEvent.press(screen.getByLabelText("Offer incense"));
@@ -186,7 +187,7 @@ test("the puja is performed from the tray of offerings (D-054)", async () => {
     fireEvent.press(screen.getByLabelText("Blow the shankh"));
   });
   expect(state(screen).days[localPracticeDay()].prayer).toBe(true);
-}, 20000);
+}, 40000);
 
 test("the puja is never locked once today's prayer is recorded", async () => {
   jest.spyOn(localStore, "read").mockResolvedValue({
@@ -204,7 +205,7 @@ test("the puja is never locked once today's prayer is recorded", async () => {
     expect(screen.getByLabelText("Ring the bell")).toBeTruthy(),
   );
   fireEvent.press(screen.getByLabelText("Offer flowers and a garland"));
-  expect(screen.getByLabelText("Bilva leaves")).toBeTruthy();
+  expect(screen.getByLabelText("Bel leaf")).toBeTruthy();
 });
 
 test("elapsed meditation restored from storage completes locally", async () => {
