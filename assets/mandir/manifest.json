@@ -1,5 +1,5 @@
 {
-  "_comment": "Mandir decor made with Gemini on Vertex (gemini-2.5-flash-image); bell sounds synthesised. Paths are relative to assets/mandir/. Seeds the admin catalogue (mandirOfferings, deities.murtiArt) and is the app's bundled default set. stage: where the deity stands in a temple (fractions of the image). placement: where a light hangs (top, bottom, sides).",
+  "_comment": "Mandir decor made with Gemini on Vertex (gemini-2.5-flash-image); bell sounds synthesised. Paths are relative to assets/mandir/. Seeds the admin catalogue (mandirOfferings, deities.murtiArt) and is the app's bundled default set. stage: where the deity stands in a temple (fractions of the image). placement: where a light hangs (top, bottom, sides). Special offerings (special/*.webp, REWARDED_SINGLE_USE per D-040) carry offerAt: where they appear on the murti or altar; deityIds limits some to one deity.",
   "offerings": [
     {
       "id": "temple-marble",
@@ -366,6 +366,186 @@
       "unlock": "REWARDED",
       "sortOrder": 120,
       "flowerKind": "kaner"
+    },
+    {
+      "id": "special-garland-genda",
+      "kind": "garland",
+      "name": {
+        "en": "Marigold garland",
+        "hi": "गेंदे की माला"
+      },
+      "image": "special/garland-genda.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 10,
+      "offerAt": "neck"
+    },
+    {
+      "id": "special-garland-rose",
+      "kind": "garland",
+      "name": {
+        "en": "Rose garland",
+        "hi": "गुलाब की माला"
+      },
+      "image": "special/garland-rose.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 20,
+      "offerAt": "neck"
+    },
+    {
+      "id": "special-garland-jasmine",
+      "kind": "garland",
+      "name": {
+        "en": "Jasmine garland",
+        "hi": "मोगरे की माला"
+      },
+      "image": "special/garland-jasmine.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 30,
+      "offerAt": "neck"
+    },
+    {
+      "id": "special-garland-rudraksha",
+      "kind": "garland",
+      "name": {
+        "en": "Rudraksha mala",
+        "hi": "रुद्राक्ष की माला"
+      },
+      "image": "special/garland-rudraksha.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 40,
+      "offerAt": "neck",
+      "deityIds": [
+        "shiva"
+      ]
+    },
+    {
+      "id": "special-mukut",
+      "kind": "ornament",
+      "name": {
+        "en": "Golden mukut",
+        "hi": "स्वर्ण मुकुट"
+      },
+      "image": "special/mukut.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 50,
+      "offerAt": "head"
+    },
+    {
+      "id": "special-haar",
+      "kind": "ornament",
+      "name": {
+        "en": "Gold haar",
+        "hi": "सोने का हार"
+      },
+      "image": "special/haar.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 60,
+      "offerAt": "neck"
+    },
+    {
+      "id": "special-chhatra",
+      "kind": "ornament",
+      "name": {
+        "en": "Golden chhatra",
+        "hi": "स्वर्ण छत्र"
+      },
+      "image": "special/chhatra.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 70,
+      "offerAt": "above"
+    },
+    {
+      "id": "special-morpankh",
+      "kind": "ornament",
+      "name": {
+        "en": "Peacock feather",
+        "hi": "मोरपंख"
+      },
+      "image": "special/morpankh.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 80,
+      "offerAt": "head",
+      "deityIds": [
+        "krishna"
+      ]
+    },
+    {
+      "id": "special-panch-diya",
+      "kind": "diya",
+      "name": {
+        "en": "Panch aarti diya",
+        "hi": "पंचमुखी दीपक"
+      },
+      "image": "special/panch-diya.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 90,
+      "offerAt": "altar"
+    },
+    {
+      "id": "special-akhand",
+      "kind": "diya",
+      "name": {
+        "en": "Akhand jyoti",
+        "hi": "अखंड ज्योति"
+      },
+      "image": "special/akhand.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 100,
+      "offerAt": "altar"
+    },
+    {
+      "id": "special-modak",
+      "kind": "bhog",
+      "name": {
+        "en": "Modak bhog",
+        "hi": "मोदक का भोग"
+      },
+      "image": "special/modak.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 110,
+      "offerAt": "altar",
+      "deityIds": [
+        "ganesha"
+      ]
+    },
+    {
+      "id": "special-makhan",
+      "kind": "bhog",
+      "name": {
+        "en": "Makhan mishri",
+        "hi": "माखन मिश्री"
+      },
+      "image": "special/makhan.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 120,
+      "offerAt": "altar",
+      "deityIds": [
+        "krishna"
+      ]
+    },
+    {
+      "id": "special-shriphal",
+      "kind": "other",
+      "name": {
+        "en": "Shriphal",
+        "hi": "श्रीफल"
+      },
+      "image": "special/shriphal.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 130,
+      "offerAt": "altar"
+    },
+    {
+      "id": "special-diwali-thali",
+      "kind": "other",
+      "name": {
+        "en": "Diwali thali",
+        "hi": "दीपावली की थाली"
+      },
+      "image": "special/diwali-thali.webp",
+      "unlock": "REWARDED_SINGLE_USE",
+      "sortOrder": 140,
+      "offerAt": "altar"
     }
   ],
   "murti": {

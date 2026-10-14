@@ -120,6 +120,11 @@ export const offeringUnlocks = [
   "REWARDED_SINGLE_USE",
 ] as const;
 export type OfferingUnlock = (typeof offeringUnlocks)[number];
+// Where a Mandir offering appears: on the head (mukut), round the neck
+// (garland, haar), above the deity (chhatra), at the feet (flowers) or on the
+// altar in front (lamps, bhog, festival items).
+export const offerPlaces = ["head", "neck", "above", "feet", "altar"] as const;
+export type OfferPlace = (typeof offerPlaces)[number];
 const unit = z.number().min(0).max(1);
 // Where the deity stands in a temple image, as fractions of its width and
 // height: the box the murti is fitted into, feet on its bottom edge.
@@ -140,6 +145,9 @@ export const mandirOfferingInputSchema = z
     flowerKind: z.enum(flowerKinds).optional(),
     // Bells: the sound when rung (an audio asset).
     sound: z.object({ audio: mediaVariantSchema }).optional(),
+    // Mandir special offerings (garland, ornament, diya, bhog, other): where
+    // it is placed in the Mandir scene, relative to the murti.
+    offerAt: z.enum(offerPlaces).optional(),
     // Lights: where it hangs over the temple.
     placement: z.enum(["top", "bottom", "sides"]).optional(),
     // Temples: where the deity stands in the image.

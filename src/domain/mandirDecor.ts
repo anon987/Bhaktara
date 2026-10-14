@@ -2,6 +2,7 @@ import { Localized } from "../i18n/strings";
 import {
   mandirOfferingInputSchema,
   OfferingKind,
+  OfferPlace,
   OfferingUnlock,
   TempleStage,
 } from "./admin";
@@ -21,6 +22,8 @@ export type DecorItem = {
   flowerKind?: FlowerKind;
   // Bells: asset key of the sound.
   soundKey?: string;
+  // Mandir special offerings: where it is placed in the scene.
+  offerAt?: OfferPlace;
   // Lights: where it hangs (top by default).
   placement?: "top" | "bottom" | "sides";
   // Temples: where the deity stands; a centred default when missing.
@@ -83,6 +86,7 @@ export function decorFromDocument(
     imageKey: doc.art.mobile.key,
     flowerKind: doc.flowerKind,
     soundKey: doc.sound?.audio.key,
+    offerAt: doc.offerAt,
     placement: doc.placement,
     stage: doc.stage,
     deityIds: doc.deityIds,
