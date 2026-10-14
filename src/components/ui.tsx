@@ -2,16 +2,25 @@ import { useDialog } from "./dialogContext";
 import React from "react";
 import {
   ActivityIndicator,
+  Image,
+  ImageSourcePropType,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextProps,
+  useWindowDimensions,
   View,
   ViewProps,
   ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, Path } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { backgrounds } from "./backgrounds";
 import { ChevronLeft, ChevronRight, LucideIcon } from "lucide-react-native";
 import { colors, fonts, radii } from "../theme/tokens";
 import { useApp } from "../app/providers/AppProvider";
@@ -210,16 +219,20 @@ export function Page({
   subtitle,
   onBack,
   scroll = true,
-  bare = false,
+  header,
+  background = backgrounds.page,
 }: React.PropsWithChildren<{
   title: string;
   subtitle?: string;
   onBack?: () => void;
   scroll?: boolean;
-  // No title row: the screen draws its own heading inside the scroll (Home).
-  bare?: boolean;
+  // Replaces the app bar; scrolls with the page (Home's greeting).
+  header?: React.ReactNode;
+  // The screen's soft background art.
+  background?: ImageSourcePropType;
 }>) {
   const { storageError, t, connection } = useApp();
+  const insets = useSafeAreaInsets();
   const body = (
     <View style={[styles.pageContent, !scroll && { flex: 1 }]}>
       {storageError && <Notice text={t("storageError")} />}
@@ -232,36 +245,35 @@ export function Page({
     </View>
   );
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.page}>
-      <Row
-        style={[styles.header, bare && { display: "none" }]}
-        accessibilityElementsHidden={bare}
-      >
-        {onBack && (
-          <IconButton icon={ChevronLeft} label={t("close")} onPress={onBack} />
-        )}
-        <View style={{ flex: 1 }}>
-          <Txt bold size={28}>
-            {title}
-          </Txt>
-          {subtitle && (
-            <Txt muted size={13}>
-              {subtitle}
-            </Txt>
-          )}
-        </View>
-      </Row>
+    <SafeAreaView edges={["left", "right"]} style={styles.page}>
+      <Image
+        source={background}
+        resizeMode="cover"
+        accessible={false}
+        style={styles.pageBackground}
+      />
+      {!header && <AppBar title={title} subtitle={subtitle} onBack={onBack} />}
       {scroll ? (
         <ScrollView
           contentContainerStyle={{ paddingBottom: 28 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {header}
           {body}
         </ScrollView>
       ) : (
-        body
+        <>
+          {header}
+          {body}
+        </>
       )}
+      {/* Saffron behind the status bar, so content scrolled under it (Home's
+          greeting) never shows through. */}
+      <View
+        pointerEvents="none"
+        style={[styles.statusStrip, { height: insets.top }]}
+      />
     </SafeAreaView>
   );
 }
@@ -325,17 +337,24 @@ export function useUnavailable() {
 }
 export const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.background },
+  statusStrip: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.bhagwa,
+  },
+  // Explicit size: a bundled image with only absoluteFill draws at its pixel size.
+  pageBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+  },
   pageContent: {
     paddingHorizontal: 22,
     gap: 20,
-    width: "100%",
-    maxWidth: 640,
-    alignSelf: "center",
-  },
-  header: {
-    paddingHorizontal: 22,
-    paddingTop: 16,
-    paddingBottom: 20,
     width: "100%",
     maxWidth: 640,
     alignSelf: "center",
@@ -390,3 +409,97 @@ export const styles = StyleSheet.create({
   notice: { backgroundColor: colors.pale, borderRadius: 12, padding: 12 },
   state: { padding: 30, gap: 18, alignItems: "center" },
 });
+
+const SCALLOP = 18;
+const DEPTH = SCALLOP / 2;
+const FRINGE = DEPTH + 6;
+
+// A jhalar: the scalloped fringe of a mandap canopy, each lobe trimmed in gold
+// with a bead at its tip. It continues the bar's saffron below its edge.
+export function Jhalar({ color = colors.saffron }: { color?: string }) {
+  const { width } = useWindowDimensions();
+  const count = Math.ceil(width / SCALLOP);
+  let lobes = "M0 0";
+  for (let i = 0; i < count; i++)
+    lobes += ` A${DEPTH} ${DEPTH} 0 0 0 ${(i + 1) * SCALLOP} 0`;
+  return (
+    <Svg width={width} height={FRINGE} accessible={false}>
+      <Path d={`${lobes} Z`} fill={color} />
+      <Path d={lobes} fill="none" stroke={colors.haldi} strokeWidth={1.5} />
+      {Array.from({ length: count }, (_, i) => (
+        <Circle
+          key={i}
+          cx={i * SCALLOP + DEPTH}
+          cy={DEPTH + 3}
+          r={2}
+          fill={colors.haldi}
+        />
+      ))}
+    </Svg>
+  );
+}
+
+// The saffron app bar every page shares: back, title and subtitle in white
+// on bhagwa, finished with a jhalar. `children` replaces the title (Home's
+// greeting); `fringe={false}` leaves the edge to the screen (Home's toran).
+export function AppBar({
+  title,
+  subtitle,
+  onBack,
+  children,
+  fringe = true,
+}: React.PropsWithChildren<{
+  title?: string;
+  subtitle?: string;
+  onBack?: () => void;
+  fringe?: boolean;
+}>) {
+  const { t } = useApp();
+  const insets = useSafeAreaInsets();
+  return (
+    <View>
+      <LinearGradient
+        colors={[colors.bhagwa, colors.saffron]}
+        style={{
+          paddingTop: insets.top + 6,
+          paddingBottom: 10,
+          paddingHorizontal: 16,
+        }}
+      >
+        {children ?? (
+          <Row style={{ minHeight: 52, gap: 6 }}>
+            {onBack && (
+              <IconButton
+                icon={ChevronLeft}
+                label={t("close")}
+                onPress={onBack}
+                color={colors.white}
+              />
+            )}
+            <View style={{ flex: 1, paddingLeft: onBack ? 0 : 6 }}>
+              <Txt
+                bold
+                size={24}
+                numberOfLines={1}
+                accessibilityRole="header"
+                style={{ color: colors.white }}
+              >
+                {title}
+              </Txt>
+              {subtitle && (
+                <Txt
+                  size={14}
+                  numberOfLines={1}
+                  style={{ color: colors.headerText }}
+                >
+                  {subtitle}
+                </Txt>
+              )}
+            </View>
+          </Row>
+        )}
+      </LinearGradient>
+      {fringe && <Jhalar />}
+    </View>
+  );
+}

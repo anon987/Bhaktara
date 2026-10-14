@@ -18,6 +18,7 @@ import {
   Row,
   Txt,
 } from "../../components/ui";
+import { backgrounds } from "../../components/backgrounds";
 import { contentTypeIcons } from "../../components/contentTypeIcons";
 import { ContentType, Deity } from "../../domain/models";
 import { StringKey } from "../../i18n/strings";
@@ -41,7 +42,11 @@ export function ChooseDeityScreen({ navigation, route }: Props) {
   const window = useWindowDimensions();
   const width = Math.min(window.width, PAGE_MAX) - PAGE_PADDING;
   return (
-    <Page title={t(type.toLowerCase() as StringKey)} onBack={navigation.goBack}>
+    <Page
+      background={backgrounds.explore}
+      title={t(type.toLowerCase() as StringKey)}
+      onBack={navigation.goBack}
+    >
       <DataBoundary>
         <DeityGrid
           type={type}

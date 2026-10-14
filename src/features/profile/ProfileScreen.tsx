@@ -29,6 +29,7 @@ import {
   Txt,
   useUnavailable,
 } from "../../components/ui";
+import { backgrounds } from "../../components/backgrounds";
 import { FavoriteList } from "./FavoriteList";
 import { Milestones, useStats } from "../sadhana/SadhanaParts";
 import { useOptionalProgression } from "../sadhana/ProgressionProvider";
@@ -47,7 +48,7 @@ export function ProfileScreen({ navigation }: Props) {
   const stats = useStats();
   const snapshot = useOptionalProgression()?.snapshot;
   return (
-    <Page title={t("profile")}>
+    <Page background={backgrounds.profile} title={t("profile")}>
       <DataBoundary>
         <View style={{ alignItems: "center", gap: 8 }}>
           <View

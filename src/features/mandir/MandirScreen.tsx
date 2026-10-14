@@ -17,6 +17,7 @@ import {
   Txt,
   useUnavailable,
 } from "../../components/ui";
+import { backgrounds } from "../../components/backgrounds";
 import { DevotionalArt } from "../../components/DevotionalArt";
 import { colors } from "../../theme/tokens";
 import { StringKey } from "../../i18n/strings";
@@ -36,6 +37,7 @@ export function MandirScreen({ navigation }: Props) {
   const deity = catalog?.deities.find((item) => item.id === local.deityId);
   return (
     <Page
+      background={backgrounds.mandir}
       title={t("mandir")}
       subtitle={
         feedback

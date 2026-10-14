@@ -16,6 +16,7 @@ import {
   Txt,
   useUnavailable,
 } from "../../components/ui";
+import { backgrounds } from "../../components/backgrounds";
 import { colors } from "../../theme/tokens";
 import { StringKey } from "../../i18n/strings";
 import { authService } from "../../services/integrations";
@@ -72,7 +73,11 @@ export function SadhanaScreen({ navigation }: Props) {
     </Card>
   );
   return (
-    <Page title={t("sadhana")} subtitle={t("dailyHint")}>
+    <Page
+      background={backgrounds.sadhana}
+      title={t("sadhana")}
+      subtitle={t("dailyHint")}
+    >
       <View style={styles.tabs} accessibilityRole="tablist">
         {sections.map((key) => {
           const selected = section === key;
