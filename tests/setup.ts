@@ -145,3 +145,33 @@ jest.mock("react-native-reanimated", () =>
 jest.mock("../src/features/sadhana/puja/Effects", () => ({
   PujaEffects: () => null,
 }));
+
+// The AdMob SDK needs its native module. By default every rewarded ad fails
+// to load (no fill), so app code never waits on the 5 s load timeout.
+// tests/rewarded-ad.test.ts installs a controllable fake instead.
+jest.mock("react-native-google-mobile-ads", () => ({
+  __esModule: true,
+  default: () => ({ initialize: jest.fn(async () => []) }),
+  AdsConsent: {
+    requestInfoUpdate: jest.fn(async () => ({ canRequestAds: true })),
+  },
+  AdEventType: { ERROR: "error", CLOSED: "closed" },
+  RewardedAdEventType: {
+    LOADED: "rewarded_loaded",
+    EARNED_REWARD: "rewarded_earned_reward",
+  },
+  RewardedAd: {
+    createForAdRequest: () => {
+      let listener: ((event: { type: string }) => void) | undefined;
+      return {
+        addAdEventsListener: (next: typeof listener) => {
+          listener = next;
+          return () => undefined;
+        },
+        load: () => listener?.({ type: "error" }),
+        show: jest.fn(async () => undefined),
+        destroy: jest.fn(),
+      };
+    },
+  },
+}));

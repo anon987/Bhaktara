@@ -10,19 +10,15 @@ import {
 import { requiresRewardedAd } from "../integrations";
 import { remoteConfig } from "../remoteConfig";
 import { RemoteConfigService } from "../remoteConfig/defaults";
+import { rewardedAdPresenter } from "./rewardedAd";
 
-// M4 seam: the AdMob rewarded unit implements this (load with a 5 s timeout,
-// show, report the outcome) and replaces `rewardedAdPresenter` below. No ad
-// SDK is linked before then.
+// Shows one rewarded ad and reports how it ended. The AdMob implementation
+// (rewardedAd.native.ts) loads with a 5 s timeout; web has a permanent
+// no-fill (rewardedAd.ts). Callers may also inject their own (tests).
 export interface RewardedAdPresenter {
   show(unlockType: RewardedUnlockType): Promise<RewardedOutcome>;
 }
-// Without an ad SDK there is never inventory, so the doc 11 §4 no-fill rule
-// applies and the save still goes ahead (reported as via "fallback"). Only
-// reachable when Remote Config turns rewarded ads on before M4 ships.
-export const rewardedAdPresenter: RewardedAdPresenter = {
-  show: async () => "no-fill",
-};
+export { rewardedAdPresenter };
 
 type GateConfig = Pick<RemoteConfigService, "getBoolean">;
 export function saveGateFor(
