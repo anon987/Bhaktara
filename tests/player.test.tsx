@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import { Text } from "react-native";
-import { act, render, waitFor } from "@testing-library/react-native";
+import { Image, StyleSheet, Text } from "react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { AppProvider } from "../src/app/providers/AppProvider";
 import {
   PlayerProvider,
@@ -101,6 +101,10 @@ beforeEach(() => {
     .mockResolvedValue({ ...initialState, language: "en" });
   jest.spyOn(localStore, "write").mockResolvedValue();
   jest.spyOn(analytics, "track").mockImplementation(() => undefined);
+  // jest-expo's image loader fake can't answer getSize; artwork stays square.
+  jest
+    .spyOn(Image, "getSize")
+    .mockImplementation(() => Promise.resolve({ width: 1, height: 1 }));
   Object.values(mockAudio).forEach(
     (value) => jest.isMockFunction(value) && value.mockClear(),
   );
@@ -221,6 +225,10 @@ async function renderPlayerScreen(item: Content) {
   });
   await waitFor(() => expect(handle.current).not.toBeNull());
   act(() => handle.current!.load(item, "explore"));
+  // Let the reduced-motion query settle.
+  await act(async () => {
+    await Promise.resolve();
+  });
   return screen;
 }
 
@@ -232,6 +240,9 @@ test("the player shows the lyrics stanzas without the section notes", async () =
   });
   expect(screen.getByTestId("player-lyrics")).toBeTruthy();
   expect(screen.getByText("Lyrics")).toBeTruthy();
+  // The chip under the controls leads down to them.
+  expect(screen.getByTestId("player-lyrics-chip")).toBeTruthy();
+  expect(screen.getByText("Read the lyrics")).toBeTruthy();
   expect(
     screen.getByText("सखी री, आँगन सजा दो,\nआज हनुमत का गुण गाएँ।", {
       normalizer: (text) => text,
@@ -259,4 +270,241 @@ test("the player prefers the app language and hides an empty lyrics section", as
     ),
   );
   expect(screen.queryByTestId("player-lyrics")).toBeNull();
+  expect(screen.queryByTestId("player-lyrics-chip")).toBeNull();
+});
+
+test("repeat restarts the track when it finishes", async () => {
+  await renderPlayer();
+  await waitFor(() => expect(handle.current).not.toBeNull());
+  act(() => handle.current!.load(streamable, "explore"));
+  act(() => mockAudio.listener!(status({ currentTime: 10 })));
+  expect(handle.current!.repeat).toBe(false);
+  act(() => handle.current!.setRepeat(true));
+  expect(handle.current!.repeat).toBe(true);
+  mockAudio.play.mockClear();
+  mockAudio.pause.mockClear();
+  act(() =>
+    mockAudio.listener!(status({ currentTime: 100, didJustFinish: true })),
+  );
+  expect(mockAudio.seekTo).toHaveBeenCalledWith(0);
+  expect(mockAudio.play).toHaveBeenCalledTimes(1);
+  expect(mockAudio.pause).not.toHaveBeenCalled();
+  expect(handle.current!.playing).toBe(true);
+  expect(handle.current!.position).toBe(0);
+  // Turned off, the next finish rewinds and stays paused.
+  act(() => handle.current!.setRepeat(false));
+  mockAudio.play.mockClear();
+  act(() =>
+    mockAudio.listener!(status({ currentTime: 100, didJustFinish: true })),
+  );
+  expect(mockAudio.play).not.toHaveBeenCalled();
+  expect(mockAudio.pause).toHaveBeenCalled();
+  expect(handle.current!.playing).toBe(false);
+});
+
+test("the sleep timer pauses after the chosen minutes", async () => {
+  jest.useFakeTimers();
+  try {
+    await renderPlayer();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => handle.current!.load(streamable, "explore"));
+    act(() => mockAudio.listener!(status({ currentTime: 5 })));
+    act(() => handle.current!.setSleep(15));
+    expect(handle.current!.sleepAt).toBe(Date.now() + 15 * 60_000);
+    mockAudio.pause.mockClear();
+    act(() => jest.advanceTimersByTime(15 * 60_000 - 1_000));
+    expect(mockAudio.pause).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(mockAudio.pause).toHaveBeenCalled();
+    expect(handle.current!.sleepAt).toBeNull();
+    // Turning the timer off cancels it.
+    act(() => handle.current!.setSleep(30));
+    act(() => handle.current!.setSleep(null));
+    mockAudio.pause.mockClear();
+    act(() => jest.advanceTimersByTime(31 * 60_000));
+    expect(mockAudio.pause).not.toHaveBeenCalled();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("the sleep timer can pause at the end of the bhajan, even on repeat", async () => {
+  await renderPlayer();
+  await waitFor(() => expect(handle.current).not.toBeNull());
+  act(() => handle.current!.load(streamable, "explore"));
+  act(() => mockAudio.listener!(status({ currentTime: 10 })));
+  act(() => handle.current!.setRepeat(true));
+  act(() => handle.current!.setSleep("end"));
+  expect(handle.current!.sleepAtEnd).toBe(true);
+  mockAudio.play.mockClear();
+  act(() =>
+    mockAudio.listener!(status({ currentTime: 100, didJustFinish: true })),
+  );
+  expect(mockAudio.pause).toHaveBeenCalled();
+  expect(mockAudio.play).not.toHaveBeenCalled();
+  expect(handle.current!.playing).toBe(false);
+  expect(handle.current!.sleepAtEnd).toBe(false);
+});
+
+// A touch for the PanResponder: one finger at pageX.
+const touch = (locationX: number, pageX: number, timestamp: number) => ({
+  nativeEvent: {
+    locationX,
+    locationY: 20,
+    pageX,
+    pageY: 20,
+    identifier: 0,
+    timestamp,
+    touches: [],
+    changedTouches: [],
+  },
+  touchHistory: {
+    numberActiveTouches: 1,
+    indexOfSingleActiveTouch: 0,
+    mostRecentTimeStamp: timestamp,
+    touchBank: [
+      {
+        touchActive: true,
+        startPageX: pageX,
+        startPageY: 20,
+        startTimeStamp: timestamp,
+        currentPageX: pageX,
+        currentPageY: 20,
+        currentTimeStamp: timestamp,
+        previousPageX: pageX,
+        previousPageY: 20,
+        previousTimeStamp: timestamp,
+      },
+    ],
+  },
+});
+
+test("the seek bar drags, shows the target time and seeks on release", async () => {
+  const screen = await renderPlayerScreen(streamable);
+  act(() => mockAudio.listener!(status({ currentTime: 10 })));
+  const seek = screen.getByTestId("player-seek");
+  fireEvent(seek, "layout", {
+    nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 56 } },
+  });
+  // Grab at a quarter, drag to the middle: the target time shows, no seek yet.
+  fireEvent(seek, "responderGrant", touch(50, 100, 1));
+  fireEvent(seek, "responderMove", touch(100, 150, 2));
+  expect(screen.getByText("0:50")).toBeTruthy();
+  expect(mockAudio.seekTo).not.toHaveBeenCalled();
+  fireEvent(seek, "responderRelease", touch(100, 150, 3));
+  expect(mockAudio.seekTo).toHaveBeenCalledWith(50);
+  // A tap on the track seeks there.
+  fireEvent(seek, "responderGrant", touch(160, 300, 4));
+  fireEvent(seek, "responderRelease", touch(160, 300, 5));
+  expect(mockAudio.seekTo).toHaveBeenLastCalledWith(80);
+  // Screen readers still adjust in 15-second steps.
+  expect(seek.props.accessibilityRole).toBe("adjustable");
+  expect(seek.props.accessibilityLabel).toBe("Playback position");
+  expect(
+    seek.props.accessibilityActions.map(({ name }: { name: string }) => name),
+  ).toEqual(["increment", "decrement"]);
+  act(() => mockAudio.listener!(status({ currentTime: 20 })));
+  fireEvent(seek, "accessibilityAction", {
+    nativeEvent: { actionName: "increment" },
+  });
+  expect(mockAudio.seekTo).toHaveBeenLastCalledWith(35);
+  fireEvent(seek, "accessibilityAction", {
+    nativeEvent: { actionName: "decrement" },
+  });
+  expect(mockAudio.seekTo).toHaveBeenLastCalledWith(5);
+});
+
+test("the player names the deity instead of the app", async () => {
+  const screen = await renderPlayerScreen(streamable);
+  await waitFor(() =>
+    expect(screen.getByTestId("player-subtitle").props.children).toBe(
+      "Krishna",
+    ),
+  );
+  expect(screen.getByText("A morning with Krishna")).toBeTruthy();
+  // The other language's title sits below it.
+  expect(screen.getByText("कृष्ण के संग एक सुबह")).toBeTruthy();
+  expect(screen.queryByText("Bhaktara")).toBeNull();
+  // Without a known deity, the content type stands in.
+  act(() =>
+    handle.current!.load(
+      { ...streamable, id: "no-deity", deityIds: ["unknown"] },
+      "explore",
+    ),
+  );
+  expect(screen.getByTestId("player-subtitle").props.children).toBe("Bhajan");
+});
+
+test("the artwork frame follows the thumb's shape, from square to 16:9", async () => {
+  const getSize = jest
+    .spyOn(Image, "getSize")
+    .mockImplementation((uri, success) => {
+      if (uri.includes("landscape")) success?.(1408, 768);
+      else success?.(800, 800);
+      return Promise.resolve({ width: 0, height: 0 });
+    });
+  const ratioOf = (screen: ReturnType<typeof render>) =>
+    StyleSheet.flatten(screen.getByTestId("player-art").props.style)
+      .aspectRatio;
+  const withThumb = (
+    id: string,
+    thumb: Content["media"]["thumb"],
+  ): Content => ({
+    ...streamable,
+    id,
+    media: { ...streamable.media, thumb },
+  });
+  const screen = await renderPlayerScreen(
+    withThumb("landscape", { key: "bhajan/landscape/thumb.0a1b2c3d.webp" }),
+  );
+  await waitFor(() => expect(ratioOf(screen)).toBeCloseTo(16 / 9));
+  expect(getSize).toHaveBeenCalledWith(
+    "https://cdn.example.com/bhajan/landscape/thumb.0a1b2c3d.webp",
+    expect.any(Function),
+    expect.any(Function),
+  );
+  act(() =>
+    handle.current!.load(
+      withThumb("square", { key: "bhajan/square/thumb.0a1b2c3d.webp" }),
+      "explore",
+    ),
+  );
+  await waitFor(() => expect(ratioOf(screen)).toBe(1));
+  // Known dimensions are used without measuring; tall art stays square.
+  getSize.mockClear();
+  act(() =>
+    handle.current!.load(
+      withThumb("tall", {
+        key: "bhajan/tall/thumb.0a1b2c3d.webp",
+        width: 600,
+        height: 900,
+      }),
+      "explore",
+    ),
+  );
+  expect(ratioOf(screen)).toBe(1);
+  expect(getSize).not.toHaveBeenCalled();
+});
+
+test("the repeat and sleep timer buttons show what is set", async () => {
+  const screen = await renderPlayerScreen(streamable);
+  act(() => mockAudio.listener!(status({ currentTime: 10 })));
+  fireEvent.press(screen.getByTestId("player-repeat"));
+  expect(handle.current!.repeat).toBe(true);
+  expect(screen.getByText("Repeat on")).toBeTruthy();
+  fireEvent.press(screen.getByTestId("player-sleep"));
+  fireEvent.press(screen.getByTestId("sleep-30"));
+  expect(handle.current!.sleepAt).not.toBeNull();
+  await waitFor(() => expect(screen.getByText("30 min left")).toBeTruthy());
+  fireEvent.press(screen.getByTestId("player-sleep"));
+  fireEvent.press(screen.getByTestId("sleep-end"));
+  expect(handle.current!.sleepAt).toBeNull();
+  expect(handle.current!.sleepAtEnd).toBe(true);
+  expect(screen.getByText("Stops at the end")).toBeTruthy();
+  fireEvent.press(screen.getByTestId("player-sleep"));
+  fireEvent.press(screen.getByTestId("sleep-off"));
+  expect(handle.current!.sleepAtEnd).toBe(false);
+  expect(screen.getByText("Sleep timer")).toBeTruthy();
 });
