@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Image, StyleSheet, Text } from "react-native";
+import { Image, ScrollView, Share, StyleSheet, Text } from "react-native";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { AppProvider } from "../src/app/providers/AppProvider";
 import {
@@ -13,6 +13,13 @@ import { analytics } from "../src/services/analytics";
 import { Content } from "../src/domain/models";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PlayerScreen } from "../src/features/player/PlayerScreen";
+import {
+  computePlayerLayout,
+  MIN_ART_SIZE,
+  playerFixedHeight,
+} from "../src/features/player/playerLayout";
+
+type ReactTestInstance = ReturnType<ReturnType<typeof render>["getByTestId"]>;
 
 // A controllable stand-in for expo-audio's native player.
 type Listener = (status: Record<string, unknown>) => void;
@@ -232,17 +239,25 @@ async function renderPlayerScreen(item: Content) {
   return screen;
 }
 
-test("the player shows the lyrics stanzas without the section notes", async () => {
+// Everything under the artwork element, found by testID.
+const insideArt = (screen: ReturnType<typeof render>, testID: string) =>
+  screen
+    .getByTestId("player-art")
+    .findAll((node: ReactTestInstance) => node.props.testID === testID).length >
+  0;
+const opacityOf = (screen: ReturnType<typeof render>) =>
+  StyleSheet.flatten(screen.getByTestId("player-art-image").props.style)
+    .opacity;
+
+test("the lyrics show over the faded artwork, without the section notes", async () => {
   // The app is in English and the Hinglish lyrics are empty: Hindi is shown.
   const screen = await renderPlayerScreen({
     ...streamable,
     lyrics: { hi: sampleLyrics, en: "" },
   });
-  expect(screen.getByTestId("player-lyrics")).toBeTruthy();
-  expect(screen.getByText("Lyrics")).toBeTruthy();
-  // The chip under the controls leads down to them.
-  expect(screen.getByTestId("player-lyrics-chip")).toBeTruthy();
-  expect(screen.getByText("Read the lyrics")).toBeTruthy();
+  expect(insideArt(screen, "player-lyrics")).toBe(true);
+  expect(insideArt(screen, "player-lyrics-scroll")).toBe(true);
+  expect(opacityOf(screen)).toBeLessThanOrEqual(0.3);
   expect(
     screen.getByText("सखी री, आँगन सजा दो,\nआज हनुमत का गुण गाएँ।", {
       normalizer: (text) => text,
@@ -254,9 +269,36 @@ test("the player shows the lyrics stanzas without the section notes", async () =
     }),
   ).toBeTruthy();
   expect(screen.queryByText(/Intro|Chorus|\[/)).toBeNull();
+  // The lyrics scroll is the only scroll view: the page itself doesn't scroll.
+  const scrolls = screen.UNSAFE_queryAllByType(ScrollView);
+  expect(scrolls).toHaveLength(1);
+  expect(scrolls[0].props.testID).toBe("player-lyrics-scroll");
 });
 
-test("the player prefers the app language and hides an empty lyrics section", async () => {
+test("the lyrics toggle hides and shows the lyrics over the art", async () => {
+  const screen = await renderPlayerScreen({
+    ...streamable,
+    lyrics: { hi: sampleLyrics, en: "" },
+  });
+  const toggle = screen.getByTestId("player-lyrics-toggle");
+  expect(toggle.props.accessibilityLabel).toBe("Hide lyrics");
+  expect(toggle.props.accessibilityState).toEqual({ selected: true });
+  fireEvent.press(toggle);
+  expect(screen.queryByTestId("player-lyrics")).toBeNull();
+  expect(opacityOf(screen)).toBeUndefined();
+  // Back to the art's own shape.
+  expect(
+    StyleSheet.flatten(screen.getByTestId("player-art").props.style)
+      .aspectRatio,
+  ).toBe(1);
+  const shown = screen.getByTestId("player-lyrics-toggle");
+  expect(shown.props.accessibilityLabel).toBe("Show lyrics");
+  fireEvent.press(shown);
+  expect(screen.getByTestId("player-lyrics")).toBeTruthy();
+  expect(opacityOf(screen)).toBeLessThanOrEqual(0.3);
+});
+
+test("the player prefers the app language, and shows no lyrics or toggle without them", async () => {
   const screen = await renderPlayerScreen({
     ...streamable,
     lyrics: { hi: sampleLyrics, en: "[Intro]\nSakhi ri, aangan saja do," },
@@ -270,7 +312,9 @@ test("the player prefers the app language and hides an empty lyrics section", as
     ),
   );
   expect(screen.queryByTestId("player-lyrics")).toBeNull();
-  expect(screen.queryByTestId("player-lyrics-chip")).toBeNull();
+  expect(screen.queryByTestId("player-lyrics-toggle")).toBeNull();
+  expect(opacityOf(screen)).toBeUndefined();
+  expect(screen.UNSAFE_queryAllByType(ScrollView)).toHaveLength(0);
 });
 
 test("repeat restarts the track when it finishes", async () => {
@@ -300,52 +344,6 @@ test("repeat restarts the track when it finishes", async () => {
   expect(mockAudio.play).not.toHaveBeenCalled();
   expect(mockAudio.pause).toHaveBeenCalled();
   expect(handle.current!.playing).toBe(false);
-});
-
-test("the sleep timer pauses after the chosen minutes", async () => {
-  jest.useFakeTimers();
-  try {
-    await renderPlayer();
-    await act(async () => {
-      await Promise.resolve();
-    });
-    act(() => handle.current!.load(streamable, "explore"));
-    act(() => mockAudio.listener!(status({ currentTime: 5 })));
-    act(() => handle.current!.setSleep(15));
-    expect(handle.current!.sleepAt).toBe(Date.now() + 15 * 60_000);
-    mockAudio.pause.mockClear();
-    act(() => jest.advanceTimersByTime(15 * 60_000 - 1_000));
-    expect(mockAudio.pause).not.toHaveBeenCalled();
-    act(() => jest.advanceTimersByTime(1_000));
-    expect(mockAudio.pause).toHaveBeenCalled();
-    expect(handle.current!.sleepAt).toBeNull();
-    // Turning the timer off cancels it.
-    act(() => handle.current!.setSleep(30));
-    act(() => handle.current!.setSleep(null));
-    mockAudio.pause.mockClear();
-    act(() => jest.advanceTimersByTime(31 * 60_000));
-    expect(mockAudio.pause).not.toHaveBeenCalled();
-  } finally {
-    jest.useRealTimers();
-  }
-});
-
-test("the sleep timer can pause at the end of the bhajan, even on repeat", async () => {
-  await renderPlayer();
-  await waitFor(() => expect(handle.current).not.toBeNull());
-  act(() => handle.current!.load(streamable, "explore"));
-  act(() => mockAudio.listener!(status({ currentTime: 10 })));
-  act(() => handle.current!.setRepeat(true));
-  act(() => handle.current!.setSleep("end"));
-  expect(handle.current!.sleepAtEnd).toBe(true);
-  mockAudio.play.mockClear();
-  act(() =>
-    mockAudio.listener!(status({ currentTime: 100, didJustFinish: true })),
-  );
-  expect(mockAudio.pause).toHaveBeenCalled();
-  expect(mockAudio.play).not.toHaveBeenCalled();
-  expect(handle.current!.playing).toBe(false);
-  expect(handle.current!.sleepAtEnd).toBe(false);
 });
 
 // A touch for the PanResponder: one finger at pageX.
@@ -488,23 +486,115 @@ test("the artwork frame follows the thumb's shape, from square to 16:9", async (
   expect(getSize).not.toHaveBeenCalled();
 });
 
-test("the repeat and sleep timer buttons show what is set", async () => {
+test("the controls row has repeat, and no favourite or sleep timer", async () => {
   const screen = await renderPlayerScreen(streamable);
   act(() => mockAudio.listener!(status({ currentTime: 10 })));
-  fireEvent.press(screen.getByTestId("player-repeat"));
+  const row = screen.getByTestId("player-controls");
+  const ids = row
+    .findAll((node: ReactTestInstance) => typeof node.props.testID === "string")
+    .map((node: ReactTestInstance) => node.props.testID as string);
+  expect(ids).toContain("player-repeat");
+  expect(ids).toContain("player-toggle");
+  expect(screen.queryByTestId("player-favorite")).toBeNull();
+  expect(screen.queryByTestId("player-sleep")).toBeNull();
+  expect(screen.queryByText(/Favorite|Sleep timer/)).toBeNull();
+  expect(screen.queryByLabelText(/favorites/)).toBeNull();
+  const repeat = screen.getByTestId("player-repeat");
+  expect(repeat.props.accessibilityState).toEqual({ selected: false });
+  fireEvent.press(repeat);
   expect(handle.current!.repeat).toBe(true);
-  expect(screen.getByText("Repeat on")).toBeTruthy();
-  fireEvent.press(screen.getByTestId("player-sleep"));
-  fireEvent.press(screen.getByTestId("sleep-30"));
-  expect(handle.current!.sleepAt).not.toBeNull();
-  await waitFor(() => expect(screen.getByText("30 min left")).toBeTruthy());
-  fireEvent.press(screen.getByTestId("player-sleep"));
-  fireEvent.press(screen.getByTestId("sleep-end"));
-  expect(handle.current!.sleepAt).toBeNull();
-  expect(handle.current!.sleepAtEnd).toBe(true);
-  expect(screen.getByText("Stops at the end")).toBeTruthy();
-  fireEvent.press(screen.getByTestId("player-sleep"));
-  fireEvent.press(screen.getByTestId("sleep-off"));
-  expect(handle.current!.sleepAtEnd).toBe(false);
-  expect(screen.getByText("Sleep timer")).toBeTruthy();
+  expect(screen.getByTestId("player-repeat").props.accessibilityState).toEqual({
+    selected: true,
+  });
+  expect(screen.getByTestId("player-repeat").props.accessibilityLabel).toBe(
+    "Repeat: This bhajan will play again and again",
+  );
+  fireEvent.press(screen.getByTestId("player-repeat"));
+  expect(handle.current!.repeat).toBe(false);
+});
+
+test("share is an icon button on the artwork", async () => {
+  const share = jest
+    .spyOn(Share, "share")
+    .mockResolvedValue({ action: Share.sharedAction });
+  const screen = await renderPlayerScreen(streamable);
+  expect(insideArt(screen, "player-share")).toBe(true);
+  const button = screen.getByTestId("player-share");
+  expect(button.props.accessibilityLabel).toBe("Share this bhajan");
+  await act(async () => {
+    fireEvent.press(button);
+    await Promise.resolve();
+  });
+  expect(share).toHaveBeenCalledWith({
+    message: "Listen to “A morning with Krishna” on Bhaktara.",
+  });
+  expect(analytics.track).toHaveBeenCalledWith("content_share", {
+    content_id: "bhajan-stream",
+    content_type: streamable.type,
+    channel: "other",
+  });
+});
+
+describe("computePlayerLayout", () => {
+  const noInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+  const phoneInsets = { top: 24, bottom: 0, left: 0, right: 0 };
+  test.each([
+    ["square art", 1, noInsets],
+    ["16:9 art", 16 / 9, noInsets],
+    ["square art under a status bar", 1, phoneInsets],
+    ["16:9 art under a status bar", 16 / 9, phoneInsets],
+  ])("leaves room for the controls on 360×640 (%s)", (_, ratio, insets) => {
+    const layout = computePlayerLayout({
+      width: 360,
+      height: 640,
+      insets,
+      ratio,
+    });
+    expect(layout.artHeight).toBeGreaterThanOrEqual(MIN_ART_SIZE);
+    expect(layout.artWidth / layout.artHeight).toBeCloseTo(ratio, 1);
+    expect(layout.artWidth).toBeLessThanOrEqual(360 - 40 - 10);
+    expect(layout.usedHeight).toBeLessThanOrEqual(640 - insets.top);
+    expect(
+      playerFixedHeight(layout.titleLines) + layout.artHeight,
+    ).toBeLessThanOrEqual(640 - insets.top);
+  });
+  test("the art grows on tall phones and two-line titles fit", () => {
+    const short = computePlayerLayout({
+      width: 360,
+      height: 640,
+      insets: phoneInsets,
+      ratio: 1,
+    });
+    const tall = computePlayerLayout({
+      width: 360,
+      height: 800,
+      insets: phoneInsets,
+      ratio: 1,
+    });
+    expect(tall.artHeight).toBeGreaterThan(short.artHeight);
+    expect(tall.titleLines).toBe(2);
+    // Square art is capped by the page width.
+    expect(tall.artWidth).toBe(360 - 40 - 10);
+  });
+  test("titles cut to one line before the art goes under the minimum", () => {
+    const layout = computePlayerLayout({
+      width: 360,
+      height: 600,
+      insets: { top: 24, bottom: 48, left: 0, right: 0 },
+      ratio: 1,
+    });
+    expect(layout.titleLines).toBe(1);
+    expect(layout.artHeight).toBeGreaterThanOrEqual(MIN_ART_SIZE);
+  });
+  test("with lyrics the frame takes all the space left over", () => {
+    const layout = computePlayerLayout({
+      width: 360,
+      height: 640,
+      insets: phoneInsets,
+      ratio: 16 / 9,
+      fill: true,
+    });
+    expect(layout.artWidth).toBe(360 - 40 - 10);
+    expect(layout.usedHeight).toBe(640 - 24);
+  });
 });

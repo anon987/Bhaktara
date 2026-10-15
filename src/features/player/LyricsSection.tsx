@@ -1,104 +1,83 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
-import { useApp } from "../../app/providers/AppProvider";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Txt } from "../../components/ui";
-import { lyricsForLanguage } from "../../domain/lyrics";
-import type { Content } from "../../domain/models";
-import { fonts, shrine } from "../../theme/tokens";
-import { Marigold } from "../sadhana/art/Marigold";
+import type { LyricsLanguage } from "../../domain/lyrics";
+import { fonts, sanctum } from "../../theme/tokens";
 
 const LYRIC_SIZE = 20;
+const LYRIC_LINE = 30;
+// Clear of the round buttons on the art's top corners (10 inset + 44).
+const TOP_PADDING = 64;
+const FADE = 28;
+// Matches the scrim at the edges, so the lines fade in and out.
+const EDGE = "rgba(24, 7, 5, 0.92)";
+const CLEAR = "rgba(24, 7, 5, 0)";
 
-// The song's lyrics under the player controls, in the app language (or the
-// other one when that is empty), on a parchment page in a gold frame.
-// Section notes such as "[Chorus — Mukhda]" are hidden. It scrolls with the
-// player page; there is no inner scroll view. Memoised: the lyrics don't
-// follow the playback position.
-export const LyricsSection = React.memo(function LyricsSection({
-  lyrics,
+// The song's lyrics over the faded artwork, inside the gold frame: their own
+// vertical scroll (the page doesn't scroll), centred stanzas in cream with a
+// soft shadow, and fades at the top and bottom edges. Stanzas come from
+// lyricsForLanguage, which drops section notes such as "[Chorus — Mukhda]".
+// Memoised: the lyrics don't follow the playback position.
+export const LyricsOverlay = React.memo(function LyricsOverlay({
+  language,
+  stanzas,
 }: {
-  lyrics: Content["lyrics"];
+  language: LyricsLanguage;
+  stanzas: string[][];
 }) {
-  const { local, t } = useApp();
-  const shown = lyricsForLanguage(lyrics, local.language);
-  if (!shown) return null;
   // Hindi lyrics need the Devanagari face even when the app is in English.
-  const fontFamily = shown.language === "hi" ? fonts.hi : fonts.en;
+  const fontFamily = language === "hi" ? fonts.hi : fonts.en;
   return (
-    <View style={styles.frame} testID="player-lyrics">
-      <View style={styles.panel}>
-        <View style={styles.heading}>
-          <Marigold size={22} />
-          <View style={styles.rule} />
-          <Txt bold size={22} accessibilityRole="header" style={styles.title}>
-            {t("lyrics")}
+    <View style={StyleSheet.absoluteFill} testID="player-lyrics">
+      <ScrollView
+        testID="player-lyrics-scroll"
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+      >
+        {stanzas.map((lines, index) => (
+          <Txt
+            key={index}
+            size={LYRIC_SIZE}
+            style={[styles.stanza, { fontFamily }]}
+          >
+            {lines.join("\n")}
           </Txt>
-          <View style={styles.rule} />
-          <Marigold size={22} />
-        </View>
-        {shown.stanzas.map((lines, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && (
-              <View style={styles.divider} accessible={false}>
-                <View style={styles.diamondSmall} />
-                <View style={styles.diamond} />
-                <View style={styles.diamondSmall} />
-              </View>
-            )}
-            <Txt size={LYRIC_SIZE} style={[styles.stanza, { fontFamily }]}>
-              {lines.join("\n")}
-            </Txt>
-          </React.Fragment>
         ))}
-      </View>
+      </ScrollView>
+      <LinearGradient
+        pointerEvents="none"
+        colors={[EDGE, EDGE, CLEAR]}
+        locations={[0, 0.5, 1]}
+        style={[styles.fade, styles.fadeTop]}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={[CLEAR, EDGE]}
+        style={[styles.fade, styles.fadeBottom]}
+      />
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  // A double gold border: the outer frame and a thin inner line.
-  frame: {
-    marginTop: 24,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: shrine.gold,
-    backgroundColor: shrine.parchment,
-    padding: 5,
-  },
-  panel: {
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: shrine.line,
-    backgroundColor: shrine.ivory,
+  content: {
+    paddingTop: TOP_PADDING,
+    paddingBottom: 36,
     paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 26,
-    gap: 18,
+    gap: 22,
   },
-  heading: { flexDirection: "row", alignItems: "center", gap: 10 },
-  rule: { flex: 1, height: 1.5, backgroundColor: shrine.gold },
-  title: { color: shrine.maroon },
   stanza: {
-    color: shrine.ink,
+    color: sanctum.text,
     textAlign: "center",
-    lineHeight: Math.round(LYRIC_SIZE * 1.65),
+    lineHeight: LYRIC_LINE,
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  divider: {
-    flexDirection: "row",
-    alignSelf: "center",
-    alignItems: "center",
-    gap: 8,
-  },
-  diamond: {
-    width: 8,
-    height: 8,
-    backgroundColor: shrine.saffronDeep,
-    transform: [{ rotate: "45deg" }],
-  },
-  diamondSmall: {
-    width: 5,
-    height: 5,
-    backgroundColor: shrine.gold,
-    transform: [{ rotate: "45deg" }],
-  },
+  fade: { position: "absolute", left: 0, right: 0 },
+  // Behind the corner buttons, down to where the text first shows.
+  fadeTop: { top: 0, height: TOP_PADDING - 8 },
+  fadeBottom: { bottom: 0, height: FADE },
 });

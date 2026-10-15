@@ -177,14 +177,14 @@ export const strings = {
     "ऑडियो लोड नहीं हो सका। इंटरनेट कनेक्शन जाँचें और फिर प्रयास करें।",
   ],
   buffering: ["Loading…", "लोड हो रहा है…"],
+  // The one-line error under the player's seek bar.
+  audioErrorShort: ["The audio couldn't load.", "ऑडियो लोड नहीं हो सका।"],
   lyrics: ["Lyrics", "बोल"],
   // Full-screen audio player.
   closePlayer: ["Close the player", "प्लेयर बंद करें"],
-  showLyrics: ["Read the lyrics", "भजन के बोल पढ़ें"],
-  favoriteShort: ["Favorite", "पसंदीदा"],
-  favoriteSaved: ["Saved", "पसंदीदा में है"],
+  showLyrics: ["Show lyrics", "बोल दिखाएँ"],
+  hideLyrics: ["Hide lyrics", "बोल छिपाएँ"],
   repeat: ["Repeat", "दोहराएँ"],
-  repeatOn: ["Repeat on", "दोहराना चालू"],
   repeatOnHint: [
     "This bhajan will play again and again",
     "यह भजन बार-बार चलेगा",
@@ -193,17 +193,7 @@ export const strings = {
     "This bhajan will stop at the end",
     "यह भजन अंत में रुक जाएगा",
   ],
-  sleepTimer: ["Sleep timer", "नींद टाइमर"],
-  sleepTimerHint: ["When should the bhajan stop?", "भजन कब बंद हो?"],
-  sleepOff: ["Off", "बंद"],
-  sleep15: ["After 15 minutes", "15 मिनट बाद"],
-  sleep30: ["After 30 minutes", "30 मिनट बाद"],
-  sleep60: ["After 1 hour", "1 घंटे बाद"],
-  sleepEnd: ["At the end of this bhajan", "इस भजन के अंत में"],
-  sleepEndShort: ["Stops at the end", "अंत में रुकेगा"],
-  // {n} is the number of minutes.
-  sleepLeft: ["{n} min left", "{n} मिनट बाकी"],
-  sharePlayer: ["Share", "साझा करें"],
+  sharePlayer: ["Share this bhajan", "यह भजन साझा करें"],
   // {title} is the bhajan's name.
   sharePlayerMessage: [
     "Listen to “{title}” on Bhaktara.",
