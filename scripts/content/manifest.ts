@@ -6,7 +6,6 @@ import {
   checkItems,
   checklistState as typedChecklistState,
 } from "../../src/domain/checklist";
-import { descriptionRequiredTypes } from "../../src/domain/cms";
 import { Lyrics, LYRICS_MAX_LENGTH } from "../../src/domain/lyrics";
 
 // Seed/import manifest (doc 18 §3, doc 09 §4). One row per content item.
@@ -188,10 +187,6 @@ export const rowSchema = z
       if (!row[field])
         context.addIssue({ code: "custom", path: [field], message: why });
     };
-    if (descriptionRequiredTypes.includes(row.type)) {
-      need("description_hi", `${row.type} needs a Hindi description`);
-      need("description_en", `${row.type} needs an English description`);
-    }
     if (
       ["BHAJAN", "AARTI", "MANTRA", "CHALISA", "RINGTONE"].includes(row.type)
     ) {

@@ -1,7 +1,7 @@
 import { MAX_LOCALIZE_TITLES, type AdminApi, type LocalizedText } from "../../api";
 import { lyricsSide, placeLocalized, sourceSide, type Side } from "../../content/localize";
 import { draftFromForm, emptyForm } from "../../content/draftForm";
-import { descriptionRequiredTypes, LYRICS_MAX_LENGTH, uploadKinds, type ContentType, type Lyrics, type UploadMime } from "../../domain";
+import { songTypes, LYRICS_MAX_LENGTH, uploadKinds, type ContentType, type Lyrics, type UploadMime } from "../../domain";
 import { isM4a, readM4aMetadata, type M4aMetadata } from "../../lib/m4aMetadata";
 import type { MediaInputRole } from "../../../../src/domain/mediaProcessing";
 import { readableError } from "../../errors";
@@ -63,7 +63,7 @@ const titleOnSide = (title: string): UploadRow["title"] =>
 export const titleFromName = (name: string): UploadRow["title"] => titleOnSide(titleFromFileName(name));
 
 // Types that carry song lyrics: the devotional audio types (cms.ts).
-export const hasLyrics = (type: ContentType) => descriptionRequiredTypes.includes(type);
+export const hasLyrics = (type: ContentType) => songTypes.includes(type);
 
 export const rowFromPlan = (item: PlannedItem): UploadRow => ({
   ...item,

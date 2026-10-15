@@ -40,7 +40,8 @@ Start from `scripts/content/manifest.example.csv`. One row per item; the header 
 | --- | --- | --- |
 | `importKey` | yes | Lowercase slug, stable forever. It becomes the content ID, so re-running updates instead of duplicating |
 | `type` | yes | BHAJAN, AARTI, MANTRA, CHALISA, WALLPAPER, RINGTONE or STATUS |
-| `title_hi`, `title_en`, `description_hi`, `description_en` | yes | |
+| `title_hi`, `title_en` | yes | |
+| `description_hi`, `description_en` | no | Never required. The app hides an empty description, and bhajans, aartis, mantras and chalisas show none in the admin editor |
 | `deityIds` | yes | Must exist in `deities` (doc 18 §4 taxonomy) |
 | `categoryIds`, `tags` | no | Tags should include transliterations; they feed search |
 | `audioLanguage` | no | e.g. `hi`, `sa` |

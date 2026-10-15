@@ -94,6 +94,21 @@ describe("ContentEditor form", () => {
     expect(screen.queryByLabelText(/^Description in/)).not.toBeInTheDocument();
   });
 
+  it("shows no description fields for songs", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "BHAJAN");
+    await screen.findByLabelText("Title in Hindi");
+    expect(screen.queryByLabelText(/^Description in/)).not.toBeInTheDocument();
+    expect(screen.getByText("Titles", { selector: "legend" })).toBeInTheDocument();
+  });
+
+  it("keeps the description fields for a ringtone", async () => {
+    renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "RINGTONE");
+    await screen.findByLabelText("Title in Hindi");
+    expect(screen.getByLabelText("Description in Hindi")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description in English")).toBeInTheDocument();
+    expect(screen.getByText("Titles and description", { selector: "legend" })).toBeInTheDocument();
+  });
+
   it("asks for Hindi first on titled types", async () => {
     renderEditor(fakeApi(), "EDITOR", undefined, fakePanel(), "BHAJAN");
     await screen.findByLabelText("Title in Hindi");
@@ -272,7 +287,7 @@ describe("ContentEditor status transitions", () => {
           {
             reason: "CHECKLIST_INCOMPLETE",
             problems: [
-              { field: "description.hi", message: "Hindi description is required" },
+              { field: "title.hi", message: "Hindi title is required" },
               {
                 field: "checklist.titleChecked",
                 message: "Checklist: Title correct in Hindi and English, spelling checked",
@@ -291,7 +306,7 @@ describe("ContentEditor status transitions", () => {
     });
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Not ready yet");
-    expect(alert).toHaveTextContent("Description (Hindi): Hindi description is required");
+    expect(alert).toHaveTextContent("Title (Hindi): Hindi title is required");
     expect(alert).toHaveTextContent(
       "Checklist: Title correct in Hindi and English, spelling checked",
     );

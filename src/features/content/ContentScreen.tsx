@@ -118,7 +118,9 @@ export function ContentScreen({
           onPress={() => toggleFavorite(item.id)}
         />
       </Row>
-      <Txt muted>{item.description[local.language]}</Txt>
+      {!!item.description[local.language] && (
+        <Txt muted>{item.description[local.language]}</Txt>
+      )}
       {audio && (
         <>
           <Button

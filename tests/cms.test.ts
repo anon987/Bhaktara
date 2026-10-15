@@ -14,6 +14,7 @@ import {
   draftFromDocuments,
   readinessProblems,
   saveContentSchema,
+  songTypes,
   transitions,
 } from "../src/domain/cms";
 import { checkItems, checkLabels } from "../src/domain/checklist";
@@ -100,8 +101,6 @@ describe("readiness (doc 09 §3)", () => {
     ).map((problem) => problem.field);
     expect(gaps).toEqual([
       "title.hi",
-      "description.hi",
-      "description.en",
       "deityIds",
       "media.stream",
     ]);
@@ -132,13 +131,17 @@ describe("readiness (doc 09 §3)", () => {
       ).not.toEqual(expect.arrayContaining([expect.stringMatching(/^desc/)]));
   });
 
-  it("requires both descriptions for devotional audio types", () => {
-    for (const type of ["BHAJAN", "AARTI", "MANTRA", "CHALISA"] as const)
+  it("makes songs READY with titles and media, no description needed", () => {
+    for (const type of songTypes)
       expect(
-        readinessProblems(draft({ type, description: { hi: "", en: "" } })).map(
-          (problem) => problem.field,
-        ),
-      ).toEqual(["description.hi", "description.en"]);
+        readinessProblems(draft({ type, description: { hi: "", en: "" } })),
+      ).toEqual([]);
+    // Titles are still required.
+    expect(
+      readinessProblems(
+        draft({ type: "BHAJAN", title: { hi: "", en: "" }, description: { hi: "", en: "" } }),
+      ).map((problem) => problem.field),
+    ).toEqual(["title.hi", "title.en"]);
   });
 
   it("never gates on provenance, source text or the checklist", () => {
