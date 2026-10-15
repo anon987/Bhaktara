@@ -149,6 +149,14 @@ export type GeminiRequest = {
   maxOutputTokens?: number;
   // Added to the usage log line (counts and IDs only, never text).
   logContext?: Record<string, unknown>;
+  // Told the token usage of the call, including a cut-off one.
+  onUsage?: (usage: GeminiUsage) => void;
+};
+export type GeminiUsage = {
+  promptTokenCount: number | null;
+  candidatesTokenCount: number | null;
+  thoughtsTokenCount: number | null;
+  finishReason: string | null;
 };
 // Returns the model's JSON text (candidates[0].content.parts[0].text).
 export type Gemini = (request: GeminiRequest) => Promise<string>;
@@ -212,14 +220,14 @@ export function vertexGemini(
     const body = (await response.json().catch(() => null)) as GenerateResponse | null;
     const usage = body?.usageMetadata ?? {};
     const candidate = body?.candidates?.[0];
-    logger.info("Gemini usage", {
-      ...request.logContext,
-      model: config.model,
+    const counts: GeminiUsage = {
       promptTokenCount: usage.promptTokenCount ?? null,
       candidatesTokenCount: usage.candidatesTokenCount ?? null,
       thoughtsTokenCount: usage.thoughtsTokenCount ?? null,
       finishReason: candidate?.finishReason ?? null,
-    });
+    };
+    logger.info("Gemini usage", { ...request.logContext, model: config.model, ...counts });
+    request.onUsage?.(counts);
     if (candidate?.finishReason === "MAX_TOKENS")
       throw new GeminiCallError("generate", response.status, "MAX_TOKENS");
     // Thought summaries (if any) are skipped; the answer is the text part.
