@@ -41,6 +41,8 @@ The admin web app (`admin/`) is the operator panel for Bhaktara (doc 09, D-055).
 5. **Upload** first checks that uploads and rendering are configured, so nothing is created when they are not. It then pre-checks each file in the browser (wallpaper at least 1080×2400, ringtone 20–30 s, status video 15–30 s); a file that fails is flagged and creates no draft. Two items run at a time: create the DRAFT, upload the originals to R2 staging (with progress), then `processMedia` renders the variants onto it. A taken ID gets `-2`, `-3`…
 6. A failed item shows why and resumes with **Retry failed** from the step that failed. Everything stays DRAFT for the normal review (D-036).
 
+**What READY needs:** Hindi and English titles (a wallpaper only needs its name), at least one deity, and the type's media. No type needs a description: bhajans, aartis, mantras and chalisas have no description fields at all (the editor shows **Titles** and lyrics instead), so songs uploaded from m4a files with titles and media go straight to READY with **Mark READY when done**. Ringtones and status videos keep an optional description. The server re-checks the same rules in `transitionContentStatus`.
+
 **Covers for audio:** an uploaded cover is used; otherwise album art embedded in the MP3/M4A becomes the cover; otherwise the item has no cover yet and one can be added later.
 
 **Replace media:** in the editor (Draft items), **Upload or replace media** takes only the files that should change, for example just a new cover, and keeps the rest. A published item goes back to Draft first.

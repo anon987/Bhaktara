@@ -372,9 +372,9 @@ export function requiredVariants(type: ContentType): MediaVariantName[] {
 
 export type ReadinessProblem = { field: string; message: string };
 
-// Devotional audio types whose listing shows a description; wallpapers,
-// ringtones and status videos may go live with titles alone.
-export const descriptionRequiredTypes: readonly ContentType[] = [
+// Devotional song types: they carry lyrics. No type needs a description to go
+// live; titles and media are enough.
+export const songTypes: readonly ContentType[] = [
   "BHAJAN",
   "AARTI",
   "MANTRA",
@@ -398,18 +398,6 @@ export function readinessProblems(draft: ContentDraft): ReadinessProblem[] {
   } else {
     need(draft.title.hi, "title.hi", "Hindi title is required");
     need(draft.title.en, "title.en", "English title is required");
-  }
-  if (descriptionRequiredTypes.includes(draft.type)) {
-    need(
-      draft.description.hi,
-      "description.hi",
-      "Hindi description is required",
-    );
-    need(
-      draft.description.en,
-      "description.en",
-      "English description is required",
-    );
   }
   need(draft.deityIds.length, "deityIds", "At least one deity is required");
   for (const variant of requiredVariants(draft.type))

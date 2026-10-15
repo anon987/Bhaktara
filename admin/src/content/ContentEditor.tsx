@@ -15,10 +15,10 @@ import {
   ContentType,
   contentTypes,
   defaultSaveGate,
-  descriptionRequiredTypes,
   editableStatuses,
   LYRICS_MAX_LENGTH,
   readinessProblems,
+  songTypes,
 } from "../domain";
 import { readableError, ReadableError } from "../errors";
 import {
@@ -322,7 +322,7 @@ export function EditorForm({
 
   const isAudio = audioTypes.includes(form.type);
   // Song lyrics belong to the devotional audio types (bhajan, aarti, mantra, chalisa).
-  const songLyrics = descriptionRequiredTypes.includes(form.type);
+  const songLyrics = songTypes.includes(form.type);
   const duration = formatDuration(form.durationSeconds);
   const showSummary = validation.issues.length > 0;
   const names = typeNames[form.type];
@@ -392,7 +392,7 @@ export function EditorForm({
           </div>
 
           <fieldset disabled={!editable || saving}>
-            <legend>{form.type === "WALLPAPER" ? "Wallpaper" : "Titles and description"}</legend>
+            <legend>{form.type === "WALLPAPER" ? "Wallpaper" : songLyrics ? "Titles" : "Titles and description"}</legend>
             <div className="field">
               <label htmlFor="content-type">What is this?</label>
               <select
@@ -452,21 +452,25 @@ export function EditorForm({
                           : "Type one title; Gemini fills the other."}
                   </span>
                 </div>
-                <TextField
-                  label="Description in Hindi"
-                  lang="hi"
-                  multiline
-                  value={form.description.hi}
-                  onChange={(hi) => update("description", { ...form.description, hi })}
-                  error={fieldErrors["description.hi"]}
-                />
-                <TextField
-                  label="Description in English"
-                  multiline
-                  value={form.description.en}
-                  onChange={(en) => update("description", { ...form.description, en })}
-                  error={fieldErrors["description.en"]}
-                />
+                {!songLyrics && (
+                  <>
+                    <TextField
+                      label="Description in Hindi"
+                      lang="hi"
+                      multiline
+                      value={form.description.hi}
+                      onChange={(hi) => update("description", { ...form.description, hi })}
+                      error={fieldErrors["description.hi"]}
+                    />
+                    <TextField
+                      label="Description in English"
+                      multiline
+                      value={form.description.en}
+                      onChange={(en) => update("description", { ...form.description, en })}
+                      error={fieldErrors["description.en"]}
+                    />
+                  </>
+                )}
                 {songLyrics && (
                   <div className="col-span-full space-y-2">
                     <LyricsField

@@ -346,7 +346,7 @@ describe("content workflow", () => {
     assert.equal((await db.doc(`content/${id}`).get()).data()!.status, "DRAFT");
   });
 
-  test("sacred audio reaches READY without source text; descriptions are required", async () => {
+  test("sacred audio reaches READY without source text or a description", async () => {
     const mantra = (overrides: Partial<ContentDraftInput> = {}) =>
       draft({
         type: "MANTRA",
@@ -367,12 +367,13 @@ describe("content workflow", () => {
       (details: { problems: { field: string }[] }) =>
         assert.deepEqual(
           details.problems.map((problem) => problem.field),
-          ["description.hi", "description.en", "media.stream"],
+          ["media.stream"],
         ),
     );
     await users.EDITOR.call("updateContent", {
       id: "cms-mantra",
       draft: mantra({
+        description: { hi: "", en: "" },
         media: {
           thumb: { key: "mantra/cms-mantra/thumb.0123abcd.webp" },
           stream: { key: "mantra/cms-mantra/stream.0123abcd.m4a" },

@@ -92,7 +92,6 @@ test("rows report every problem with its field", () => {
   for (const fragment of [
     "importKey: must be a lowercase slug",
     "deityIds: needs at least one deity",
-    "description_en: MANTRA needs an English description",
     "audio: MANTRA needs an audio file",
     "image: MANTRA needs a thumbnail image",
   ])
