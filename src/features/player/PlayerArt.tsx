@@ -4,18 +4,24 @@ import {
   Easing,
   Image,
   Platform,
+  Pressable,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path } from "react-native-svg";
+import { BookOpen, Share2 } from "lucide-react-native";
 import { DevotionalArt } from "../../components/DevotionalArt";
+import { Txt } from "../../components/ui";
 import { useReducedMotion } from "../../components/useReducedMotion";
+import type { LyricsLanguage } from "../../domain/lyrics";
 import type { MediaVariant } from "../../domain/media";
 import { resolveMediaUrl } from "../../services/media/config";
 import { sanctum } from "../../theme/tokens";
 import { MarigoldBlooms, type Bloom } from "../sadhana/art/Marigold";
+import { LyricsOverlay } from "./LyricsSection";
+import { PLAYER_LAYOUT } from "./playerLayout";
 
 const useNativeDriver = Platform.OS !== "web";
 
@@ -113,12 +119,12 @@ const measured = new Map<string, number>();
 
 // The thumb's width ÷ height: from the variant's metadata when the catalog
 // has it, else measured once from the image. 1 (square) until known.
-export function useArtRatio(thumb: MediaVariant) {
+export function useArtRatio(thumb: MediaVariant | undefined) {
   const known =
-    thumb.width && thumb.height
+    thumb?.width && thumb.height
       ? clampArtRatio(thumb.width, thumb.height)
       : null;
-  const uri = known === null ? resolveMediaUrl(thumb.key) : null;
+  const uri = known === null && thumb ? resolveMediaUrl(thumb.key) : null;
   const [result, setResult] = useState<{ uri: string; ratio: number } | null>(
     null,
   );
@@ -149,19 +155,46 @@ export function useArtRatio(thumb: MediaVariant) {
 }
 
 const FRAME_RADIUS = 24;
-const GLOW_RINGS = [8, 16, 24, 32];
+const GLOW_RINGS = [6, 12, 18, 24];
 
 // The artwork in a temple-gold frame, with a soft diya glow behind it that
 // breathes gently while the bhajan plays (still when paused or with reduced
-// motion). The glow is rounded rings of the frame's own shape.
+// motion). The glow is rounded rings of the frame's own shape, animated on
+// its own layer; nothing inside the frame moves with it. `width` and
+// `height` are the art's size inside the frame (from computePlayerLayout).
+// Without lyrics the art keeps its shape (`ratio`); with lyrics shown, the
+// frame takes all the space it is given and the art fades, cover-cropped,
+// under a warm scrim. Share sits on the top-right corner and the lyrics
+// toggle (when there are lyrics) on the top-left.
 export const PlayerArtwork = React.memo(function PlayerArtwork({
   thumb,
+  ratio,
+  width,
+  height,
   playing,
+  caption,
+  lyrics,
+  lyricsShown,
+  lyricsLabel,
+  onToggleLyrics,
+  shareLabel,
+  onShare,
 }: {
   thumb: MediaVariant;
+  ratio: number;
+  width: number;
+  height: number;
   playing: boolean;
+  // A short note over the bottom of the art (e.g. placeholder artwork).
+  caption?: string;
+  lyrics: { language: LyricsLanguage; stanzas: string[][] } | null;
+  lyricsShown: boolean;
+  lyricsLabel: string;
+  onToggleLyrics: () => void;
+  shareLabel: string;
+  onShare: () => void;
 }) {
-  const ratio = useArtRatio(thumb);
+  const overLyrics = !!lyrics && lyricsShown;
   const reduced = useReducedMotion();
   const [breath] = useState(() => new Animated.Value(0));
   const breathing = playing && !reduced;
@@ -191,7 +224,9 @@ export const PlayerArtwork = React.memo(function PlayerArtwork({
     return () => loop.stop();
   }, [breathing, breath]);
   return (
-    <View style={styles.wrap}>
+    <View
+      style={[styles.wrap, { width: width + PLAYER_LAYOUT.framePadding * 2 }]}
+    >
       <Animated.View
         accessible={false}
         pointerEvents="none"
@@ -237,22 +272,85 @@ export const PlayerArtwork = React.memo(function PlayerArtwork({
       >
         <View
           testID="player-art"
-          style={[styles.inner, { aspectRatio: ratio }]}
+          style={[
+            styles.inner,
+            overLyrics ? { width, height } : { width, aspectRatio: ratio },
+          ]}
         >
-          <DevotionalArt assetKey={thumb.key} size="100%" />
+          <View
+            testID="player-art-image"
+            style={[StyleSheet.absoluteFill, overLyrics && styles.faded]}
+          >
+            <DevotionalArt assetKey={thumb.key} size="100%" />
+          </View>
+          {overLyrics && (
+            <>
+              <LinearGradient
+                pointerEvents="none"
+                colors={["rgba(52, 14, 9, 0.62)", "rgba(24, 7, 5, 0.7)"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <LyricsOverlay
+                language={lyrics.language}
+                stanzas={lyrics.stanzas}
+              />
+            </>
+          )}
+          {!!caption && !overLyrics && (
+            <View pointerEvents="none" style={styles.caption}>
+              <Txt size={14} numberOfLines={2} style={styles.captionText}>
+                {caption}
+              </Txt>
+            </View>
+          )}
+          <Pressable
+            testID="player-share"
+            accessibilityRole="button"
+            accessibilityLabel={shareLabel}
+            onPress={onShare}
+            hitSlop={4}
+            style={({ pressed }) => [
+              styles.corner,
+              styles.cornerRight,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Share2 size={22} color="#FFFFFF" />
+          </Pressable>
+          {!!lyrics && (
+            <Pressable
+              testID="player-lyrics-toggle"
+              accessibilityRole="button"
+              accessibilityLabel={lyricsLabel}
+              accessibilityState={{ selected: lyricsShown }}
+              onPress={onToggleLyrics}
+              hitSlop={4}
+              style={({ pressed }) => [
+                styles.corner,
+                styles.cornerLeft,
+                lyricsShown && styles.cornerOn,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <BookOpen
+                size={22}
+                color={lyricsShown ? sanctum.brassLight : "#FFFFFF"}
+              />
+            </Pressable>
+          )}
         </View>
       </LinearGradient>
     </View>
   );
 });
 
+const SHARE_SIZE = 44;
+
 const styles = StyleSheet.create({
   wrap: {
-    width: "100%",
-    maxWidth: 440,
     alignSelf: "center",
-    marginTop: 18,
-    marginBottom: 14,
+    marginTop: PLAYER_LAYOUT.artMarginTop,
+    marginBottom: PLAYER_LAYOUT.artMarginBottom,
   },
   ring: {
     position: "absolute",
@@ -261,12 +359,35 @@ const styles = StyleSheet.create({
   },
   frame: {
     borderRadius: FRAME_RADIUS,
-    padding: 5,
+    padding: PLAYER_LAYOUT.framePadding,
   },
   inner: {
-    width: "100%",
-    borderRadius: FRAME_RADIUS - 5,
+    borderRadius: FRAME_RADIUS - PLAYER_LAYOUT.framePadding,
     overflow: "hidden",
     backgroundColor: sanctum.night,
   },
+  faded: { opacity: 0.28 },
+  corner: {
+    position: "absolute",
+    top: 10,
+    width: SHARE_SIZE,
+    height: SHARE_SIZE,
+    borderRadius: SHARE_SIZE / 2,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cornerRight: { right: 10 },
+  cornerLeft: { left: 10 },
+  cornerOn: { borderWidth: 1.5, borderColor: sanctum.brassLight },
+  caption: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+  },
+  captionText: { color: sanctum.text, textAlign: "center" },
 });

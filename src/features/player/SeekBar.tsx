@@ -11,10 +11,11 @@ import { Txt } from "../../components/ui";
 import { formatTime } from "../../domain/practice";
 import { usePlayer } from "./PlayerProvider";
 import { playerColors } from "./PlayerArt";
+import { PLAYER_LAYOUT, PLAYER_MAX_FONT_SCALE } from "./playerLayout";
 
 export const SKIP_SECONDS = 15;
 const THUMB = 30;
-const TOUCH_HEIGHT = 56;
+const TOUCH_HEIGHT = PLAYER_LAYOUT.seekTouch;
 // After a seek, the target is held until the player reports a position near
 // it, so the thumb never jumps back for a moment.
 const HOLD_MS = 1500;
@@ -91,7 +92,7 @@ export function SeekBar() {
   const fraction = duration > 0 ? clamp01(shownSeconds / duration) : 0;
   const dragging = drag !== null;
   return (
-    <View style={styles.wrap}>
+    <View>
       <View
         testID="player-seek"
         accessible
@@ -143,13 +144,18 @@ export function SeekBar() {
         <Txt
           bold
           size={dragging ? 22 : 18}
+          maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
           style={{
             color: dragging ? playerColors.brassLight : playerColors.text,
           }}
         >
           {formatTime(Math.floor(shownSeconds))}
         </Txt>
-        <Txt size={18} style={{ color: playerColors.muted }}>
+        <Txt
+          size={18}
+          maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
+          style={{ color: playerColors.muted }}
+        >
           {formatTime(Math.floor(duration))}
         </Txt>
       </View>
@@ -158,7 +164,6 @@ export function SeekBar() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 4 },
   touch: {
     height: TOUCH_HEIGHT,
     justifyContent: "center",
@@ -194,7 +199,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: -4,
-    minHeight: 34,
+    marginTop: PLAYER_LAYOUT.seekTimesMarginTop,
+    minHeight: PLAYER_LAYOUT.seekTimesLine,
   },
 });

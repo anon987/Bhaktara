@@ -1,39 +1,48 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { AlertCircle, BookOpen, ChevronDown } from "lucide-react-native";
+import { AlertCircle, ChevronDown } from "lucide-react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootParams } from "../../app/navigation/routes";
 import { useApp } from "../../app/providers/AppProvider";
 import { Txt } from "../../components/ui";
-import { useReducedMotion } from "../../components/useReducedMotion";
 import { isPlaceholderKey } from "../../domain/media";
 import { lyricsForLanguage } from "../../domain/lyrics";
 import { analytics } from "../../services/analytics";
 import { fonts, shrine } from "../../theme/tokens";
 import { usePlayer, type PlayerStatus } from "./PlayerProvider";
-import { LyricsSection } from "./LyricsSection";
 import {
   PlayerArtwork,
   PlayerBackdrop,
   PlayerGarland,
   playerColors,
+  useArtRatio,
 } from "./PlayerArt";
 import { SeekBar } from "./SeekBar";
-import { PlayerActions, TransportControls } from "./PlayerControls";
+import { TransportControls } from "./PlayerControls";
 import { useNowPlayingInfo } from "./nowPlaying";
+import {
+  computePlayerLayout,
+  PLAYER_LAYOUT,
+  PLAYER_MAX_FONT_SCALE,
+} from "./playerLayout";
 
 // The full-screen player: a lamp-lit sanctum (maroon to a saffron glow)
-// under a marigold garland. One vertical scroll: artwork, titles, the seek
-// bar, the controls, the actions, then the lyrics.
+// under a marigold garland. One screen, no page scroll: the artwork (with
+// the lyrics over it, when there are any), titles, the seek bar, a notice
+// line and the controls. The artwork is sized from what the other parts
+// leave over (computePlayerLayout).
 //
 // Every playback update (twice a second) re-renders this screen; the
 // decoration, artwork, titles and controls are memoised and only the
@@ -41,21 +50,37 @@ import { useNowPlayingInfo } from "./nowPlaying";
 export function PlayerScreen({
   navigation,
 }: NativeStackScreenProps<RootParams, "Player">) {
-  const { local, t, toggleFavorite } = useApp();
+  const { local, t } = useApp();
   const player = usePlayer();
   const item = player.item;
   const info = useNowPlayingInfo(item);
-  const reduced = useReducedMotion();
-  const scroll = useRef<ScrollView>(null);
-  const [lyricsY, setLyricsY] = useState<number | null>(null);
-  const hasLyrics = useMemo(
-    () => !!item && lyricsForLanguage(item.lyrics, local.language) !== null,
+  const window = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const ratio = useArtRatio(item?.media.thumb);
+  const lyrics = useMemo(
+    () => (item ? lyricsForLanguage(item.lyrics, local.language) : null),
     [item, local.language],
   );
   const itemId = item?.id;
-  const onFavorite = useCallback(() => {
-    if (itemId) toggleFavorite(itemId);
-  }, [itemId, toggleFavorite]);
+  // Lyrics show over the art by default; hiding them lasts for this item.
+  const [lyricsHiddenFor, setLyricsHiddenFor] = useState<string | null>(null);
+  const lyricsShown = !!lyrics && lyricsHiddenFor !== itemId;
+  const onToggleLyrics = useCallback(
+    () => setLyricsHiddenFor(lyricsShown ? (itemId ?? null) : null),
+    [itemId, lyricsShown],
+  );
+  const layout = useMemo(
+    () =>
+      computePlayerLayout({
+        width: window.width,
+        height: window.height,
+        fontScale: window.fontScale,
+        insets,
+        ratio,
+        fill: lyricsShown,
+      }),
+    [window.width, window.height, window.fontScale, insets, ratio, lyricsShown],
+  );
   const title = info?.title ?? "";
   const itemType = item?.type;
   const onShare = useCallback(() => {
@@ -73,10 +98,6 @@ export function PlayerScreen({
       })
       .catch(() => undefined);
   }, [itemId, itemType, t, title]);
-  const showLyrics = () => {
-    if (lyricsY !== null)
-      scroll.current?.scrollTo({ y: lyricsY - 12, animated: !reduced });
-  };
 
   const ready = player.status === "ready";
   const loading = player.status === "loading" || (ready && player.buffering);
@@ -84,8 +105,11 @@ export function PlayerScreen({
     <View style={styles.screen}>
       <StatusBar style="light" />
       <PlayerBackdrop />
-      <SafeAreaView edges={["top", "left", "right"]} style={styles.fill}>
-        <PlayerGarland />
+      <SafeAreaView
+        edges={["top", "bottom", "left", "right"]}
+        style={styles.fill}
+      >
+        <PlayerGarland height={PLAYER_LAYOUT.garland} />
         <PlayerHeader onClose={navigation.goBack} />
         {!item || !info ? (
           <View style={styles.empty}>
@@ -94,70 +118,49 @@ export function PlayerScreen({
             </Txt>
           </View>
         ) : (
-          <ScrollView
-            ref={scroll}
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-          >
-            <PlayerArtwork thumb={item.media.thumb} playing={player.playing} />
-            {isPlaceholderKey(item.media.thumb.key) && (
-              <Txt size={14} style={styles.placeholder}>
-                {t("placeholder")}
-              </Txt>
-            )}
+          <View testID="player-page" style={styles.content}>
+            <View style={styles.artSlot}>
+              <PlayerArtwork
+                thumb={item.media.thumb}
+                ratio={ratio}
+                width={layout.artWidth}
+                height={layout.artHeight}
+                playing={player.playing}
+                caption={
+                  isPlaceholderKey(item.media.thumb.key)
+                    ? t("placeholder")
+                    : undefined
+                }
+                lyrics={lyrics}
+                lyricsShown={lyricsShown}
+                lyricsLabel={t(lyricsShown ? "hideLyrics" : "showLyrics")}
+                onToggleLyrics={onToggleLyrics}
+                shareLabel={t("sharePlayer")}
+                onShare={onShare}
+              />
+            </View>
             <PlayerTitles
               title={info.title}
               otherTitle={info.otherTitle}
               subtitle={info.subtitle}
+              titleLines={layout.titleLines}
             />
+            <SeekBar />
             <PlayerStatusNote
               status={player.status}
               buffering={player.buffering}
               onRetry={player.retry}
             />
-            <SeekBar />
             <TransportControls
               playing={player.playing}
               ready={ready}
               loading={loading}
+              repeat={player.repeat}
               onToggle={player.toggle}
               onSeekBy={player.seekBy}
-            />
-            {hasLyrics && (
-              <Pressable
-                testID="player-lyrics-chip"
-                accessibilityRole="button"
-                onPress={showLyrics}
-                style={({ pressed }) => [
-                  styles.lyricsChip,
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                <BookOpen size={22} color={shrine.maroon} />
-                <Txt bold size={17} style={{ color: shrine.maroon }}>
-                  {t("showLyrics")}
-                </Txt>
-                <ChevronDown size={22} color={shrine.maroon} />
-              </Pressable>
-            )}
-            <PlayerActions
-              favorite={local.favorites.includes(item.id)}
-              repeat={player.repeat}
-              sleepAt={player.sleepAt}
-              sleepAtEnd={player.sleepAtEnd}
-              onFavorite={onFavorite}
               onRepeat={player.setRepeat}
-              onSleep={player.setSleep}
-              onShare={onShare}
             />
-            {hasLyrics && (
-              <View
-                onLayout={(event) => setLyricsY(event.nativeEvent.layout.y)}
-              >
-                <LyricsSection lyrics={item.lyrics} />
-              </View>
-            )}
-          </ScrollView>
+          </View>
         )}
       </SafeAreaView>
     </View>
@@ -187,6 +190,7 @@ const PlayerHeader = React.memo(function PlayerHeader({
         size={18}
         accessibilityRole="header"
         numberOfLines={1}
+        maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
         style={styles.headerLabel}
       >
         {t("nowPlaying")}
@@ -200,10 +204,12 @@ const PlayerTitles = React.memo(function PlayerTitles({
   title,
   otherTitle,
   subtitle,
+  titleLines,
 }: {
   title: string;
   otherTitle: string | null;
   subtitle: string;
+  titleLines: number;
 }) {
   const language = useApp().local.language;
   return (
@@ -211,7 +217,8 @@ const PlayerTitles = React.memo(function PlayerTitles({
       <Txt
         bold
         size={26}
-        numberOfLines={2}
+        numberOfLines={titleLines}
+        maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
         accessibilityRole="header"
         style={styles.title}
       >
@@ -220,7 +227,8 @@ const PlayerTitles = React.memo(function PlayerTitles({
       {otherTitle && (
         <Txt
           size={17}
-          numberOfLines={2}
+          numberOfLines={1}
+          maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
           style={[
             styles.otherTitle,
             // The other title is Hindi when the app is in English.
@@ -238,6 +246,7 @@ const PlayerTitles = React.memo(function PlayerTitles({
             bold
             size={17}
             numberOfLines={1}
+            maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
             style={styles.subtitle}
           >
             {subtitle}
@@ -249,8 +258,8 @@ const PlayerTitles = React.memo(function PlayerTitles({
   );
 });
 
-// Loading, unavailable and error states, between the titles and the seek
-// bar so they are never hidden behind the artwork.
+// One line under the seek bar, always reserved so nothing moves: loading,
+// unavailable, or an error with a retry button.
 const PlayerStatusNote = React.memo(function PlayerStatusNote({
   status,
   buffering,
@@ -261,40 +270,62 @@ const PlayerStatusNote = React.memo(function PlayerStatusNote({
   onRetry: () => void;
 }) {
   const { t } = useApp();
+  let content: React.ReactNode = null;
   if (status === "loading" || (status === "ready" && buffering))
-    return (
-      <View style={styles.loadingRow} accessibilityLiveRegion="polite">
+    content = (
+      <View style={styles.loadingRow}>
         <ActivityIndicator color={playerColors.brassLight} />
-        <Txt size={16} style={{ color: playerColors.muted }}>
+        <Txt
+          size={16}
+          numberOfLines={1}
+          maxFontSizeMultiplier={PLAYER_MAX_FONT_SCALE}
+          style={{ color: playerColors.muted }}
+        >
           {t("buffering")}
         </Txt>
       </View>
     );
-  if (status !== "unavailable" && status !== "error") return null;
-  return (
-    <View style={styles.note} accessibilityLiveRegion="polite">
-      <View style={styles.noteRow}>
-        <AlertCircle size={22} color={shrine.maroon} />
-        <Txt size={16} style={styles.noteText}>
-          {t(status === "error" ? "audioError" : "audioUnavailable")}
-        </Txt>
-      </View>
-      {status === "error" && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("retry")}
-          onPress={onRetry}
-          style={({ pressed }) => [styles.retry, pressed && { opacity: 0.8 }]}
+  else if (status === "unavailable" || status === "error")
+    content = (
+      <View style={styles.note}>
+        <AlertCircle size={20} color={shrine.maroon} />
+        <Txt
+          size={14}
+          numberOfLines={2}
+          maxFontSizeMultiplier={1.2}
+          style={styles.noteText}
         >
-          <Txt bold size={17} style={{ color: shrine.ivory }}>
-            {t("retry")}
-          </Txt>
-        </Pressable>
-      )}
+          {t(status === "error" ? "audioErrorShort" : "audioUnavailable")}
+        </Txt>
+        {status === "error" && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("retry")}
+            onPress={onRetry}
+            hitSlop={6}
+            style={({ pressed }) => [styles.retry, pressed && { opacity: 0.8 }]}
+          >
+            <Txt
+              bold
+              size={15}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}
+              style={{ color: shrine.ivory }}
+            >
+              {t("retry")}
+            </Txt>
+          </Pressable>
+        )}
+      </View>
+    );
+  return (
+    <View style={styles.noticeSlot} accessibilityLiveRegion="polite">
+      {content}
     </View>
   );
 });
 
+const L = PLAYER_LAYOUT;
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: playerColors.top },
   fill: { flex: 1 },
@@ -303,7 +334,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
-    marginTop: -6,
+    marginTop: L.header - 52,
   },
   close: {
     width: 52,
@@ -318,66 +349,68 @@ const styles = StyleSheet.create({
     color: playerColors.brassLight,
     letterSpacing: 0.3,
   },
-  content: { paddingHorizontal: 20, paddingBottom: 48, gap: 8 },
-  placeholder: { color: playerColors.muted, textAlign: "center" },
-  titles: { alignItems: "center", gap: 2, marginTop: 6 },
+  content: {
+    flex: 1,
+    paddingHorizontal: L.sidePadding,
+    paddingBottom: L.bottomPadding,
+  },
+  // Any height the layout didn't need goes around the artwork.
+  artSlot: { flex: 1, justifyContent: "center" },
+  titles: { alignItems: "center", marginTop: L.titlesMarginTop },
   title: {
     color: playerColors.text,
     textAlign: "center",
-    lineHeight: 36,
+    lineHeight: L.titleLine,
   },
-  otherTitle: { color: playerColors.muted, textAlign: "center" },
+  otherTitle: {
+    color: playerColors.muted,
+    textAlign: "center",
+    lineHeight: L.otherTitleLine,
+  },
   subtitleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginTop: 4,
+    marginTop: L.subtitleMarginTop,
     maxWidth: "100%",
   },
-  subtitle: { color: playerColors.brass, flexShrink: 1 },
+  subtitle: {
+    color: playerColors.brass,
+    flexShrink: 1,
+    lineHeight: L.subtitleLine,
+  },
   dot: {
     width: 6,
     height: 6,
     backgroundColor: playerColors.brass,
     transform: [{ rotate: "45deg" }],
   },
+  noticeSlot: { height: L.notice, justifyContent: "center" },
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    minHeight: 32,
   },
   note: {
-    backgroundColor: shrine.parchment,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: shrine.gold,
-    padding: 14,
-    gap: 12,
-    marginTop: 6,
-  },
-  noteRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  noteText: { color: shrine.ink, flex: 1 },
-  retry: {
-    minHeight: 52,
-    borderRadius: 26,
-    backgroundColor: shrine.maroon,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-  },
-  lyricsChip: {
-    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    minHeight: 52,
-    paddingHorizontal: 20,
-    marginTop: 14,
-    borderRadius: 26,
+    height: L.notice - 4,
+    paddingLeft: 12,
+    paddingRight: 4,
+    borderRadius: (L.notice - 4) / 2,
     backgroundColor: shrine.parchment,
-    borderWidth: 2,
-    borderColor: playerColors.brass,
+    borderWidth: 1.5,
+    borderColor: shrine.gold,
+  },
+  noteText: { color: shrine.ink, flex: 1, lineHeight: 18 },
+  retry: {
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: shrine.maroon,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
   },
 });
